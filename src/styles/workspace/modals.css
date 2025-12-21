@@ -1,0 +1,127 @@
+/* === [Modals Specifics] === */
+
+/* 지도 모달 크기 */
+.map-window {
+  width: 90%;
+  max-width: 1000px;
+  height: 80vh;
+}
+
+/* 지출 추가 모달 */
+.exp-window {
+  width: 600px;
+  max-width: 90%;
+  height: auto;
+  max-height: 90vh;
+}
+.exp-form-grid {
+  display: flex;
+  gap: 20px;
+}
+.receipt-area {
+  width: 150px;
+  height: 200px;
+  background: #eee;
+  border: 2px dashed #999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+.receipt-area:hover {
+  border-color: #000;
+  color: #000;
+}
+.receipt-area img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Notice Modal Colors */
+.color-picker {
+  display: flex;
+  gap: 10px;
+  margin-top: 5px;
+}
+.color-radio {
+  cursor: pointer;
+}
+.color-radio input {
+  display: none;
+}
+.c-box {
+  display: block;
+  width: 30px;
+  height: 30px;
+  border: 2px solid #000;
+  transition: 0.2s;
+}
+.color-radio input:checked + .c-box {
+  transform: scale(1.2);
+  outline: 2px solid var(--accent);
+}
+.c-box.white {
+  background: #ffffff;
+}
+.c-box.yellow {
+  background: #fff9c4;
+}
+.c-box.blue {
+  background: #e3f2fd;
+}
+.c-box.green {
+  background: #e8f5e9;
+}
+
+/* 정산 상세 모달 내역 */
+.settle-log-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px dashed #eee;
+}
+.settle-amt {
+  font-weight: bold;
+  font-family: "Share Tech Mono", monospace;
+}
+.settle-badge {
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: bold;
+}
+.badge-send {
+  background: #ffebee;
+  color: #d32f2f;
+}
+.badge-receive {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+/* 반응형 처리 */
+@media (max-width: 900px) {
+  .ws-container {
+    grid-template-columns: 1fr;
+  }
+  .ws-panel,
+  .ws-tools {
+    display: none;
+  }
+}
+@media (max-width: 600px) {
+  .exp-form-grid {
+    flex-direction: column;
+  }
+  .receipt-area {
+    width: 100%;
+    height: 150px;
+  }
+  .stats-panel {
+    flex-direction: column;
+  }
+}
