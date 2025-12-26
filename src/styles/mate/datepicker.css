@@ -1,0 +1,86 @@
+/* DatePicker Neobrutalism Style */
+.react-datepicker {
+  font-family: ui-monospace, SFMono-Regular, monospace !important;
+  border: 3px solid black !important;
+  border-radius: 0 !important;
+  background: white !important;
+  box-shadow: 6px 6px 0px rgba(0,0,0,1) !important;
+}
+
+.react-datepicker__header {
+  background: black !important;
+  border-bottom: 3px solid black !important;
+  border-radius: 0 !important;
+  padding: 12px !important;
+}
+
+.react-datepicker__current-month {
+  color: white !important;
+  font-weight: bold !important;
+  font-size: 14px !important;
+  text-transform: uppercase !important;
+}
+
+.react-datepicker__day-names {
+  margin-top: 8px !important;
+}
+
+.react-datepicker__day-name {
+  color: white !important;
+  font-weight: bold !important;
+  font-size: 12px !important;
+}
+
+.react-datepicker__month {
+  margin: 8px !important;
+}
+
+.react-datepicker__day {
+  border: 2px solid transparent !important;
+  border-radius: 0 !important;
+  font-weight: bold !important;
+  transition: all 0.1s !important;
+}
+
+.react-datepicker__day:hover {
+  background: #eee !important;
+  border: 2px solid black !important;
+  border-radius: 0 !important;
+}
+
+.react-datepicker__day--selected,
+.react-datepicker__day--keyboard-selected {
+  background: black !important;
+  color: white !important;
+  border: 2px solid black !important;
+  border-radius: 0 !important;
+}
+
+.react-datepicker__day--today {
+  border: 2px solid black !important;
+  background: #eee !important;
+  border-radius: 0 !important;
+}
+
+.react-datepicker__navigation {
+  top: 12px !important;
+}
+
+.react-datepicker__navigation-icon::before {
+  border-color: white !important;
+  border-width: 2px 2px 0 0 !important;
+}
+
+.react-datepicker__navigation:hover *::before {
+  border-color: #ccc !important;
+}
+
+.react-datepicker__triangle {
+  display: none !important;
+}
+
+.react-datepicker__close-icon::after {
+  background: black !important;
+  font-size: 14px !important;
+  padding: 2px 6px !important;
+}
