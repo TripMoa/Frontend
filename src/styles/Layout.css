@@ -1,4 +1,4 @@
-/* common.css */
+/* Layout.css */
 
 /* === [레이아웃 공통 (Main, Container)] === */
 main {
@@ -15,16 +15,16 @@ main {
 .page-section {
   display: block;
   animation: fadeIn 0.4s ease;
+
+  min-height: calc(100vh - 70px);
 }
 
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(10px);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
   }
 }
 

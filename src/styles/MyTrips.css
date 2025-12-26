@@ -3,23 +3,23 @@
 /* 플로팅 액션 버튼 (FAB) */
 .fab-btn {
   position: fixed;
-  bottom: 40px;
-  right: 40px;
+  bottom: 30px; /* 40px -> 30px 더 구석으로 */
+  right: 30px;
   background: #000;
   color: #fff;
-  border: 2px solid #fff; /* 안쪽 대비용 흰 테두리 */
-  outline: 3px solid #000; /* 바깥쪽 검은 테두리 */
-  height: 60px;
-  padding: 0 25px;
+  border: 2px solid #fff;
+  outline: 3px solid #000;
+  height: 50px; /* 60px -> 50px 축소 */
+  padding: 0 18px; /* 25px -> 18px 축소 */
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   font-family: var(--font-mono);
   font-weight: 800;
-  font-size: 18px;
+  font-size: 14px; /* 18px -> 14px 축소 */
   cursor: pointer;
   z-index: 1500;
-  box-shadow: 6px 6px 0px rgba(0, 0, 0, 0.5);
+  box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.5); /* 그림자도 살짝 축소 */
   transition: transform 0.2s, box-shadow 0.2s;
 }
 
@@ -64,14 +64,12 @@
   box-shadow: 2px 2px 0px #000;
 }
 
-/* 여행 목록 그리드 */
 .trip-grid {
   display: flex;
   flex-direction: column;
   gap: 20px;
 }
 
-/* 카드 내부 뱃지 및 참여자 */
 .top-badges {
   display: flex;
   align-items: center;
@@ -129,6 +127,254 @@
 }
 .p-circle:first-child {
   margin-left: 0;
+}
+
+/* 여행 카드 삭제 버튼 */
+.delete-trip-btn {
+  background: transparent;
+  border: none;
+  color: #999;
+  cursor: pointer;
+  padding: 5px;
+  font-size: 16px;
+  transition: color 0.2s, transform 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.delete-trip-btn:hover {
+  color: #ff4d4d; /* 삭제 강조색 */
+  transform: scale(1.1);
+}
+
+.delete-trip-btn:active {
+  transform: scale(0.9);
+}
+
+/* 모달 관련 스타일 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+.page-section .modal-overlay {
+  display: flex;
+}
+
+.modal-content {
+  background: #fff;
+  border: 3px solid #000;
+  padding: 30px;
+  width: 90%;
+  max-width: 450px;
+  box-shadow: 10px 10px 0px #000;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 25px;
+  border-bottom: 2px solid #000;
+  padding-bottom: 10px;
+}
+
+.modal-title {
+  font-family: var(--font-mono);
+  font-weight: 900;
+  font-size: 20px;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 28px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.input-group label {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: bold;
+  color: #555;
+}
+
+.input-group input {
+  padding: 10px;
+  border: 2px solid #000;
+  font-family: inherit;
+  font-size: 15px;
+  outline: none;
+}
+
+.input-group input:focus {
+  background: #f0f0f0;
+  box-shadow: 4px 4px 0px var(--accent);
+}
+
+.date-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+}
+
+.submit-btn {
+  margin-top: 10px;
+  background: #000;
+  color: #fff;
+  border: none;
+  padding: 15px;
+  font-family: var(--font-mono);
+  font-weight: 800;
+  font-size: 16px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.submit-btn:hover {
+  background: var(--accent);
+  transform: translate(-2px, -2px);
+  box-shadow: 4px 4px 0px #000;
+}
+
+.radio-group {
+  display: flex;
+  gap: 20px;
+  padding: 5px 0;
+}
+
+.radio-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.radio-label input[type="radio"] {
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border: 2px solid #000;
+  border-radius: 50%;
+  cursor: pointer;
+  position: relative;
+}
+
+.radio-label input[type="radio"]:checked {
+  background-color: var(--accent);
+}
+
+.radio-label input[type="radio"]:checked::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 8px;
+  height: 8px;
+  background: #000;
+  border-radius: 50%;
+}
+
+/* 초대 입력창 레이아웃 */
+.invite-input-wrapper {
+  display: flex;
+  gap: 10px;
+}
+
+.invite-input-wrapper input {
+  flex: 1;
+}
+
+.add-invite-btn {
+  background: #000;
+  color: #fff;
+  border: none;
+  padding: 0 15px;
+  font-family: var(--font-mono);
+  font-weight: bold;
+  cursor: pointer;
+}
+
+/* 추가된 에이전트 태그 목록 */
+.invitee-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+  min-height: 30px;
+
+  max-height: 120px;
+  overflow-y: auto;
+  padding-right: 5px;
+}
+
+.invitee-list::-webkit-scrollbar {
+  width: 4px;
+}
+.invitee-list::-webkit-scrollbar-thumb {
+  background: #000;
+  border-radius: 10px;
+}
+
+.invitee-tag {
+  background: #f0f0f0;
+  border: 2px solid #000;
+  padding: 4px 10px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.invitee-tag button {
+  background: none;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  color: #ff4d4d;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* 모바일 대응 */
