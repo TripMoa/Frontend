@@ -1,0 +1,58 @@
+/* MatePostCard.module.css */
+
+.card {
+  border: 3px solid #000;
+}
+
+.card:hover {
+  box-shadow: 6px 6px 0px rgba(0, 0, 0, 1);
+  transform: translate(-2px, -2px);
+}
+
+.circle {
+  border: 3px solid #000;
+}
+
+.actionButton {
+  border: 3px solid #000;
+  box-shadow: 3px 3px 0px rgba(0, 0, 0, 1);
+}
+
+/* bg-black 강제 적용 (Globals.css 오버라이드) */
+/* 기본이 검은색인 요소 */
+.bgBlack {
+  background-color: #000 !important;
+  color: #fff !important;
+}
+
+/* hover 시 흰색으로 변하는 검은 버튼 */
+.bgBlackHoverable {
+  background-color: #000 !important;
+  color: #fff !important;
+}
+
+.bgBlackHoverable:hover {
+  background-color: #fff !important;
+  color: #000 !important;
+}
+
+/* hover 시 검은색으로 변하는 흰 버튼 */
+.bgWhiteHoverable:hover {
+  background-color: #000 !important;
+  color: #fff !important;
+}
+
+.bgRed {
+  background-color: #ef4444 !important;
+  color: #fff !important;
+}
+
+.bgRed:hover {
+  background-color: #dc2626 !important;
+}
+
+/* 태그 배지 */
+.badge {
+  background-color: #000 !important;
+  color: #fff !important;
+}

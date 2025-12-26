@@ -2,6 +2,10 @@
 
 /* === [기본 설정 및 변수] === */
 /* 모든 페이지 공통 변수 및 리셋 */
+
+/* Mate tailwind css */
+@import "tailwindcss";
+
 :root {
   --bg-color: #f8f9fa;
   --surface: #ffffff;
