@@ -49,13 +49,6 @@ nav ul {
   height: 100%;
 }
 
-.nav-group {
-  position: relative;
-  height: 100%;
-  display: flex;
-  align-items: center;
-}
-
 .nav-item {
   height: 100%;
   display: flex;
@@ -126,4 +119,79 @@ nav ul {
 .btn-login:hover {
   transform: translate(2px, 2px);
   box-shadow: none;
+}
+
+/* 마이페이지 */
+.nav-group {
+  position: relative;
+  height: 100%;
+  display: flex;
+  align-items: center;
+}
+
+/* 드롭다운 공통: 네비바 선 바로 아래(top: 100%) 위치 */
+.dropdown-menu {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background: #fff;
+  border: 2px solid #000;
+  min-width: 180px;
+  box-shadow: 4px 4px 0px #000;
+  z-index: 9999;
+  flex-direction: column;
+}
+
+.nav-group:hover .dropdown-menu {
+  display: flex;
+}
+
+/* 오른쪽 정렬: 프로필 버튼이 벽 쪽에 있을 때 사용 */
+.dropdown-right {
+  left: auto;
+  right: 0;
+}
+
+.dropdown-menu a,
+.dropdown-item-btn {
+  display: block;
+  width: 100%;
+  padding: 12px 15px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 14px;
+  color: #555;
+  text-align: left;
+  text-decoration: none;
+  transition: 0.2s;
+  border: none;
+  background: none;
+  border-bottom: 1px dashed #ddd;
+  cursor: pointer;
+}
+
+.dropdown-menu a:last-child,
+.dropdown-item-btn:last-child {
+  border-bottom: none;
+}
+
+.dropdown-menu a:hover,
+.dropdown-item-btn:hover {
+  background: #000;
+  color: #fff;
+}
+
+/* 프로필 버튼 디자인 */
+.profile-circle {
+  width: 35px;
+  height: 35px;
+  background-color: #000;
+  border-radius: 50%;
+  border: 2px solid #000;
+  transition: transform 0.2s;
+}
+
+.btn-profile:hover .profile-circle {
+  transform: scale(1.1);
 }
