@@ -1,0 +1,28 @@
+/* MateHeader.module.css */
+
+.header {
+  border: 3px solid #000;
+  box-shadow: 8px 8px 0px rgba(0, 0, 0, 1);
+}
+
+.button {
+  border: 3px solid #000;
+  box-shadow: 4px 4px 0px rgba(0, 0, 0, 1);
+}
+
+/* hover 시 bg-black 강제 적용 (Globals.css 오버라이드) */
+.button:hover {
+  background-color: #000 !important;
+  color: #fff !important;
+}
+
+/* 기본이 검은색인 버튼 (RECEIVED) */
+.buttonDark {
+  background-color: #000 !important;
+  color: #fff !important;
+}
+
+.buttonDark:hover {
+  background-color: #fff !important;
+  color: #000 !important;
+}
