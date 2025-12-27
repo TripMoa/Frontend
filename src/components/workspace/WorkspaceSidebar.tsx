@@ -21,10 +21,10 @@ const WorkspaceSidebar: React.FC = () => {
       <div
         className="ws-brand"
         onClick={() => {
-          window.location.href = "/";
+          window.location.href = "/mytrips";
         }}
       >
-        TRIPMOA
+        <i className="fa-solid fa-arrow-left"></i> BACK
       </div>
 
       <div className="ws-nav">
@@ -36,7 +36,7 @@ const WorkspaceSidebar: React.FC = () => {
             alignItems: "center",
           }}
         >
-          <span>&gt;&gt; DATE LOG</span>
+          <span>&gt;&gt; SCHEDULE</span>
           <button className="btn-add-mini" onClick={addDateLog}>
             [+]
           </button>
@@ -45,16 +45,16 @@ const WorkspaceSidebar: React.FC = () => {
         <div id="date-log-list">
           <div
             className={`ws-item-wrapper ${
-              activeView === "timeline" && currentDay === "Day ALL"
+              activeView === "timeline" && currentDay === "DAY ALL"
                 ? "active"
                 : ""
             }`}
           >
             <a
               className="ws-item"
-              onClick={() => selectTab("Day ALL", "timeline")}
+              onClick={() => selectTab("DAY ALL", "timeline")}
             >
-              Day ALL
+              DAY ALL
             </a>
           </div>
 
@@ -77,7 +77,7 @@ const WorkspaceSidebar: React.FC = () => {
           ))}
         </div>
 
-        <div className="ws-group-title">&gt;&gt; CHECKLIST</div>
+        <div className="ws-group-title">&gt;&gt; WALLET</div>
 
         <div
           className={`ws-item-wrapper ${
@@ -113,7 +113,7 @@ const WorkspaceSidebar: React.FC = () => {
             alignItems: "center",
           }}
         >
-          <span>&gt;&gt; IMPORTANT</span>
+          <span>&gt;&gt; NOTICES</span>
           <button className="btn-add-mini" onClick={addNoticeGroup}>
             [+]
           </button>

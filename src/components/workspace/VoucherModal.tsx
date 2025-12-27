@@ -61,8 +61,17 @@ const VoucherModal: React.FC<Props> = ({ onClose, onSave }) => {
   };
 
   return (
-    <div className="modal-overlay active">
-      <div className="modal-window" style={{ maxWidth: "400px" }}>
+    <div
+      className="modal-overlay active"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div
+        className="modal-window"
+        style={{ width: "500px" }}
+        onMouseDown={(e) => e.stopPropagation()}
+      >
         <div className="modal-header">
           <span className="mh-title">&gt;&gt; ADD DOCUMENT</span>
           <button className="mh-close" onClick={onClose}>
@@ -70,7 +79,10 @@ const VoucherModal: React.FC<Props> = ({ onClose, onSave }) => {
           </button>
         </div>
 
-        <div className="modal-body" style={{ padding: "20px" }}>
+        <div
+          className="modal-body"
+          style={{ padding: "20px", background: "#fff" }}
+        >
           <div className="inp-row">
             <label>FILE UPLOAD</label>
             <input

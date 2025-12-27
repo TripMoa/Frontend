@@ -1,156 +1,107 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import "../../styles/workspace/modals.css";
-import type { NoticeColor, NoticeItem } from "../../hooks/useWorkspaceCore";
-import type { UseNoticesStore } from "../../hooks/useNotices";
 
-interface Props {
-  noticeStore: UseNoticesStore;
+export interface TripData {
+  title: string;
+  startDate: string;
+  endDate: string;
 }
 
-const WorkspaceModals: React.FC<Props> = ({ noticeStore }) => {
-  const { editIndex, editingNotice, saveNotice, defaultColor, closeNotice } =
-    noticeStore;
+interface EditTripModalProps {
+  init: TripData;
+  onClose: () => void;
+  onSave: (data: TripData) => void;
+}
 
-  const isAddMode = editIndex === -1;
-  const isEditMode = editIndex !== null && editIndex !== -1;
+const WorkspaceModals: React.FC<EditTripModalProps> = ({
+  init,
+  onClose,
+  onSave,
+}) => {
+  const [formData, setFormData] = useState<TripData>(init);
 
-  // ✅ editIndex가 null이 아니면 모달 open (새 공지/수정 공지 공용)
-  const isNoticeModalOpen = editIndex !== null;
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
 
-  const [color, setColor] = useState<NoticeColor>(defaultColor);
-  const [tag, setTag] = useState("");
-  const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
-
-  // 모달 오픈 시 초기화(원본과 최대한 유사하게)
-  useEffect(() => {
-    if (!isNoticeModalOpen) return;
-
-    // ✅ 수정 모드: 기존 데이터 채우기
-    if (isEditMode && editingNotice) {
-      setColor(editingNotice.color);
-      setTag(editingNotice.tag);
-      setTitle(editingNotice.title);
-      setContent(editingNotice.content);
+  const handleSave = () => {
+    if (new Date(formData.startDate) > new Date(formData.endDate)) {
+      alert("복귀 날짜는 출발 날짜보다 빠를 수 없습니다! ✈️");
       return;
     }
-
-    // ✅ 추가 모드: 초기화
-    if (isAddMode) {
-      setColor(defaultColor);
-      setTag("");
-      setTitle("");
-      setContent("");
-    }
-  }, [isNoticeModalOpen, isAddMode, isEditMode, editingNotice, defaultColor]);
-
-  // ESC 닫기
-  useEffect(() => {
-    if (!isNoticeModalOpen) return;
-
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") closeNotice();
-    };
-
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [isNoticeModalOpen, closeNotice]);
-
-  const handleSaveNotice = () => {
-    const payload: NoticeItem = { color, tag, title, content };
-    saveNotice(payload);
+    onSave(formData);
   };
 
   return (
-    <>
-      {/* ========================= */}
-      {/* NOTICE MODAL */}
-      {/* ========================= */}
+    <div
+      className="modal-overlay active"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
       <div
-        id="notice-modal"
-        className={`modal-overlay ${isNoticeModalOpen ? "active" : ""}`}
-        onMouseDown={(e) => {
-          // ✅ overlay(바깥) 클릭 시 닫기
-          if (e.target === e.currentTarget) closeNotice();
-        }}
+        className="modal-window trip-window"
+        onMouseDown={(e) => e.stopPropagation()}
       >
-        <div className="modal-window" style={{ maxWidth: "400px" }}>
-          <div className="modal-header">
-            <span className="mh-title">&gt;&gt; ADD/EDIT NOTICE</span>
+        {/* ✅ 다른 모달들과 동일한 헤더 구조 */}
+        <div className="modal-header">
+          <span className="mh-title">&gt;&gt; EDIT TRIP</span>
+          <button className="mh-close" onClick={onClose}>
+            CLOSE [X]
+          </button>
+        </div>
 
-            <button className="mh-close" onClick={closeNotice}>
-              CLOSE [X]
-            </button>
-          </div>
-
-          <div className="modal-body" style={{ padding: "20px" }}>
+        {/* ✅ 다른 모달들과 동일하게 inp-row / inp-row-group 사용 */}
+        <div
+          className="modal-body"
+          style={{ padding: "20px", background: "#fff", overflowY: "auto" }}
+        >
+          <div
+            className="modal-body edit-trip-modal-body"
+            style={{ background: "#fff" }}
+          >
             <div className="inp-row">
-              <label>COLOR SELECT</label>
-              <div className="color-picker">
-                {(["white", "yellow", "blue", "green"] as NoticeColor[]).map(
-                  (c) => (
-                    <label key={c} className="color-radio">
-                      <input
-                        type="radio"
-                        checked={color === c}
-                        onChange={() => setColor(c)}
-                      />
-                      <span className={`c-box ${c}`} />
-                    </label>
-                  )
-                )}
+              <label>여행 제목</label>
+              <input
+                type="text"
+                name="title"
+                value={formData.title}
+                onChange={handleChange}
+              />
+            </div>
+
+            <div className="inp-row-group">
+              <div className="inp-row">
+                <label>출발 날짜</label>
+                <input
+                  type="date"
+                  name="startDate"
+                  value={formData.startDate}
+                  onChange={handleChange}
+                />
+              </div>
+
+              <div className="inp-row">
+                <label>복귀 날짜</label>
+                <input
+                  type="date"
+                  name="endDate"
+                  value={formData.endDate}
+                  onChange={handleChange}
+                />
               </div>
             </div>
 
-            <div className="inp-row">
-              <label>TAG</label>
-              <input
-                type="text"
-                value={tag}
-                onChange={(e) => setTag(e.target.value)}
-              />
+            <div className="modal-footer">
+              <button className="btn-save" type="button" onClick={handleSave}>
+                저장하기
+              </button>
             </div>
-
-            <div className="inp-row">
-              <label>TITLE</label>
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-              />
-            </div>
-
-            <div className="inp-row">
-              <label>CONTENT</label>
-              <textarea
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-              />
-            </div>
-
-            <button
-              className="btn-save-exp"
-              style={{ width: "100%", marginTop: "20px" }}
-              onClick={handleSaveNotice}
-            >
-              SAVE NOTICE
-            </button>
           </div>
         </div>
       </div>
-
-      {/* ========================= */}
-      {/* MAP MODAL (유지) */}
-      {/* ========================= */}
-      <div id="map-modal" className="modal-overlay">
-        <div className="modal-window map-window">
-          <div className="modal-header">
-            <span className="mh-title">&gt;&gt; MAP</span>
-            <button className="mh-close">CLOSE [X]</button>
-          </div>
-        </div>
-      </div>
-    </>
+    </div>
   );
 };
 

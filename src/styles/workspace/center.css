@@ -8,19 +8,23 @@
 
 .ws-top {
   height: 60px;
-  border-bottom: 2px solid #000;
+  border-bottom: 2px solid #aaa;
   padding: 0 30px;
+
+  position: relative; /* 중앙 기준점 */
   display: flex;
+  justify-content: flex-end; /* 버튼 오른쪽 고정 */
   align-items: center;
-  justify-content: space-between;
 }
 
-.ws-back-btn {
-  font-weight: bold;
-  font-size: 14px;
+/* 🔥 중앙 세트 (🔒 + 제목) */
+.ws-title-wrap {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 8px;
 }
 
 .ws-title {
@@ -535,4 +539,33 @@
 }
 .notice-card.green {
   background: #e8f5e9;
+}
+
+.ws-body {
+  position: relative;
+}
+
+.ws-toggle-right {
+  position: absolute;
+  top: 10px; /* 상단바 바로 아래로 살짝 붙이기 */
+  right: 10px; /* 오른쪽 끝 정렬 */
+  z-index: 20;
+
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  background: white;
+  padding: 6px 8px;
+  cursor: pointer;
+}
+
+.ws-toggle-right:hover {
+  background: #fafafa;
+}
+
+#workspace-ui {
+  scrollbar-width: none; /* Firefox */
+}
+
+#workspace-ui::-webkit-scrollbar {
+  display: none; /* Chrome / Edge / Safari */
 }

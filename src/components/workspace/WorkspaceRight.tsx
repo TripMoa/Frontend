@@ -29,6 +29,7 @@ const WorkspaceRight: React.FC = () => {
 
   return (
     <>
+      {/* 🔥 오른쪽 패널 */}
       <div className="ws-tools">
         <div
           className="map-view"

@@ -3,22 +3,21 @@ import { useEffect, useRef, useState } from "react";
 export const useTopOption = () => {
   const [open, setOpen] = useState(false);
   const [isPrivate, setIsPrivate] = useState(true);
+  const [isEditOpen, setIsEditOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
 
-  const toggle = () => {
-    setOpen((p) => !p);
+  const toggle = () => setOpen((p) => !p);
+  const close = () => setOpen(false);
+
+  const openEdit = () => {
+    setIsEditOpen(true);
+    close();
   };
 
-  const close = () => {
-    setOpen(false);
-  };
+  const closeEdit = () => setIsEditOpen(false);
 
-  const rename = () => {
-    const name = prompt("여행 이름을 입력하세요:");
-    if (name) {
-      const el = document.getElementById("ws-title-text");
-      if (el) el.textContent = name;
-    }
+  const downloadPDF = () => {
+    alert("📄 PDF 다운로드를 시작합니다.");
     close();
   };
 
@@ -43,9 +42,12 @@ export const useTopOption = () => {
   return {
     open,
     isPrivate,
+    isEditOpen,
     dropdownRef,
     toggle,
-    rename,
+    openEdit,
+    closeEdit,
+    downloadPDF,
     togglePrivacy,
   };
 };
