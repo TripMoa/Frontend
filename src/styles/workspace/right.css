@@ -1,6 +1,5 @@
 /* === [Right Sidebar Tools] === */
 .ws-tools {
-  border-left: 2px solid #000;
   display: flex;
   flex-direction: column;
 }
@@ -14,7 +13,6 @@
 .map-view {
   height: 40%;
   background: #eee;
-  border-bottom: 2px solid #000;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -148,100 +146,4 @@
   background: #000;
   color: #fff;
   white-space: nowrap;
-}
-
-/* === [Modals Specifics] === */
-.form-inputs {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.inp-row {
-  display: flex;
-  flex-direction: column;
-}
-.inp-row label {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-weight: bold;
-  margin-bottom: 4px;
-}
-.inp-row input,
-.inp-row select {
-  border: 2px solid #ddd;
-  height: 36px;
-  padding: 0 10px;
-  font-family: var(--font-body);
-  font-weight: bold;
-}
-.inp-row input:focus,
-.inp-row select:focus {
-  border-color: #000;
-  outline: none;
-}
-.inp-row-group {
-  display: flex;
-  gap: 10px;
-}
-.inp-row-group .inp-row {
-  flex: 1;
-}
-
-/* 참여자 체크박스 */
-.check-group {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-.check-btn {
-  border: 2px solid #ddd;
-  background: #fff;
-  padding: 8px 12px;
-  font-family: var(--font-mono);
-  font-weight: bold;
-  font-size: 14px;
-  cursor: pointer;
-  color: #999;
-  flex: 1;
-  text-align: center;
-  transition: 0.2s;
-}
-.check-btn.active {
-  border-color: #000;
-  background: #000;
-  color: #fff;
-}
-
-.btn-save-exp {
-  width: 100%;
-  margin-top: 20px;
-  background: #000;
-  color: #fff;
-  padding: 12px;
-  font-family: var(--font-mono);
-  font-weight: bold;
-  font-size: 16px;
-  border: 2px solid #000;
-  flex: 2;
-}
-.btn-save-exp:hover {
-  background: var(--accent);
-  border-color: var(--accent);
-}
-
-.btn-delete-exp {
-  flex: 1;
-  background: #fff;
-  color: #d32f2f;
-  border: 2px solid #d32f2f;
-  font-family: var(--font-mono);
-  font-weight: bold;
-  font-size: 16px;
-  cursor: pointer;
-  margin-top: 20px;
-}
-.btn-delete-exp:hover {
-  background: #d32f2f;
-  color: #fff;
 }

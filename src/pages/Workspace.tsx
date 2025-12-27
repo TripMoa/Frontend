@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import "../styles/workspace/layout.css";
 import {
   WorkspaceCoreProvider,
@@ -8,7 +9,6 @@ import WorkspaceLayout from "../components/workspace/WorkspaceLayout";
 import WorkspaceSidebar from "../components/workspace/WorkspaceSidebar";
 import WorkspaceCenter from "../components/workspace/WorkspaceCenter";
 import WorkspaceRight from "../components/workspace/WorkspaceRight";
-import WorkspaceModals from "../components/workspace/WorkspaceModals";
 import { useNotices } from "../hooks/useNotices";
 
 /* =========================
@@ -16,9 +16,11 @@ import { useNotices } from "../hooks/useNotices";
 ========================= */
 const WorkspaceContent: React.FC = () => {
   const { activeView } = useWorkspaceCore();
+  const [rightOpen, setRightOpen] = useState(true);
 
   // 2열로 써야 하는 화면
   const isTwoColumn =
+    !rightOpen ||
     activeView === "expenses" ||
     activeView === "voucher" ||
     activeView === "notice";
@@ -38,14 +40,16 @@ const WorkspaceContent: React.FC = () => {
               : undefined
           }
         >
-          <WorkspaceCenter noticeStore={noticeStore} />
+          <WorkspaceCenter
+            noticeStore={noticeStore}
+            rightOpen={rightOpen}
+            setRightOpen={setRightOpen}
+          />
         </div>
 
         {/* 3열 화면에서만 Right 렌더 */}
-        {!isTwoColumn && <WorkspaceRight />}
+        {!isTwoColumn && rightOpen && <WorkspaceRight />}
       </WorkspaceLayout>
-
-      <WorkspaceModals noticeStore={noticeStore} />
     </>
   );
 };
@@ -54,6 +58,14 @@ const WorkspaceContent: React.FC = () => {
    Workspace Page
 ========================= */
 const Workspace: React.FC = () => {
+  useEffect(() => {
+    document.documentElement.classList.add("ws-hide-scrollbar");
+
+    return () => {
+      document.documentElement.classList.remove("ws-hide-scrollbar");
+    };
+  }, []);
+
   return (
     <WorkspaceCoreProvider>
       <main>

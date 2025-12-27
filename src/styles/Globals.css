@@ -57,17 +57,34 @@ ul {
   margin: 0;
 }
 
-/* 스크롤바 커스텀 (Workspace 등에서 공통 사용) */
+/* ===== 스크롤바: 전역 기본 설정 ===== */
+
+/* 얇은 스크롤바 (히트박스는 있음) */
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 4px;
 }
-::-webkit-scrollbar-track {
-  background: transparent;
-}
+
+/* 기본 상태: 완전 투명 → 안 보이는 것처럼 */
 ::-webkit-scrollbar-thumb {
-  background: #ccc;
-  border-radius: 10px;
+  background: transparent !important;
+  border-radius: 10px; /* 직각 유지 */
 }
+
+/* 트랙도 안 보이게 */
+::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+/* ✅ 진짜 오직 "스크롤바 위에 마우스 올렸을 때"만 보임 */
 ::-webkit-scrollbar-thumb:hover {
-  background: #999;
+  background: #cecece !important; /* 연한 회색 */
+}
+
+/* ⭐ 워크스페이스일 때만 HTML 스크롤바 숨김 */
+html.ws-hide-scrollbar::-webkit-scrollbar {
+  display: none; /* Chrome / Edge / Safari */
+}
+
+html.ws-hide-scrollbar {
+  scrollbar-width: none; /* Firefox */
 }

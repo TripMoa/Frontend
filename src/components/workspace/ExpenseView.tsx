@@ -49,7 +49,7 @@ const ExpenseView: React.FC<Props> = ({ store, onOpenSettleDetail }) => {
           }}
         >
           <h2 style={{ fontSize: 24, fontWeight: 800, margin: 0 }}>
-            SHARED WALLET (KRW)
+            TRAVEL LOG
           </h2>
 
           <div className="filter-group">

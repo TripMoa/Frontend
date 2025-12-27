@@ -1,5 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+
 import "../../styles/workspace/center.css";
+import "../../styles/workspace/layout.css";
 
 import { useWorkspaceCore } from "../../hooks/useWorkspaceCore";
 import { useTimeline } from "../../hooks/useTimeline";
@@ -10,6 +12,8 @@ import type { ExpenseMember } from "../../hooks/useExpenses";
 import ExpenseView from "./ExpenseView";
 import VoucherView from "./VoucherView";
 
+import WorkspaceModals from "./WorkspaceModals";
+import NoticeModal from "./NoticeItemModal";
 import ExpenseModal from "./ExpenseModal";
 import SettleDetailModal from "./SettleDetailModal";
 
@@ -20,15 +24,38 @@ import type { UseNoticesStore } from "../../hooks/useNotices";
 
 interface Props {
   noticeStore: UseNoticesStore;
+  rightOpen: boolean;
+  setRightOpen: (v: boolean) => void;
 }
 
-const WorkspaceCenter: React.FC<Props> = ({ noticeStore }) => {
-  const { notices, openAdd, openEdit, deleteNotice } = noticeStore;
-
+const WorkspaceCenter: React.FC<Props> = ({
+  noticeStore,
+  rightOpen,
+  setRightOpen,
+}) => {
   const { activeView, currentDay } = useWorkspaceCore();
   const { nodes, addNode, updateNode } = useTimeline(currentDay);
-  const { open, isPrivate, toggle, rename, togglePrivacy, dropdownRef } =
-    useTopOption();
+
+  // Notice 관련 openEdit은 openNoticeEdit으로 변경
+  const {
+    notices,
+    openAdd,
+    openEdit: openNoticeEdit,
+    deleteNotice,
+  } = noticeStore;
+
+  // Trip 관련 openEdit은 openTripEdit으로 변경
+  const {
+    open,
+    isPrivate,
+    isEditOpen,
+    toggle,
+    openEdit: openTripEdit, // 이름 변경
+    closeEdit,
+    downloadPDF,
+    togglePrivacy,
+    dropdownRef,
+  } = useTopOption();
 
   const expenseStore = useExpenses();
   const [settleTarget, setSettleTarget] = useState<ExpenseMember | null>(null);
@@ -36,43 +63,34 @@ const WorkspaceCenter: React.FC<Props> = ({ noticeStore }) => {
   const voucherStore = useVouchers();
   const [isVoucherModalOpen, setIsVoucherModalOpen] = useState(false);
 
+  const [trip, setTrip] = useState({
+    title: "OSAKA X-MAS 🎄",
+    startDate: "2025-12-24",
+    endDate: "2025-12-25",
+  });
+
+  // 🔥 LocalStorage에서 초기값 로드
+  useEffect(() => {
+    const saved = localStorage.getItem("tripData");
+    if (saved) setTrip(JSON.parse(saved));
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem("tripData", JSON.stringify(trip));
+  }, [trip]);
+
   return (
     <div className="ws-main">
       {/* TOP BAR */}
       <div className="ws-top">
-        <button
-          className="ws-back-btn"
-          onClick={() => {
-            window.location.href = "/mytrips";
-          }}
-        >
-          <i className="fa-solid fa-arrow-left"></i> BACK
-        </button>
-
-        <div style={{ display: "flex", alignItems: "center" }}>
-          <span
-            id="privacy-badge"
-            style={{
-              width: "24px",
-              textAlign: "center",
-              fontSize: "16px",
-              cursor: "default",
-              display: "inline-block",
-              color: isPrivate ? "#000" : "var(--accent)",
-            }}
-          >
+        <div className="ws-title-wrap">
+          <span id="privacy-badge">
             <i
               className={`fa-solid ${isPrivate ? "fa-lock" : "fa-lock-open"}`}
-            ></i>
+            />
           </span>
 
-          <div
-            className="ws-title"
-            id="ws-title-text"
-            style={{ marginLeft: "8px" }}
-          >
-            OSAKA X-MAS 🎄
-          </div>
+          <div className="ws-title">{trip.title}</div>
         </div>
 
         <div
@@ -83,31 +101,29 @@ const WorkspaceCenter: React.FC<Props> = ({ noticeStore }) => {
             <i className="fa-solid fa-ellipsis"></i>
           </button>
 
-          <div
-            id="ws-opt-dropdown"
-            className={`ws-dropdown ${open ? "active" : ""}`}
-          >
-            <div className="ws-dd-item" onClick={rename}>
-              <i className="fa-solid fa-pen"></i> 이름 변경
-            </div>
-
+          <div className={`ws-dropdown ${open ? "active" : ""}`}>
+            {/* 1. 여행 수정 */}
             <div
               className="ws-dd-item"
-              onClick={() => {
-                alert("🔗 여행 링크 복사 완료!");
+              onClick={(e) => {
+                e.stopPropagation();
+                openTripEdit();
               }}
             >
-              <i className="fa-solid fa-link"></i> 공유하기
+              <i className="fa-solid fa-pen-to-square"></i> 여행 수정
             </div>
 
+            {/* 2. PDF 다운로드 */}
+            <div className="ws-dd-item" onClick={downloadPDF}>
+              <i className="fa-solid fa-file-pdf"></i> PDF 다운로드
+            </div>
+
+            {/* 3. 공개/비공개 전환 */}
             <div className="ws-dd-item" onClick={togglePrivacy}>
               <i
                 className={`fa-solid ${isPrivate ? "fa-lock" : "fa-lock-open"}`}
-                id="privacy-icon"
               ></i>
-              <span id="privacy-text">
-                {isPrivate ? "공개로 전환" : "비공개로 전환"}
-              </span>
+              <span>{isPrivate ? "공개로 전환" : "비공개로 전환"}</span>
             </div>
           </div>
         </div>
@@ -115,6 +131,16 @@ const WorkspaceCenter: React.FC<Props> = ({ noticeStore }) => {
 
       {/* BODY */}
       <div className="ws-body">
+        {/* 오른쪽 패널 토글 버튼 */}
+        {activeView === "timeline" && (
+          <button
+            className="ws-toggle-right"
+            onClick={() => setRightOpen(!rightOpen)}
+          >
+            {rightOpen ? "⮜" : "📍"}
+          </button>
+        )}
+
         {/* ================= TIMELINE VIEW ================= */}
         <div
           id="view-timeline"
@@ -126,7 +152,7 @@ const WorkspaceCenter: React.FC<Props> = ({ noticeStore }) => {
             id="day-title"
             style={{ fontSize: "24px", fontWeight: 800, marginBottom: "10px" }}
           >
-            {currentDay === "Day ALL" ? "Day ALL" : currentDay}
+            {currentDay === "DAY ALL" ? "DAY ALL" : currentDay}
           </h2>
 
           <p
@@ -136,7 +162,7 @@ const WorkspaceCenter: React.FC<Props> = ({ noticeStore }) => {
               fontFamily: "var(--font-mono)",
             }}
           >
-            2025.12.24 - 12.25
+            {trip.startDate} - {trip.endDate}
           </p>
 
           <div className="timeline">
@@ -294,7 +320,10 @@ const WorkspaceCenter: React.FC<Props> = ({ noticeStore }) => {
                 <div className="nc-content">{n.content}</div>
 
                 <div className="nc-controls">
-                  <span className="nc-btn edit" onClick={() => openEdit(idx)}>
+                  <span
+                    className="nc-btn edit"
+                    onClick={() => openNoticeEdit(idx)}
+                  >
                     EDIT
                   </span>
                   <span
@@ -309,6 +338,18 @@ const WorkspaceCenter: React.FC<Props> = ({ noticeStore }) => {
           </div>
         </div>
       </div>
+      {isEditOpen && (
+        <WorkspaceModals
+          init={trip}
+          onClose={closeEdit}
+          onSave={(data) => {
+            setTrip(data);
+            closeEdit();
+          }}
+        />
+      )}
+
+      <NoticeModal noticeStore={noticeStore} />
     </div>
   );
 };

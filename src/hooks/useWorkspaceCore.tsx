@@ -56,7 +56,7 @@ const useWorkspaceCoreInternal = (): WorkspaceCoreState => {
   const [noticeGroups, setNoticeGroups] = useState<NoticeGroup[]>([]);
 
   const [activeView, setActiveView] = useState<WorkspaceViewType>("timeline");
-  const [currentDay, setCurrentDay] = useState<string>("Day ALL");
+  const [currentDay, setCurrentDay] = useState<string>("DAY ALL");
   const [currentNoticeGroup, setCurrentNoticeGroup] =
     useState<string>("TRIP NOTICE");
 
@@ -113,7 +113,7 @@ const useWorkspaceCoreInternal = (): WorkspaceCoreState => {
   const addDateLog = () => {
     const name = prompt(
       "추가할 일정 이름을 입력하세요:",
-      `Day ${dateLogs.length + 1}`
+      `DAY ${dateLogs.length + 1}`
     );
     if (!name) return;
     setDateLogs((prev) => [...prev, name]);

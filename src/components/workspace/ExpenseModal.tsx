@@ -159,7 +159,12 @@ const ExpenseModal: React.FC<Props> = ({ store }) => {
                 <div id="receipt-placeholder">
                   <i
                     className="fa-solid fa-camera"
-                    style={{ fontSize: "24px", marginBottom: "10px" }}
+                    style={{
+                      fontSize: "24px",
+                      marginBottom: "10px",
+                      justifyContent: "center",
+                      display: "flex",
+                    }}
                   ></i>
                   <span>UPLOAD RECEIPT</span>
                 </div>

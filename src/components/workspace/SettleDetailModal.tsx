@@ -25,8 +25,18 @@ const SettleDetailModal: React.FC<Props> = ({ store, target, onClose }) => {
   const isMinus = stat.diff < -10;
 
   return (
-    <div id="settle-detail-modal" className="modal-overlay active">
-      <div className="modal-window" style={{ maxWidth: "350px" }}>
+    <div
+      id="settle-detail-modal"
+      className="modal-overlay active"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div
+        className="modal-window"
+        style={{ width: "400px", height: "400px" }}
+        onMouseDown={(e) => e.stopPropagation()}
+      >
         <div className="modal-header">
           <span className="mh-title">&gt;&gt; {target}&apos;s DETAIL</span>
           <button className="mh-close" onClick={onClose}>
@@ -34,7 +44,10 @@ const SettleDetailModal: React.FC<Props> = ({ store, target, onClose }) => {
           </button>
         </div>
 
-        <div className="modal-body" style={{ padding: "20px" }}>
+        <div
+          className="modal-body"
+          style={{ padding: "20px", background: "#fff" }}
+        >
           {/* SUMMARY */}
           <div
             style={{
