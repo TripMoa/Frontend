@@ -9,10 +9,9 @@
 
 /* 지출 추가 모달 */
 .exp-window {
-  width: 600px;
+  width: 700px;
   max-width: 90%;
   height: auto;
-  max-height: 90vh;
 }
 .exp-form-grid {
   display: flex;
@@ -124,4 +123,232 @@
   .stats-panel {
     flex-direction: column;
   }
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.modal-overlay.active {
+  display: flex;
+}
+
+.modal-content {
+  background: white;
+  padding: 24px;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 400px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+.modal-header h2 {
+  font-size: 20px;
+  font-weight: 800;
+  margin: 0;
+}
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.input-group {
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+}
+.input-group label {
+  font-size: 13px;
+  font-weight: bold;
+  color: #666;
+  margin-bottom: 6px;
+}
+.input-group input {
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 15px;
+}
+
+.input-row {
+  display: flex;
+  gap: 12px;
+}
+.input-row .input-group {
+  flex: 1;
+}
+
+.modal-footer {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+.modal-footer button {
+  flex: 1;
+  padding: 12px;
+  font-weight: bold;
+  cursor: pointer;
+  border: none;
+}
+.btn-cancel {
+  background: #eee;
+  color: #666;
+}
+
+.btn-save {
+  width: 100%;
+  margin-top: 20px;
+  background: #000;
+  color: #fff;
+  padding: 12px;
+  font-family: var(--font-mono);
+  font-weight: bold;
+  font-size: 16px;
+  border: 2px solid #000;
+  flex: 2;
+}
+
+.btn-save:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+/* === [Modals Specifics] === */
+.form-inputs {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.inp-row {
+  display: flex;
+  flex-direction: column;
+}
+.inp-row label {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+.inp-row input,
+.inp-row select {
+  border: 2px solid #ddd;
+  height: 36px;
+  padding: 0 10px;
+  font-family: var(--font-body);
+  font-weight: bold;
+}
+.inp-row input:focus,
+.inp-row select:focus {
+  border-color: #000;
+  outline: none;
+}
+.inp-row-group {
+  display: flex;
+  gap: 10px;
+}
+.inp-row-group .inp-row {
+  flex: 1;
+}
+
+/* 참여자 체크박스 */
+.check-group {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.check-btn {
+  border: 2px solid #ddd;
+  background: #fff;
+  padding: 8px 12px;
+  font-family: var(--font-mono);
+  font-weight: bold;
+  font-size: 14px;
+  cursor: pointer;
+  color: #999;
+  flex: 1;
+  text-align: center;
+  transition: 0.2s;
+}
+.check-btn.active {
+  border-color: #000;
+  background: #000;
+  color: #fff;
+}
+
+.btn-save-exp {
+  width: 100%;
+  margin-top: 20px;
+  background: #000;
+  color: #fff;
+  padding: 12px;
+  font-family: var(--font-mono);
+  font-weight: bold;
+  font-size: 16px;
+  border: 2px solid #000;
+  flex: 2;
+}
+.btn-save-exp:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.btn-delete-exp {
+  flex: 1;
+  background: #fff;
+  color: #d32f2f;
+  border: 2px solid #d32f2f;
+  font-family: var(--font-mono);
+  font-weight: bold;
+  font-size: 16px;
+  cursor: pointer;
+  margin-top: 20px;
+}
+.btn-delete-exp:hover {
+  background: #d32f2f;
+  color: #fff;
+}
+
+/* ===== 공통: 모든 모달 body는 흰색 ===== */
+.modal-body {
+  background: #fff;
+}
+
+/* ===== 공통: 모든 모달 input/textarea 흰색으로 통일 ===== */
+.modal-body input,
+.modal-body textarea,
+.modal-body select {
+  background: #fff !important;
+  border: 2px solid #ddd !important;
+  font-family: inherit;
+}
+
+/* ===== Edit Trip Modal 전용 ===== */
+.edit-trip-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px;
+}
+
+/* 여행 정보 수정 모달 */
+.trip-window {
+  width: 480px;
+  max-width: 90%;
 }
