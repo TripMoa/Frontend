@@ -88,7 +88,7 @@ const WorkspaceSidebar: React.FC = () => {
             className="ws-item"
             onClick={() => selectTab("EXPENSES", "expenses")}
           >
-            [ ] EXPENSES
+            EXPENSES
           </a>
         </div>
 
@@ -101,7 +101,7 @@ const WorkspaceSidebar: React.FC = () => {
             className="ws-item"
             onClick={() => selectTab("VOUCHER", "voucher")}
           >
-            [ ] VOUCHER
+            VOUCHER
           </a>
         </div>
 
@@ -120,21 +120,6 @@ const WorkspaceSidebar: React.FC = () => {
         </div>
 
         <div id="notice-log-list">
-          <div
-            className={`ws-item-wrapper ${
-              activeView === "notice" && currentNoticeGroup === "TRIP NOTICE"
-                ? "active"
-                : ""
-            }`}
-          >
-            <a
-              className="ws-item"
-              onClick={() => selectTab("TRIP NOTICE", "notice")}
-            >
-              [ ] TRIP NOTICE
-            </a>
-          </div>
-
           {noticeGroups.map((group, idx) => (
             <div
               key={`${group.name}-${idx}`}
@@ -148,13 +133,16 @@ const WorkspaceSidebar: React.FC = () => {
                 className="ws-item"
                 onClick={() => selectTab(group.name, "notice")}
               >
-                [ ] {group.name}
+                {group.name}
               </a>
 
-              <div className="ws-item-controls">
-                <span onClick={() => renameItem("notice", idx)}>✎</span>
-                <span onClick={() => deleteItem("notice", idx)}>🗑</span>
-              </div>
+              {/* 기본 TRIP NOTICE 는 수정/삭제 버튼 숨김 */}
+              {group.name !== "TRIP NOTICE" && (
+                <div className="ws-item-controls">
+                  <span onClick={() => renameItem("notice", idx)}>✎</span>
+                  <span onClick={() => deleteItem("notice", idx)}>🗑</span>
+                </div>
+              )}
             </div>
           ))}
         </div>

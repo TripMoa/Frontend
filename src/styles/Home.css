@@ -11,7 +11,7 @@
   border: 3px solid #000;
   background: #fff;
   padding: 40px;
-  margin-bottom: 50px;
+  margin-bottom: 100px;
   box-shadow: 10px 10px 0px rgba(0, 0, 0, 1);
   position: relative;
   text-align: left;
@@ -113,13 +113,39 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  transform: translateY(-15px);
 }
 
 .generate-btn:hover {
   background: #fff;
   color: #000;
   box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.5);
-  transform: translate(-2px, -2px);
+  transform: translate(-2px, -7px);
+}
+.generate-btn {
+  background: #111;
+  color: #fff;
+  border: 3px solid #000;
+  padding: 0 30px;
+  font-size: 1.3rem;
+  cursor: pointer;
+  height: 60px;
+  transition: 0.2s;
+  font-weight: bold;
+  letter-spacing: 1px;
+  margin: 0;
+  border-radius: 0 !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform: translateY(-15px);
+}
+
+.generate-btn:hover {
+  background: #fff;
+  color: #000;
+  box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.5);
+  transform: translate(-2px, -7px);
 }
 
 /* Feature Rows (기능 소개) */

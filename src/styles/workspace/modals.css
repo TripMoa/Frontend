@@ -43,7 +43,6 @@
 .color-picker {
   display: flex;
   gap: 10px;
-  margin-top: 5px;
 }
 .color-radio {
   cursor: pointer;
@@ -244,7 +243,8 @@
   font-family: var(--font-mono);
   font-size: 12px;
   font-weight: bold;
-  margin-bottom: 4px;
+  margin-top: 15px;
+  margin-bottom: 2px;
 }
 .inp-row input,
 .inp-row select {
@@ -351,4 +351,198 @@
 .trip-window {
   width: 480px;
   max-width: 90%;
+}
+
+/* 검색창 스타일 드롭다운 */
+.search-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: #fff;
+  border-radius: 12px; /* 둥근 모서리 */
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15); /* 부드러운 그림자 */
+  margin-top: 8px;
+  z-index: 1000;
+  overflow: hidden;
+  border: 1px solid #eee;
+}
+
+/* 상단 헤더 (최근 검색어 / 전체삭제) */
+.sd-header {
+  padding: 12px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f9f9f9;
+  border-bottom: 1px solid #eee;
+}
+
+.sd-header span {
+  font-size: 13px;
+  font-weight: 600;
+  color: #666;
+}
+
+.sd-all-del {
+  font-size: 12px;
+  color: #999;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+/* 리스트 아이템 */
+.sd-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.sd-item:hover {
+  background: #f5f5f5;
+}
+
+.sd-item-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sd-item-left i {
+  color: #ccc;
+  font-size: 14px;
+}
+
+.sd-text {
+  font-size: 14px;
+  color: #333;
+}
+
+/* 개별 삭제 버튼 */
+.sd-item-del {
+  background: none;
+  border: none;
+  color: #ccc;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.sd-item-del:hover {
+  color: #ff4d4f;
+}
+
+/* 입력창과 목록을 감싸는 컨테이너 */
+.input-combo {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 목록이 열렸을 때 입력창의 하단 테두리를 직선으로 */
+.input-combo.open input {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  border-bottom-color: #eee; /* 경계선을 부드럽게 */
+}
+
+/* 네이버 스타일 리스트 박스 */
+.naver-style-list {
+  position: absolute;
+  top: 100%; /* 입력창 바로 끝나는 지점 */
+  left: 0;
+  right: 0;
+  background: #fff;
+  border: 1px solid #ddd; /* 기존 input 테두리 색상과 맞춤 */
+  border-top: none; /* 입력창 테두리와 겹치지 않게 제거 */
+  border-radius: 0 0 8px 8px; /* 하단만 둥글게 */
+  z-index: 1000;
+  max-height: 200px;
+  overflow-y: auto;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1); /* 떠 있는 느낌만 살짝 */
+}
+
+/* 리스트 아이템 */
+.naver-style-item {
+  padding: 10px 15px;
+  display: flex;
+  justify-content: space-between; /* 양 끝 정렬 */
+  align-items: center;
+  cursor: pointer;
+}
+
+.ns-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ns-left i {
+  color: #ccc;
+  font-size: 13px;
+}
+
+.naver-style-item:hover {
+  background: #f8f9fa;
+}
+
+.naver-style-item i {
+  color: #bbb;
+  font-size: 12px;
+}
+
+.naver-style-item span {
+  font-size: 14px;
+  color: #333;
+}
+
+/* 마지막 아이템의 바닥 곡률 맞춤 */
+.naver-style-item:last-child {
+  border-bottom-left-radius: 8px;
+  border-bottom-right-radius: 8px;
+}
+
+/* 개별 삭제 버튼 스타일 */
+.ns-del-btn {
+  background: none;
+  border: none;
+  color: #ddd;
+  padding: 5px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s;
+}
+
+.ns-del-btn:hover {
+  color: #999; /* 마우스 올리면 더 진하게 */
+}
+
+.ns-del-btn i {
+  font-size: 14px;
+}
+
+/* 고정 버튼 스타일 */
+.nc-pin-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  cursor: pointer;
+  color: #ccc;
+  font-size: 14px;
+  transition: color 0.2s, transform 0.2s;
+}
+
+.nc-pin-btn:hover {
+  transform: scale(1.2);
+}
+
+/* 고정 활성화 상태 */
+.nc-pin-btn.active {
+  color: #ff4d4f; /* 붉은색 핀 */
+  transform: rotate(-45deg); /* 핀이 박힌 느낌 */
 }

@@ -9,35 +9,40 @@ interface Props {
 }
 
 const NoticeModal: React.FC<Props> = ({ noticeStore }) => {
-  const { editIndex, editingNotice, saveNotice, defaultColor, closeNotice } =
-    noticeStore;
+  const {
+    editId,
+    editingNotice,
+    saveNotice,
+    defaultColor,
+    closeNotice,
+    allTags,
+    deleteTag,
+  } = noticeStore;
 
-  const isAddMode = editIndex === -1;
-  const isEditMode = editIndex !== null && editIndex !== -1;
-
-  // ✅ editIndex가 null이 아니면 모달 open (새 공지/수정 공지 공용)
-  const isNoticeModalOpen = editIndex !== null;
+  // ✅ editId 기반으로 모드 판정
+  const isAddMode = editId === -1;
+  const isEditMode = editId !== null && editId !== -1;
+  const isNoticeModalOpen = editId !== null;
 
   const [color, setColor] = useState<NoticeColor>(defaultColor);
   const [tag, setTag] = useState("");
+  const [isOpen, setIsOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+
+  // 입력한 글자가 포함된 태그만 필터링
+  const filteredTags = allTags.filter((t) => t.includes(tag));
 
   // 모달 오픈 시 초기화(원본과 최대한 유사하게)
   useEffect(() => {
     if (!isNoticeModalOpen) return;
 
-    // ✅ 수정 모드: 기존 데이터 채우기
     if (isEditMode && editingNotice) {
       setColor(editingNotice.color);
       setTag(editingNotice.tag);
       setTitle(editingNotice.title);
       setContent(editingNotice.content);
-      return;
-    }
-
-    // ✅ 추가 모드: 초기화
-    if (isAddMode) {
+    } else if (isAddMode) {
       setColor(defaultColor);
       setTag("");
       setTitle("");
@@ -58,7 +63,13 @@ const NoticeModal: React.FC<Props> = ({ noticeStore }) => {
   }, [isNoticeModalOpen, closeNotice]);
 
   const handleSaveNotice = () => {
-    const payload: NoticeItem = { color, tag, title, content };
+    const payload: NoticeItem = {
+      id: isEditMode ? (editId as number) : Date.now(),
+      color,
+      tag,
+      title,
+      content,
+    };
     saveNotice(payload);
   };
 
@@ -106,13 +117,54 @@ const NoticeModal: React.FC<Props> = ({ noticeStore }) => {
               </div>
             </div>
 
-            <div className="inp-row">
+            <div className="inp-row" style={{ position: "relative" }}>
               <label>TAG</label>
-              <input
-                type="text"
-                value={tag}
-                onChange={(e) => setTag(e.target.value)}
-              />
+              <div
+                className={`input-combo ${
+                  isOpen && filteredTags.length > 0 ? "open" : ""
+                }`}
+              >
+                <input
+                  type="text"
+                  value={tag}
+                  onChange={(e) => setTag(e.target.value)}
+                  onFocus={() => setIsOpen(true)}
+                  onBlur={() => setTimeout(() => setIsOpen(false), 200)}
+                  placeholder="태그를 입력하세요"
+                  autoComplete="off"
+                />
+
+                {isOpen && filteredTags.length > 0 && (
+                  <div className="naver-style-list">
+                    {filteredTags.map((t) => (
+                      <div
+                        key={t}
+                        className="naver-style-item"
+                        onClick={() => {
+                          setTag(t);
+                          setIsOpen(false);
+                        }}
+                      >
+                        <div className="ns-left">
+                          <i className="fa-regular fa-clock"></i>
+                          <span>{t}</span>
+                        </div>
+
+                        {/* ✅ 개별 삭제 버튼 */}
+                        <button
+                          className="ns-del-btn"
+                          onClick={(e) => {
+                            e.stopPropagation(); // 부모 클릭(태그 선택) 방지
+                            deleteTag(t);
+                          }}
+                        >
+                          <i className="fa-solid fa-xmark"></i>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="inp-row">

@@ -42,6 +42,7 @@ const WorkspaceCenter: React.FC<Props> = ({
     openAdd,
     openEdit: openNoticeEdit,
     deleteNotice,
+    togglePin,
   } = noticeStore;
 
   // Trip 관련 openEdit은 openTripEdit으로 변경
@@ -266,6 +267,7 @@ const WorkspaceCenter: React.FC<Props> = ({
             onAdd={() => setIsVoucherModalOpen(true)}
             onDelete={voucherStore.deleteVoucher}
             onDownload={voucherStore.downloadVoucher}
+            onPreview={voucherStore.previewVoucher}
           />
 
           {isVoucherModalOpen && (
@@ -311,8 +313,21 @@ const WorkspaceCenter: React.FC<Props> = ({
 
           {/* ===== NOTICE LIST ===== */}
           <div className="notice-container" id="notice-list-container">
-            {notices.map((n, idx) => (
-              <div key={idx} className={`notice-card ${n.color}`}>
+            {notices.map((n) => (
+              <div
+                key={n.id}
+                className={`notice-card ${n.color} ${
+                  n.isPinned ? "pinned" : ""
+                }`}
+              >
+                {/* ✅ 고정 버튼 (id 전달) */}
+                <div
+                  className={`nc-pin-btn ${n.isPinned ? "active" : ""}`}
+                  onClick={() => togglePin(n.id)}
+                >
+                  <i className="fa-solid fa-thumbtack"></i>
+                </div>
+
                 <div className="nc-tag">{n.tag}</div>
 
                 <div className="nc-title">{n.title}</div>
@@ -322,13 +337,13 @@ const WorkspaceCenter: React.FC<Props> = ({
                 <div className="nc-controls">
                   <span
                     className="nc-btn edit"
-                    onClick={() => openNoticeEdit(idx)}
+                    onClick={() => openNoticeEdit(n.id)}
                   >
                     EDIT
                   </span>
                   <span
                     className="nc-btn del"
-                    onClick={() => deleteNotice(idx)}
+                    onClick={() => deleteNotice(n.id)}
                   >
                     DELETE
                   </span>

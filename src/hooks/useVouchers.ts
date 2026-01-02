@@ -63,10 +63,29 @@ export const useVouchers = () => {
     document.body.removeChild(link);
   };
 
+  const previewVoucher = (id: number) => {
+    const target = vouchers.find((v) => v.id === id);
+    if (!target || !target.fileData) {
+      alert("첨부된 파일이 없습니다.");
+      return;
+    }
+
+    const newTab = window.open();
+    if (newTab) {
+      newTab.document.write(
+        `<title>Preview: ${target.title}</title>` +
+          `<body style="margin:0; display:flex; align-items:center; justify-content:center; background:#333;">` +
+          `<iframe src="${target.fileData}" frameborder="0" style="width:100vw; height:100vh;" allowfullscreen></iframe>` +
+          `</body>`
+      );
+    }
+  };
+
   return {
     vouchers,
     addVoucher,
     deleteVoucher,
     downloadVoucher,
+    previewVoucher,
   };
 };

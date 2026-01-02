@@ -1,114 +1,121 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useWorkspaceCore } from "./useWorkspaceCore";
-import type { NoticeColor, NoticeItem, NoticeGroup } from "./useWorkspaceCore";
-
-/* localStorage key (절대 변경 ❌) */
-const LS_NOTICE_GROUPS = "tripmoa_notice_groups";
-
-const safeParseGroups = (raw: string | null): NoticeGroup[] => {
-  if (!raw) return [];
-  try {
-    const parsed = JSON.parse(raw) as NoticeGroup[];
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-};
+import type { NoticeColor, NoticeItem } from "./useWorkspaceCore";
 
 export interface UseNoticesStore {
   notices: NoticeItem[];
-  /**
-   * - null  : 모달 닫힘
-   * - -1    : 새 공지(add) 모드
-   * - 0..n  : 수정(edit) 모드
-   */
-  editIndex: number | null;
+  editId: number | null; // index 대신 id를 관리
   editingNotice: NoticeItem | null;
+  allTags: string[];
+  togglePin: (id: number) => void;
+  deleteTag: (tag: string) => void;
   openAdd: () => void;
-  openEdit: (idx: number) => void;
+  openEdit: (id: number) => void;
   closeNotice: () => void;
   saveNotice: (item: NoticeItem) => void;
-  deleteNotice: (idx: number) => void;
+  deleteNotice: (id: number) => void;
   defaultColor: NoticeColor;
 }
 
 export const useNotices = (): UseNoticesStore => {
-  const { noticeGroups, currentNoticeGroup } = useWorkspaceCore();
+  const { noticeGroups, currentNoticeGroup, updateNotices } =
+    useWorkspaceCore();
 
+  // ✅ 1. 저장소(Core)에 있는 '원본 순서' 데이터
   const currentGroupNotices = useMemo<NoticeItem[]>(() => {
     const group = noticeGroups.find((g) => g.name === currentNoticeGroup);
     return group ? group.notices : [];
   }, [noticeGroups, currentNoticeGroup]);
 
-  const [notices, setNotices] = useState<NoticeItem[]>([]);
-  const [editIndex, setEditIndex] = useState<number | null>(null);
-
-  useEffect(() => {
-    setNotices(currentGroupNotices);
+  // ✅ 2. 화면 출력용: 고정(Pin)된 메모를 상단으로 정렬
+  const notices = useMemo(() => {
+    return [...currentGroupNotices].sort(
+      (a, b) => (b.isPinned ? 1 : 0) - (a.isPinned ? 1 : 0)
+    );
   }, [currentGroupNotices]);
 
-  const writeGroupNoticesToStorage = (nextNotices: NoticeItem[]) => {
-    const stored = safeParseGroups(localStorage.getItem(LS_NOTICE_GROUPS));
+  // ✅ 3. 수정/삭제 시 인덱스 버그를 막기 위해 id를 상태로 관리
+  const [editId, setEditId] = useState<number | null>(null);
 
-    const hasGroup = stored.some((g) => g.name === currentNoticeGroup);
-    const nextGroups: NoticeGroup[] = hasGroup
-      ? stored.map((g) =>
-          g.name === currentNoticeGroup ? { ...g, notices: nextNotices } : g
-        )
-      : [...stored, { name: currentNoticeGroup, notices: nextNotices }];
+  // ✅ 4. 네이버 스타일 태그 로직 (생략되었던 부분 포함)
+  const [removedTags, setRemovedTags] = useState<string[]>(() => {
+    const saved = localStorage.getItem("tripmoa_removed_tags");
+    return saved ? JSON.parse(saved) : [];
+  });
 
-    localStorage.setItem(LS_NOTICE_GROUPS, JSON.stringify(nextGroups));
+  const allTags = useMemo(() => {
+    const tags = new Set<string>();
+    noticeGroups.forEach((group) => {
+      group.notices.forEach((notice) => {
+        const t = notice.tag.trim();
+        // 삭제되지 않은 태그만 목록에 노출
+        if (t && !removedTags.includes(t)) tags.add(t);
+      });
+    });
+    return Array.from(tags);
+  }, [noticeGroups, removedTags]);
+
+  const deleteTag = (tag: string) => {
+    const next = [...removedTags, tag];
+    setRemovedTags(next);
+    localStorage.setItem("tripmoa_removed_tags", JSON.stringify(next));
   };
 
-  /** 원본 openNoticeModal() 매핑: 새 공지 모달 열기 */
-  const openAdd = () => {
-    setEditIndex(-1); // ✅ 새 공지 모드
+  // ✅ 5. 모달 제어 함수 (ID 기반)
+  const openAdd = () => setEditId(-1);
+  const openEdit = (id: number) => setEditId(id);
+  const closeNotice = () => setEditId(null);
+
+  const editingNotice = useMemo(() => {
+    if (editId === null || editId === -1) return null;
+    return currentGroupNotices.find((n) => n.id === editId) || null;
+  }, [editId, currentGroupNotices]);
+
+  // ✅ 6. 고정 토글: 원본 배열(currentGroupNotices)에서 id로 찾아 상태 변경
+  const togglePin = (id: number) => {
+    const next = currentGroupNotices.map((n) =>
+      n.id === id ? { ...n, isPinned: !n.isPinned } : n
+    );
+    updateNotices(currentNoticeGroup, next);
   };
 
-  const openEdit = (idx: number) => {
-    setEditIndex(idx);
-  };
-
-  const closeNotice = () => {
-    setEditIndex(null);
-  };
-
-  const editingNotice =
-    editIndex === null || editIndex === -1 ? null : notices[editIndex] ?? null;
-
+  // ✅ 7. 저장 로직: 원본 순서를 유지하며 데이터 갱신
   const saveNotice = (item: NoticeItem) => {
-    const next =
-      editIndex === -1
-        ? [...notices, item] // ✅ add
-        : editIndex === null
-        ? [...notices, item] // 방어 코드(혹시라도 null에서 저장 눌렀을 때)
-        : notices.map((n, i) => (i === editIndex ? item : n)); // ✅ edit
+    const isNew = editId === -1;
+    const payload = {
+      ...item,
+      id: isNew ? Date.now() : item.id || (editId as number),
+    };
 
-    setNotices(next);
-    writeGroupNoticesToStorage(next);
-    setEditIndex(null); // ✅ 저장 후 닫기
+    const next = isNew
+      ? [...currentGroupNotices, { ...payload, isPinned: false }] // 새 메모는 하단 추가
+      : currentGroupNotices.map((n) =>
+          n.id === editId ? { ...n, ...payload } : n
+        ); // 기존 메모 수정
+
+    updateNotices(currentNoticeGroup, next);
+    setEditId(null);
   };
 
-  const deleteNotice = (idx: number) => {
+  // ✅ 8. 삭제 로직: id로 필터링
+  const deleteNotice = (id: number) => {
     if (!confirm("정말 삭제하시겠습니까?")) return;
-
-    const next = notices.filter((_, i) => i !== idx);
-    setNotices(next);
-    writeGroupNoticesToStorage(next);
+    const next = currentGroupNotices.filter((n) => n.id !== id);
+    updateNotices(currentNoticeGroup, next);
   };
-
-  // 모달 기본값용(원본처럼 기본 white)
-  const defaultColor: NoticeColor = "white";
 
   return {
     notices,
-    editIndex,
+    editId,
     editingNotice,
+    allTags,
+    togglePin,
+    deleteTag,
     openAdd,
     openEdit,
     closeNotice,
     saveNotice,
     deleteNotice,
-    defaultColor,
+    defaultColor: "white",
   };
 };
