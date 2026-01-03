@@ -6,6 +6,7 @@ interface Props {
   onAdd: () => void;
   onDelete: (id: number) => void;
   onDownload: (id: number) => void;
+  onPreview: (id: number) => void;
 }
 
 /**
@@ -19,6 +20,7 @@ const VoucherView: React.FC<Props> = ({
   onAdd,
   onDelete,
   onDownload,
+  onPreview,
 }) => {
   return (
     <div id="view-voucher" className="content-view active">
@@ -43,10 +45,27 @@ const VoucherView: React.FC<Props> = ({
               <span>{v.type}</span>
             </div>
 
-            <div className="v-body">
-              <div className="v-title">{v.title}</div>
-              <div className="v-desc">{v.desc}</div>
-              <div className="v-meta">{v.meta}</div>
+            <div
+              className="v-body"
+              onClick={() => onPreview(v.id)}
+              style={{ cursor: "pointer", flex: 1, padding: "0 15px" }}
+              title="클릭하여 미리보기"
+            >
+              <div className="v-title" style={{ fontWeight: "bold" }}>
+                {v.title}
+              </div>
+              <div
+                className="v-desc"
+                style={{ fontSize: "12px", color: "#666" }}
+              >
+                {v.desc}
+              </div>
+              <div
+                className="v-meta"
+                style={{ fontSize: "10px", color: "#999", marginTop: "5px" }}
+              >
+                {v.meta}
+              </div>
             </div>
 
             <div style={{ display: "flex", flexDirection: "column" }}>
