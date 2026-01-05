@@ -11,6 +11,8 @@ import type { ExpenseMember } from "../../hooks/useExpenses";
 
 import ExpenseView from "./ExpenseView";
 import VoucherView from "./VoucherView";
+import DayAllView from "./DayAllView";
+import DayDetailView from "./DayDetailView";
 
 import WorkspaceModals from "./WorkspaceModals";
 import NoticeModal from "./NoticeItemModal";
@@ -34,6 +36,8 @@ const WorkspaceCenter: React.FC<Props> = ({
   setRightOpen,
 }) => {
   const { activeView, currentDay } = useWorkspaceCore();
+
+  // currentDay에 따라 useTimeline 호출
   const { nodes, addNode, updateNode } = useTimeline(currentDay);
 
   // Notice 관련 openEdit은 openNoticeEdit으로 변경
@@ -51,7 +55,7 @@ const WorkspaceCenter: React.FC<Props> = ({
     isPrivate,
     isEditOpen,
     toggle,
-    openEdit: openTripEdit, // 이름 변경
+    openEdit: openTripEdit,
     closeEdit,
     downloadPDF,
     togglePrivacy,
@@ -132,15 +136,7 @@ const WorkspaceCenter: React.FC<Props> = ({
 
       {/* BODY */}
       <div className="ws-body">
-        {/* 오른쪽 패널 토글 버튼 */}
-        {activeView === "timeline" && (
-          <button
-            className="ws-toggle-right"
-            onClick={() => setRightOpen(!rightOpen)}
-          >
-            {rightOpen ? "⮜" : "📍"}
-          </button>
-        )}
+        {/* ✅ 오른쪽 패널 토글 버튼 제거 (timeline에서는 사용 안함) */}
 
         {/* ================= TIMELINE VIEW ================= */}
         <div
@@ -149,84 +145,25 @@ const WorkspaceCenter: React.FC<Props> = ({
             activeView === "timeline" ? "active" : ""
           }`}
         >
-          <h2
-            id="day-title"
-            style={{ fontSize: "24px", fontWeight: 800, marginBottom: "10px" }}
-          >
-            {currentDay === "DAY ALL" ? "DAY ALL" : currentDay}
-          </h2>
-
-          <p
-            style={{
-              color: "#666",
-              marginBottom: "30px",
-              fontFamily: "var(--font-mono)",
-            }}
-          >
-            {trip.startDate} - {trip.endDate}
-          </p>
-
-          <div className="timeline">
-            {nodes.map((n, idx) => (
-              <div className="tl-item" key={idx}>
-                <div className="tl-dot"></div>
-
-                <div
-                  className="tl-time"
-                  contentEditable
-                  suppressContentEditableWarning
-                  onBlur={(e) =>
-                    updateNode(idx, "time", e.currentTarget.innerText)
-                  }
-                >
-                  {n.time}
-                </div>
-
-                <div className="tl-box">
-                  <div
-                    style={{ fontWeight: "bold", fontSize: "16px" }}
-                    contentEditable
-                    suppressContentEditableWarning
-                    onBlur={(e) =>
-                      updateNode(idx, "title", e.currentTarget.innerText)
-                    }
-                  >
-                    {n.title}
-                  </div>
-
-                  <div
-                    style={{
-                      fontSize: "13px",
-                      color: "#555",
-                      marginTop: "5px",
-                    }}
-                    contentEditable
-                    suppressContentEditableWarning
-                    onBlur={(e) =>
-                      updateNode(idx, "desc", e.currentTarget.innerText)
-                    }
-                  >
-                    {n.desc}
-                  </div>
-                </div>
-              </div>
-            ))}
-
-            <button
-              style={{
-                width: "100%",
-                border: "2px dashed #ccc",
-                padding: "15px",
-                fontWeight: "bold",
-                color: "#999",
-                cursor: "pointer",
-                background: "transparent",
-              }}
-              onClick={addNode}
-            >
-              + ADD NODE
-            </button>
-          </div>
+          {currentDay === "DAY ALL" ? (
+            <DayAllView
+              tripTitle={trip.title}
+              startDate={trip.startDate}
+              endDate={trip.endDate}
+            />
+          ) : (
+            <DayDetailView
+              dayTitle={currentDay}
+              tripTitle={trip.title}
+              startDate={trip.startDate}
+              endDate={trip.endDate}
+              nodes={nodes}
+              addNode={addNode}
+              updateNode={updateNode}
+              rightOpen={rightOpen}
+              setRightOpen={setRightOpen}
+            />
+          )}
         </div>
 
         {/* ===== EXPENSE ===== */}
@@ -305,7 +242,7 @@ const WorkspaceCenter: React.FC<Props> = ({
             <button
               className="btn-sm"
               style={{ padding: "8px 15px" }}
-              onClick={openAdd} // ✅ 여기
+              onClick={openAdd}
             >
               + NEW NOTICE
             </button>

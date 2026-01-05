@@ -1,0 +1,512 @@
+/* ===================================
+   Place Search Page Styles
+=================================== */
+
+.place-search-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* ===================================
+   검색 헤더
+=================================== */
+.search-header {
+  padding: 20px;
+  border-bottom: 2px solid #eee;
+  background: #fff;
+}
+
+.search-input-wrapper {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.search-input {
+  flex: 1;
+  height: 45px;
+  padding: 0 20px;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 500;
+  transition: border-color 0.2s;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #000;
+}
+
+.btn-search {
+  width: 100px;
+  height: 45px;
+  background: #000;
+  color: #fff;
+  border: 2px solid #000;
+  border-radius: 8px;
+  font-weight: bold;
+  font-size: 14px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.btn-search:hover {
+  background: #333;
+}
+
+/* 카테고리 필터 */
+.category-filters {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.filter-btn {
+  padding: 8px 16px;
+  border: 2px solid #ddd;
+  background: #fff;
+  color: #666;
+  font-family: var(--font-mono);
+  font-weight: bold;
+  font-size: 13px;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.filter-btn:hover {
+  border-color: #999;
+  color: #333;
+}
+
+.filter-btn.active {
+  background: #000;
+  color: #fff;
+  border-color: #000;
+}
+
+/* ===================================
+   메인 콘텐츠 (리스트 + 지도)
+=================================== */
+.search-body {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 400px 1fr;
+  gap: 0;
+  overflow: hidden;
+}
+
+/* 왼쪽: 검색 결과 패널 */
+.results-panel {
+  display: flex;
+  flex-direction: column;
+  border-right: 2px solid #eee;
+  background: #fafafa;
+  overflow: hidden;
+}
+
+.results-header {
+  padding: 15px 20px;
+  background: #fff;
+  border-bottom: 1px solid #eee;
+  font-family: var(--font-mono);
+  font-weight: bold;
+  font-size: 14px;
+  color: #666;
+}
+
+.place-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 15px;
+}
+
+/* 빈 상태 */
+.empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 300px;
+  color: #999;
+  font-size: 15px;
+  text-align: center;
+}
+
+/* 장소 카드 */
+.place-card {
+  display: flex;
+  gap: 15px;
+  background: #fff;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 12px;
+  transition: 0.2s;
+  cursor: pointer;
+}
+
+.place-card:hover {
+  border-color: #000;
+  box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.place-image {
+  width: 80px;
+  height: 80px;
+  border-radius: 6px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: #eee;
+}
+
+.place-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.place-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.place-category {
+  display: inline-block;
+  padding: 2px 8px;
+  background: #000;
+  color: #fff;
+  font-size: 11px;
+  font-weight: bold;
+  border-radius: 4px;
+  width: fit-content;
+}
+
+.place-name {
+  font-size: 16px;
+  font-weight: 800;
+  color: #000;
+  margin: 0;
+  line-height: 1.3;
+}
+
+.place-address {
+  font-size: 12px;
+  color: #666;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.place-desc {
+  font-size: 13px;
+  color: #888;
+  margin: 4px 0 0 0;
+  line-height: 1.4;
+}
+
+.place-meta {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.rating {
+  font-size: 12px;
+  font-weight: bold;
+  color: #ff9800;
+}
+
+.btn-add-place {
+  align-self: flex-start;
+  padding: 8px 16px;
+  background: #000;
+  color: #fff;
+  border: 2px solid #000;
+  border-radius: 6px;
+  font-weight: bold;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: 0.2s;
+}
+
+.btn-add-place:hover {
+  background: #333;
+}
+
+.btn-add-place:disabled {
+  background: #4caf50;
+  border-color: #4caf50;
+  cursor: not-allowed;
+}
+
+/* ===================================
+   오른쪽: 지도 패널
+=================================== */
+.map-panel {
+  display: flex;
+  flex-direction: column;
+  background: #f5f5f5;
+  position: relative;
+}
+
+.map-controls {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 10;
+  display: flex;
+  gap: 8px;
+}
+
+.map-btn {
+  padding: 10px 15px;
+  background: #fff;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: 0.2s;
+}
+
+.map-btn:hover {
+  border-color: #000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.map-container {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  background: #e0e0e0;
+}
+
+/* 지도 플레이스홀더 (실제 지도 연동 전) */
+.map-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #999;
+  font-size: 18px;
+  font-weight: bold;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+}
+
+/* ===================================
+   하단: 담은 장소 바
+=================================== */
+.saved-places-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 20px;
+  background: #fff;
+  border-top: 2px solid #eee;
+}
+
+.saved-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.saved-title {
+  font-family: var(--font-mono);
+  font-weight: 800;
+  font-size: 15px;
+  color: #000;
+}
+
+.saved-content {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+}
+
+.saved-chips {
+  flex: 1;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.empty-message {
+  color: #999;
+  font-size: 13px;
+}
+
+.place-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: #f0f0f0;
+  border: 2px solid #ddd;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #333;
+  transition: 0.2s;
+}
+
+.place-chip:hover {
+  border-color: #999;
+}
+
+.place-chip.more {
+  background: #fff;
+  color: #666;
+  border-style: dashed;
+  cursor: pointer;
+}
+
+.chip-remove {
+  background: none;
+  border: none;
+  color: #999;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  margin-left: 2px;
+  transition: 0.2s;
+}
+
+.chip-remove:hover {
+  color: #ff0000;
+  transform: scale(1.2);
+}
+
+/* AI 일정 생성 버튼 - 검정색 스타일 */
+.btn-generate-schedule {
+  padding: 10px 20px;
+  background-color: #000 !important;
+  color: #fff !important;
+  border: 2px solid #000;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-weight: bold;
+  font-size: 14px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-generate-schedule::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s;
+}
+
+.btn-generate-schedule:hover::before {
+  left: 100%;
+}
+
+.btn-generate-schedule:hover {
+  background-color: #222 !important;
+  border-color: #222;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.btn-generate-schedule:disabled {
+  background-color: #ccc !important;
+  border-color: #ccc;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* ===================================
+   반응형
+=================================== */
+@media (max-width: 1200px) {
+  .search-body {
+    grid-template-columns: 350px 1fr;
+  }
+}
+
+@media (max-width: 900px) {
+  .search-body {
+    grid-template-columns: 1fr;
+    grid-template-rows: 400px 1fr;
+  }
+
+  .results-panel {
+    border-right: none;
+    border-bottom: 2px solid #eee;
+  }
+
+  .saved-content {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .btn-generate-schedule {
+    width: 100%;
+  }
+}
+
+@media (max-width: 600px) {
+  .search-header {
+    padding: 15px;
+  }
+
+  .search-input-wrapper {
+    flex-direction: column;
+  }
+
+  .btn-search {
+    width: 100%;
+  }
+
+  .place-card {
+    flex-direction: column;
+  }
+
+  .place-image {
+    width: 100%;
+    height: 150px;
+  }
+
+  .btn-add-place {
+    width: 100%;
+  }
+}
+
+/* 스크롤바 스타일 */
+.place-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.place-list::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.place-list::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 4px;
+}
+
+.place-list::-webkit-scrollbar-thumb:hover {
+  background: #999;
+}
