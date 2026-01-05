@@ -15,12 +15,14 @@ import { useNotices } from "../hooks/useNotices";
    Provider 내부 실제 UI
 ========================= */
 const WorkspaceContent: React.FC = () => {
-  const { activeView } = useWorkspaceCore();
+  const { activeView, currentDay } = useWorkspaceCore();
   const [rightOpen, setRightOpen] = useState(true);
 
   // 2열로 써야 하는 화면
+  // timeline은 DAY ALL일 때만 2열, DAY 1/DAY 2 등은 rightOpen 상태에 따라
   const isTwoColumn =
     !rightOpen ||
+    (activeView === "timeline" && currentDay === "DAY ALL") ||  // ✅ DAY ALL만 무조건 2열
     activeView === "expenses" ||
     activeView === "voucher" ||
     activeView === "notice";

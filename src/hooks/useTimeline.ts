@@ -1,83 +1,70 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
-/* part1.js localStorage key (절대 변경 ❌) */
-const LS_TIMELINE_DATA = "tripmoa_timeline_data";
-
-export interface TimelineNode {
+interface TimelineNode {
   time: string;
   title: string;
   desc: string;
 }
 
-type TimelineStore = Record<string, TimelineNode[]>;
+const STORAGE_KEY = "tripmoa_timeline_data";
 
-const getStore = (): TimelineStore => {
-  const raw = localStorage.getItem(LS_TIMELINE_DATA);
-  if (!raw) return {};
-  try {
-    return JSON.parse(raw) as TimelineStore;
-  } catch {
-    return {};
-  }
-};
+export const useTimeline = (currentDay: string) => {
+  const [nodes, setNodes] = useState<TimelineNode[]>([]);
 
-const setStore = (store: TimelineStore) => {
-  localStorage.setItem(LS_TIMELINE_DATA, JSON.stringify(store));
-};
-
-export const useTimeline = (dayKey: string) => {
-  const [store, setStoreState] = useState<TimelineStore>({});
-  const nodes = useMemo<TimelineNode[]>(() => {
-    if (!dayKey) return [];
-    const dayNodes = store[dayKey];
-    if (dayNodes && dayNodes.length > 0) return dayNodes;
-    return [
-      {
-        time: "10:00 AM",
-        title: "여행 시작",
-        desc: "일정을 추가해보세요",
-      },
-    ];
-  }, [dayKey, store]);
-
-  /* 초기 로드 */
+  /* =========================
+     1️⃣ DAY 변경 시 저장된 일정 불러오기
+  ========================= */
   useEffect(() => {
-    setStoreState(getStore());
-  }, []);
+    if (!currentDay || currentDay === "DAY ALL") {
+      setNodes([]);
+      return;
+    }
 
-  /* day 변경 시 store 최신화 (원본의 renderTimeline 트리거 대응) */
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (!saved) {
+      setNodes([]);
+      return;
+    }
+
+    try {
+      const parsed = JSON.parse(saved);
+      setNodes(parsed[currentDay] || []);
+    } catch (e) {
+      console.error("timeline load error", e);
+      setNodes([]);
+    }
+  }, [currentDay]);
+
+  /* =========================
+     2️⃣ nodes 변경 시 자동 저장
+  ========================= */
   useEffect(() => {
-    // store를 읽어 nodes가 day별로 바뀌도록만 보장
-    setStoreState(getStore());
-  }, [dayKey]);
+    if (!currentDay || currentDay === "DAY ALL") return;
 
-  const saveNodes = (next: TimelineNode[]) => {
-    const nextStore = { ...getStore(), [dayKey]: next };
-    setStore(nextStore);
-    setStoreState(nextStore);
-  };
+    const saved = localStorage.getItem(STORAGE_KEY);
+    const data = saved ? JSON.parse(saved) : {};
 
+    data[currentDay] = nodes;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  }, [nodes, currentDay]);
+
+  /* =========================
+     3️⃣ 노드 추가
+  ========================= */
   const addNode = () => {
-    const next = [
-      ...nodes,
-      {
-        time: "00:00 PM",
-        title: "새로운 일정",
-        desc: "메모 입력",
-      },
-    ];
-    saveNodes(next);
+    setNodes((prev) => [
+      ...prev,
+      { time: "00:00", title: "NEW", desc: "" },
+    ]);
   };
 
-  const updateNode = (
-    index: number,
-    key: keyof TimelineNode,
-    value: string
-  ) => {
-    const next = nodes.map((n, i) =>
-      i === index ? { ...n, [key]: value } : n
+  /* =========================
+     4️⃣ 노드 수정
+  ========================= */
+  const updateNode = (idx: number, field: string, value: string) => {
+    setNodes((prev) =>
+      prev.map((n, i) => (i === idx ? { ...n, [field]: value } : n))
     );
-    saveNodes(next);
   };
 
   return {
