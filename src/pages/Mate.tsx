@@ -21,7 +21,7 @@ import styles from "../styles/mate/Mate.module.css";
 
 export default function Mate(): JSX.Element {
   const [showChatModal, setShowChatModal] = useState<boolean>(false);
-
+  
   const {
     // Filter States
     locationFilter, setLocationFilter,
