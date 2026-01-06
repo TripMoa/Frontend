@@ -4,7 +4,7 @@ import "react-datepicker/dist/react-datepicker.css";
 import "../../styles/mate/datepicker.css";
 import type { Post, MyApplication, ReceivedApplication, SelectedApplicant } from "./mate.types";
 import { getAirportDisplay, TRANSPORT_OPTIONS, TRAVEL_TYPE_OPTIONS, AGE_GROUP_OPTIONS, GENDER_OPTIONS } from "./mate.constants";
-import styles from "./MateModals.module.css";
+import styles from "../../styles/mate/MateModals.module.css";
 
 // ============================================================
 // MateDetailModal - 게시물 상세 모달
@@ -136,13 +136,16 @@ export function MateDetailModal({
 
           {/* Apply Section */}
           {!showApplyMessage ? (
-            <button
-              onClick={onApply}
-              className={`w-full py-4 font-bold text-lg uppercase tracking-wide transition-colors flex items-center justify-center gap-2 ${styles.button} ${styles.bgBlackHoverable}`}
-            >
-              <Plus className="w-5 h-5" />
-              APPLY TO JOIN
-            </button>
+            <div className="space-y-3">
+              {/* 신청하기 버튼 */}
+              <button
+                onClick={onApply}
+                className={`w-full py-4 font-bold text-lg uppercase tracking-wide transition-colors flex items-center justify-center gap-2 ${styles.button} ${styles.bgBlackHoverable}`}
+              >
+                <Plus className="w-5 h-5" />
+                APPLY TO JOIN
+              </button>
+            </div>
           ) : (
             <div className="space-y-4">
               <div className="text-xs text-black/50 uppercase font-bold">Your Message</div>
@@ -346,7 +349,11 @@ interface MySentModalProps {
   onClose: () => void;
 }
 
-export function MateMySentModal({ applications, getApplicantStatus, onClose }: MySentModalProps): JSX.Element {
+export function MateMySentModal({ 
+  applications, 
+  getApplicantStatus, 
+  onClose,
+}: MySentModalProps): JSX.Element {
   return (
     <div className={`fixed inset-0 flex items-center justify-center p-4 z-50 ${styles.overlay}`} onClick={onClose}>
       <div className={`bg-white max-w-2xl w-full max-h-[90vh] overflow-y-auto ${styles.modal}`} onClick={(e) => e.stopPropagation()}>
@@ -388,6 +395,15 @@ export function MateMySentModal({ applications, getApplicantStatus, onClose }: M
                         <span>신청일: {app.applicant.appliedDate}</span>
                         <span>예산: {app.applicant.budget}</span>
                       </div>
+                      
+                      {/* 대신 채팅 페이지로 안내하는 텍스트 추가 (선택사항) */}
+                      {status === "approved" && (
+                        <div className="mt-3 px-4 py-2 bg-purple-50 border-2 border-purple-300 rounded-lg text-center">
+                          <span className="text-purple-700 text-sm font-bold">
+                            💬 채팅 목록에서 단체방에 참여하세요
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
@@ -412,7 +428,14 @@ interface ReceivedModalProps {
   onClose: () => void;
 }
 
-export function MateReceivedModal({ applications, getApplicantStatus, onApprove, onReject, onSelectApplicant, onClose }: ReceivedModalProps): JSX.Element {
+export function MateReceivedModal({ 
+  applications, 
+  getApplicantStatus, 
+  onApprove, 
+  onReject, 
+  onSelectApplicant, 
+  onClose,
+}: ReceivedModalProps): JSX.Element {
   const groupedByPost = applications.reduce((acc, app) => {
     if (!acc[app.postId]) acc[app.postId] = { destination: app.postDestination, dates: app.postDates, applicants: [] };
     acc[app.postId].applicants.push(app);
@@ -438,63 +461,76 @@ export function MateReceivedModal({ applications, getApplicantStatus, onApprove,
             </div>
           ) : (
             <div className="space-y-8">
-              {Object.entries(groupedByPost).map(([postId, data]) => (
-                <div key={postId} className={styles.card}>
-                  <div className={`bg-[#eee] p-4 ${styles.header}`}>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="text-lg font-bold text-black">{data.destination}</div>
-                        <div className="text-sm text-black/60 font-mono">{data.dates.start} ~ {data.dates.end}</div>
+              {Object.entries(groupedByPost).map(([postId, data]) => {
+                // 승인된 신청자가 있는지 확인
+                const hasApprovedApplicants = data.applicants.some(app => getApplicantStatus(app.id) === "approved");
+                
+                return (
+                  <div key={postId} className={styles.card}>
+                    <div className={`bg-[#eee] p-4 ${styles.header}`}>
+                      <div className="flex items-center justify-between flex-wrap gap-2">
+                        <div className="flex-1">
+                          <div className="text-lg font-bold text-black">{data.destination}</div>
+                          <div className="text-sm text-black/60 font-mono">{data.dates.start} ~ {data.dates.end}</div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className={`px-3 py-1 text-sm font-bold ${styles.badge}`}>{data.applicants.length} applicants</span>
+                          
+                          {hasApprovedApplicants && (
+                            <span className="px-3 py-1 text-xs font-bold bg-purple-200 border-2 border-black">
+                              💬 채팅 가능
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      <span className={`px-3 py-1 text-sm font-bold ${styles.badge}`}>{data.applicants.length} applicants</span>
+                    </div>
+                    <div className="p-4 space-y-3">
+                      {data.applicants.map((app) => {
+                        const status = getApplicantStatus(app.id);
+                        return (
+                          <div key={app.id}
+                            onClick={() => onSelectApplicant({ postId: app.postId, postDestination: app.postDestination, applicant: app.applicant })}
+                            className={`border-2 border-black p-4 cursor-pointer transition-colors ${status === "pending" ? "bg-[#eee] hover:bg-[#ddd]" : status === "approved" ? "bg-green-100" : "bg-red-100"}`}>
+                            <div className="flex items-center justify-between flex-wrap gap-3">
+                              <div className="flex items-center gap-3">
+                                <div className={`w-12 h-12 text-2xl flex items-center justify-center ${styles.infoBox} ${styles.bgBlack}`}>
+                                  {app.applicant.avatar}
+                                </div>
+                                <div>
+                                  <div className="font-bold text-black flex items-center gap-2 flex-wrap">
+                                    {app.applicant.name}
+                                    {status !== "pending" && (
+                                      <span className={`text-xs px-2 py-0.5 text-white ${status === "approved" ? styles.bgGreen : styles.bgRed}`}>
+                                        {status === "approved" ? "APPROVED" : "REJECTED"}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="text-xs text-black/60 font-mono">{app.applicant.email}</div>
+                                  <div className="flex gap-2 mt-1">
+                                    <span className={`text-xs bg-white px-2 py-0.5 font-bold ${styles.infoBox}`}>{app.applicant.age}세</span>
+                                    <span className={`text-xs bg-white px-2 py-0.5 font-bold ${styles.infoBox}`}>{app.applicant.gender}</span>
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex gap-2">
+                                <button onClick={(e) => { e.stopPropagation(); onApprove(app.id, e); }}
+                                  className={`px-4 py-2 border-2 border-black text-sm font-bold transition-colors ${status === "approved" ? styles.bgGreen : styles.bgBlack}`}>
+                                  <Check className="w-4 h-4" />
+                                </button>
+                                <button onClick={(e) => { e.stopPropagation(); onReject(app.id, e); }}
+                                  className={`px-4 py-2 border-2 border-black text-sm font-bold transition-colors ${status === "rejected" ? styles.bgRed : "bg-white text-black hover:bg-[#ddd]"}`}>
+                                  <XCircle className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </div>
+                            <p className="mt-3 text-sm text-black/70 line-clamp-2">{app.applicant.message}</p>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
-                  <div className="p-4 space-y-3">
-                    {data.applicants.map((app) => {
-                      const status = getApplicantStatus(app.id);
-                      return (
-                        <div key={app.id}
-                          onClick={() => onSelectApplicant({ postId: app.postId, postDestination: app.postDestination, applicant: app.applicant })}
-                          className={`border-2 border-black p-4 cursor-pointer transition-colors ${status === "pending" ? "bg-[#eee] hover:bg-[#ddd]" : status === "approved" ? "bg-green-100" : "bg-red-100"}`}>
-                          <div className="flex items-center justify-between flex-wrap gap-3">
-                            <div className="flex items-center gap-3">
-                              <div className={`w-12 h-12 text-2xl flex items-center justify-center ${styles.infoBox} ${styles.bgBlack}`}>
-                                {app.applicant.avatar}
-                              </div>
-                              <div>
-                                <div className="font-bold text-black flex items-center gap-2 flex-wrap">
-                                  {app.applicant.name}
-                                  {status !== "pending" && (
-                                    <span className={`text-xs px-2 py-0.5 text-white ${status === "approved" ? styles.bgGreen : styles.bgRed}`}>
-                                      {status === "approved" ? "APPROVED" : "REJECTED"}
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="text-xs text-black/60 font-mono">{app.applicant.email}</div>
-                                <div className="flex gap-2 mt-1">
-                                  <span className={`text-xs bg-white px-2 py-0.5 font-bold ${styles.infoBox}`}>{app.applicant.age}세</span>
-                                  <span className={`text-xs bg-white px-2 py-0.5 font-bold ${styles.infoBox}`}>{app.applicant.gender}</span>
-                                </div>
-                              </div>
-                            </div>
-                            <div className="flex gap-2">
-                              <button onClick={(e) => { e.stopPropagation(); onApprove(app.id, e); }}
-                                className={`px-4 py-2 border-2 border-black text-sm font-bold transition-colors ${status === "approved" ? styles.bgGreen : styles.bgBlack}`}>
-                                <Check className="w-4 h-4" />
-                              </button>
-                              <button onClick={(e) => { e.stopPropagation(); onReject(app.id, e); }}
-                                className={`px-4 py-2 border-2 border-black text-sm font-bold transition-colors ${status === "rejected" ? styles.bgRed : "bg-white text-black hover:bg-[#ddd]"}`}>
-                                <XCircle className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </div>
-                          <p className="mt-3 text-sm text-black/70 line-clamp-2">{app.applicant.message}</p>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

@@ -1,7 +1,10 @@
-// pages/Mate.tsx
+// pages/Mate.tsx (슬라이드 채팅 버전)
 
+import { useState } from "react";
 import { ArrowUpDown, User, ChevronDown } from "lucide-react";
 import { useMate } from "../hooks/useMate";
+import { ChatFAB } from "../components/mate/chat/ChatFAB";
+import { ChatSlideModal } from "../components/mate/chat/ChatSlide";
 import { SORT_OPTIONS, getSortLabel } from "../components/mate/mate.constants";
 import {
   MateHeader,
@@ -17,6 +20,8 @@ import {
 import styles from "../styles/mate/Mate.module.css";
 
 export default function Mate(): JSX.Element {
+  const [showChatModal, setShowChatModal] = useState<boolean>(false);
+
   const {
     // Filter States
     locationFilter, setLocationFilter,
@@ -36,6 +41,7 @@ export default function Mate(): JSX.Element {
     isLikedOnlyMode,
     isRemovedOnlyMode,
     hasActiveFilters,
+    allPosts,
     
     // Modal States
     selectedPost,
@@ -59,6 +65,11 @@ export default function Mate(): JSX.Element {
     myApplications,
     receivedApplications,
     getApplicantStatus,
+    approvedApplicants,
+    
+    // Chat States
+    oneOnOneChats,
+    groupChats,
     
     // Handlers
     handleCardClick,
@@ -73,7 +84,50 @@ export default function Mate(): JSX.Element {
     handlePostSubmit,
     handleApprove,
     handleReject,
+    
+    // Chat Handlers
+    sendOneOnOneMessage,
+    sendGroupMessage,
+    getOrCreateOneOnOneChat,
+    leaveOneOnOneChat,
+    leaveGroupChat,
+    createGroupChat,
   } = useMate();
+
+  // 1:1 채팅 생성
+  const handleCreateOneOnOneChat = (postId: string, otherUserId: string) => {
+    const post = allPosts.find(p => p.id === postId);
+    if (!post) return;
+    getOrCreateOneOnOneChat(postId, post.author);
+  };
+
+  // 그룹 채팅 생성
+  const handleCreateGroupChat = (postId: string) => {
+    const post = allPosts.find(p => p.id === postId);
+    if (!post) return;
+    
+    // 승인된 멤버 수집
+    const approvedApps = receivedApplications.filter(app => 
+      app.postId === postId && approvedApplicants.includes(app.id)
+    );
+    
+    const approvedMembers = [
+      post.author,
+      ...approvedApps.map(app => ({
+        name: app.applicant.name,
+        age: app.applicant.age,
+        gender: app.applicant.gender,
+        avatar: app.applicant.avatar,
+        email: app.applicant.email,
+        travelStyle: app.applicant.travelStyle,
+      }))
+    ];
+    
+    createGroupChat(post, approvedMembers);
+  };
+
+  // 읽지 않은 메시지 개수 (옵션)
+  const unreadCount = 0;
 
   return (
     <div className="min-h-screen">
@@ -108,7 +162,6 @@ export default function Mate(): JSX.Element {
             <ArrowUpDown className="w-5 h-5 text-black/60" />
             <span className="text-sm text-black/60">SORT BY:</span>
             
-            {/* Custom Sort Dropdown */}
             <div className="relative dropdown-sort">
               <button
                 type="button"
@@ -288,6 +341,27 @@ export default function Mate(): JSX.Element {
           onClose={() => setSelectedApplicant(null)}
         />
       )}
+
+      {/* 플로팅 채팅 버튼 */}
+      <ChatFAB onClick={() => setShowChatModal(true)} unreadCount={unreadCount} />
+
+      {/* 슬라이드 채팅 모달 */}
+      <ChatSlideModal
+        isOpen={showChatModal}
+        onClose={() => setShowChatModal(false)}
+        oneOnOneChats={oneOnOneChats}
+        groupChats={groupChats}
+        allPosts={allPosts}
+        myApplications={myApplications}
+        receivedApplications={receivedApplications}
+        approvedApplicants={approvedApplicants}
+        onSendOneOnOneMessage={sendOneOnOneMessage}
+        onSendGroupMessage={sendGroupMessage}
+        onCreateOneOnOneChat={handleCreateOneOnOneChat}
+        onCreateGroupChat={handleCreateGroupChat}
+        onLeaveOneOnOneChat={leaveOneOnOneChat}
+        onLeaveGroupChat={leaveGroupChat}
+      />
     </div>
   );
 }

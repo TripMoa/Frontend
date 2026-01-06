@@ -18,6 +18,8 @@ export const STORAGE_KEYS = {
   POST_STATS: "mate_postStats",
   MY_APPLICATIONS: "mate_myApplications",
   RECEIVED_APPLICATIONS: "mate_receivedApplications",
+  ONE_ON_ONE_CHATS: "mate_oneOnOneChats",
+  GROUP_CHATS: "mate_groupChats",
 } as const;
 
 export const POSTS_PER_PAGE = 5;

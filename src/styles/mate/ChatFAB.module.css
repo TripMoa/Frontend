@@ -1,0 +1,68 @@
+/* styles/mate/ChatFAB.module.css */
+
+.fabBtn {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  background: #000;
+  color: #fff;
+  border: 2px solid #fff;
+  outline: 3px solid #000;
+  height: 50px;
+  padding: 0 18px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-weight: 800;
+  font-size: 14px;
+  cursor: pointer;
+  z-index: 1500;
+  box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.5);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.fabBtn:hover {
+  transform: translate(-4px, -4px);
+  box-shadow: 10px 10px 0px rgba(0, 0, 0, 0.5);
+  background: #FFD700;
+  outline-color: #FFD700;
+  color: #000;
+}
+
+.fabBtn:active {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0px rgba(0, 0, 0, 0.5);
+}
+
+.fabIcon {
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fabText {
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* 읽지 않은 메시지 배지 */
+.badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: #ff3333;
+  color: white;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 900;
+  box-shadow: 2px 2px 0px rgba(0, 0, 0, 0.3);
+}

@@ -1,7 +1,13 @@
 // hooks/useMate.ts
 
 import { useState, useEffect, MouseEvent } from "react";
-import type { Post, MyApplication, ReceivedApplication, PostStats, SelectedApplicant } from "../components/mate/mate.types";
+import type { Post, MyApplication, ReceivedApplication, PostStats, SelectedApplicant, Author } from "../components/mate/mate.types";
+import type {
+  ChatMessage,
+  OneOnOneChat,
+  GroupChat,
+} from "../components/mate/chat/chat.types";
+
 import {
   STORAGE_KEYS,
   DEFAULT_POSTS,
@@ -58,6 +64,27 @@ export function useMate() {
     STORAGE_KEYS.RECEIVED_APPLICATIONS, 
     DEFAULT_RECEIVED_APPLICATIONS
   );
+
+  const [oneOnOneChats, setOneOnOneChats] = useLocalStorage<OneOnOneChat[]>(
+    STORAGE_KEYS.ONE_ON_ONE_CHATS, 
+    []
+  );
+  const [groupChats, setGroupChats] = useLocalStorage<GroupChat[]>(
+    STORAGE_KEYS.GROUP_CHATS, 
+    []
+  );
+
+  const leaveOneOnOneChat = (chatId: string): void => {
+    setOneOnOneChats(prev => prev.filter(chat => chat.id !== chatId));
+  };
+
+  const leaveGroupChat = (chatId: string): void => {
+    setGroupChats(prev => prev.filter(chat => chat.id !== chatId));
+  };
+
+  const [showChatModal, setShowChatModal] = useState<boolean>(false);
+  const [activeChatType, setActiveChatType] = useState<"one-on-one" | "group" | null>(null);
+  const [activeChatId, setActiveChatId] = useState<string | null>(null);
 
   // Date filter
   const [dateFilter, setDateFilter] = useState<Date | null>(() => {
@@ -165,7 +192,7 @@ export function useMate() {
   }, []);
 
   // Data Processing
-  const allPosts: Post[] = [...userPosts, ...DEFAULT_POSTS].map(post => ({
+  const allPosts: Post[] = [...userPosts, ...DEFAULT_POSTS,].map(post => ({
     ...post,
     views: getPostStats(post.id).views,
     likes: getPostStats(post.id).likes,
@@ -208,6 +235,138 @@ export function useMate() {
   const visiblePosts = sortedPosts.slice((currentPage - 1) * POSTS_PER_PAGE, currentPage * POSTS_PER_PAGE);
   const totalPages = Math.ceil(filteredPosts.length / POSTS_PER_PAGE);
 
+
+  // 1:1 채팅 찾기 또는 생성
+  const getOrCreateOneOnOneChat = (postId: string, postAuthor: Author): OneOnOneChat => {
+    const existing = oneOnOneChats.find(
+      chat => chat.postId === postId && 
+      chat.applicantId === CURRENT_USER.email
+    );
+    
+    if (existing) return existing;
+    
+    const newChat: OneOnOneChat = {
+      id: `chat-1on1-${Date.now()}`,
+      postId,
+      postAuthorId: postAuthor.email,
+      applicantId: CURRENT_USER.email,
+      messages: [],
+      createdAt: new Date().toISOString(),
+      lastMessageAt: new Date().toISOString(),
+    };
+    
+    setOneOnOneChats([...oneOnOneChats, newChat]);
+    return newChat;
+  };
+
+  // 그룹 채팅 찾기
+  const getGroupChat = (postId: string): GroupChat | null => {
+    return groupChats.find(chat => chat.postId === postId) || null;
+  };
+
+  // 그룹 채팅 생성 (승인 시 자동 생성)
+  const createGroupChat = (post: Post, approvedMembers: Author[]): GroupChat => {
+    const existingChat = groupChats.find(chat => chat.postId === post.id);
+    
+    if (existingChat) {
+      // 이미 있으면 멤버만 업데이트
+      const updatedChat = {
+        ...existingChat,
+        members: approvedMembers,
+      };
+      setGroupChats(groupChats.map(chat => 
+        chat.postId === post.id ? updatedChat : chat
+      ));
+      return updatedChat;
+    }
+    
+    const newGroupChat: GroupChat = {
+      id: `chat-group-${Date.now()}`,
+      postId: post.id,
+      postDestination: post.destination,
+      postDates: post.dates,
+      members: approvedMembers,
+      messages: [],
+      createdAt: new Date().toISOString(),
+      lastMessageAt: new Date().toISOString(),
+    };
+    
+    setGroupChats([...groupChats, newGroupChat]);
+    return newGroupChat;
+  };
+
+  // 1:1 채팅 메시지 전송
+  const sendOneOnOneMessage = (chatId: string, content: string): void => {
+    const newMessage: ChatMessage = {
+      id: `msg-${Date.now()}`,
+      senderId: CURRENT_USER.email,
+      senderName: CURRENT_USER.name,
+      senderAvatar: CURRENT_USER.avatar,
+      content,
+      timestamp: new Date().toISOString(),
+      isRead: false,
+    };
+    
+    setOneOnOneChats(oneOnOneChats.map(chat => {
+      if (chat.id === chatId) {
+        return {
+          ...chat,
+          messages: [...chat.messages, newMessage],
+          lastMessageAt: new Date().toISOString(),
+        };
+      }
+      return chat;
+    }));
+  };
+
+  // 그룹 채팅 메시지 전송
+  const sendGroupMessage = (chatId: string, content: string): void => {
+    const newMessage: ChatMessage = {
+      id: `msg-${Date.now()}`,
+      senderId: CURRENT_USER.email,
+      senderName: CURRENT_USER.name,
+      senderAvatar: CURRENT_USER.avatar,
+      content,
+      timestamp: new Date().toISOString(),
+      isRead: false,
+    };
+    
+    setGroupChats(groupChats.map(chat => {
+      if (chat.id === chatId) {
+        return {
+          ...chat,
+          messages: [...chat.messages, newMessage],
+          lastMessageAt: new Date().toISOString(),
+        };
+      }
+      return chat;
+    }));
+  };
+
+  // 1:1 채팅 열기
+  const openOneOnOneChat = (post: Post): void => {
+    const chat = getOrCreateOneOnOneChat(post.id, post.author);
+    setActiveChatId(chat.id);
+    setActiveChatType("one-on-one");
+    setShowChatModal(true);
+  };
+
+  // 그룹 채팅 열기
+  const openGroupChat = (postId: string): void => {
+    const chat = getGroupChat(postId);
+    if (chat) {
+      setActiveChatId(chat.id);
+      setActiveChatType("group");
+      setShowChatModal(true);
+    }
+  };
+
+  // 채팅 닫기
+  const closeChatModal = (): void => {
+    setShowChatModal(false);
+    setActiveChatId(null);
+    setActiveChatType(null);
+  };
   // Event Handlers
   const handleCardClick = (post: Post): void => {
     incrementViews(post.id);
@@ -320,10 +479,38 @@ export function useMate() {
   };
 
   const handleApprove = (applicantId: string, e?: MouseEvent<HTMLButtonElement>): void => {
-    e?.stopPropagation();
+  e?.stopPropagation();
     if (!approvedApplicants.includes(applicantId)) {
       setApprovedApplicants([...approvedApplicants, applicantId]);
       setRejectedApplicants(rejectedApplicants.filter(id => id !== applicantId));
+      
+      // 승인된 신청자 찾기
+      const application = receivedApplications.find(app => app.id === applicantId);
+      if (application) {
+        // 해당 게시물 찾기
+        const post = allPosts.find(p => p.id === application.postId);
+        if (post) {
+          // 승인된 모든 멤버 수집
+          const approvedApps = receivedApplications.filter(app => 
+            app.postId === application.postId && 
+            approvedApplicants.includes(app.id)
+          );
+          const approvedMembers = [
+            post.author, // 방장
+            ...approvedApps.map(app => ({
+              name: app.applicant.name,
+              age: app.applicant.age,
+              gender: app.applicant.gender,
+              avatar: app.applicant.avatar,
+              email: app.applicant.email,
+              travelStyle: app.applicant.travelStyle,
+            }))
+          ];
+          
+          // 그룹 채팅 생성 또는 업데이트
+          createGroupChat(post, approvedMembers);
+        }
+      }
     }
   };
 
@@ -395,5 +582,22 @@ export function useMate() {
     handlePostSubmit,
     handleApprove,
     handleReject,
+
+    // 채팅 관련
+    allPosts,
+    oneOnOneChats,
+    groupChats,
+    showChatModal,
+    activeChatType,
+    activeChatId,
+    openOneOnOneChat,
+    openGroupChat,
+    closeChatModal,
+    sendOneOnOneMessage,
+    sendGroupMessage,
+    getOrCreateOneOnOneChat,
+    getGroupChat,
+    leaveOneOnOneChat,
+    leaveGroupChat,
   };
 }
