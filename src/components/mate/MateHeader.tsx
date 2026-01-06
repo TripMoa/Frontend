@@ -1,5 +1,5 @@
-import { PenSquare, Inbox, User } from "lucide-react";
-import styles from "./MateHeader.module.css";
+import { PenSquare, Inbox, User, MessageSquare } from "lucide-react";
+import styles from "../../styles/mate/MateHeader.module.css";
 
 interface MateHeaderProps {
   onWriteClick: () => void;
@@ -7,14 +7,18 @@ interface MateHeaderProps {
   onReceivedClick: () => void;
   mySentCount: number;
   receivedPendingCount: number;
+  onChatListClick: () => void;
+  unreadChatCount?: number;
 }
 
 export function MateHeader({ 
   onWriteClick, 
   onMySentClick, 
   onReceivedClick, 
+  onChatListClick,
   mySentCount, 
-  receivedPendingCount 
+  receivedPendingCount,
+  unreadChatCount = 0, 
 }: MateHeaderProps): JSX.Element {
   return (
     <div className={`mb-8 bg-white p-6 ${styles.header}`}>
@@ -23,6 +27,17 @@ export function MateHeader({
           FIND YOUR TRAVEL COMPANION
         </h1>
         <div className="flex gap-3">
+          <button 
+            className={`flex items-center gap-2 bg-white text-black px-5 py-2.5 transition-colors font-bold text-sm uppercase tracking-wide relative ${styles.button}`}
+            onClick={onChatListClick}
+          >
+            <MessageSquare className="w-4 h-4" />CHAT
+            {unreadChatCount > 0 && (
+              <span className="absolute -top-2 -right-2 bg-purple-500 text-white text-xs w-5 h-5 flex items-center justify-center font-bold">
+                {unreadChatCount}
+              </span>
+            )}
+          </button>
           <button 
             className={`flex items-center gap-2 bg-white text-black px-5 py-2.5 transition-colors font-bold text-sm uppercase tracking-wide ${styles.button}`}
             onClick={onWriteClick}

@@ -1,5 +1,5 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import styles from "./MatePagination.module.css";
+import styles from "../../styles/mate/MatePagination.module.css";
 
 interface MatePaginationProps {
   currentPage: number;

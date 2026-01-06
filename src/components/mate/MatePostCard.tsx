@@ -2,7 +2,7 @@ import { MouseEvent } from "react";
 import { Heart, X, Eye, RotateCcw } from "lucide-react";
 import type { Post } from "./mate.types";
 import { getAirportDisplay } from "./mate.constants";
-import styles from "./MatePostCard.module.css";
+import styles from "../../styles/mate/MatePostCard.module.css";
 
 interface MatePostCardProps {
   post: Post;

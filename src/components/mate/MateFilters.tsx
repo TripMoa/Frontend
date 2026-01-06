@@ -4,7 +4,7 @@ import "react-datepicker/dist/react-datepicker.css";
 import "../../styles/mate/datepicker.css";
 import { MapPin, Calendar, ChevronDown } from "lucide-react";
 import { ALL_TAGS, GENDER_OPTIONS, AGE_OPTIONS } from "./mate.constants";
-import styles from "./MateFilters.module.css";
+import styles from "../../styles/mate/MateFilters.module.css";
 
 interface MateFiltersProps {
   locationFilter: string;
