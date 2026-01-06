@@ -48,6 +48,7 @@ export default function Header() {
             </button>
             <div className="dropdown-menu">
               <a href="/community">{">>"} DATA LOGS</a>
+              <a href="/travelstory">{">>"} DATA LOGS</a>
               <a href="/mate">{">>"} MATE FINDER</a>
             </div>
           </li>
