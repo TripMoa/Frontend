@@ -6,7 +6,6 @@ import MyTrips from "./pages/MyTrips";
 import Community from "./pages/Community";
 import Mate from "./pages/Mate";
 import Workspace from "./pages/Workspace";
-import TravelStory from './pages/TravelStory';
 
 export default function App() {
   return (
@@ -17,7 +16,6 @@ export default function App() {
         <Route path="/community" element={<Community />} />
         <Route path="/mate" element={<Mate />} />
         <Route path="/workspace" element={<Workspace />} />
-        <Route path="/travelstory" element={<TravelStory />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>
