@@ -8,7 +8,7 @@ import Mate from "./pages/Mate";
 import Workspace from "./pages/Workspace";
 import TravelStory from './pages/TravelStory';
 import Login from "./pages/Login";
-import UserSettings from "./components/user/UserSetting";
+import UserSettings from "./pages/UserSetting";
 
 export default function App() {
   return (

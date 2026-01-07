@@ -19,7 +19,7 @@ export default function Header() {
 
   // 설정 버튼 클릭 시 알림창
   const handleSettingsClick = () => {
-    alert("준비 중인 기능입니다.");
+    navigate("/setting");
   };
 
   return (
