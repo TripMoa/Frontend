@@ -7,10 +7,15 @@ import Community from "./pages/Community";
 import Mate from "./pages/Mate";
 import Workspace from "./pages/Workspace";
 import TravelStory from './pages/TravelStory';
+import Login from "./pages/Login";
+import UserSettings from "./components/user/UserSetting";
 
 export default function App() {
   return (
     <Routes>
+      <Route path="/login" element={<Login />} />
+      <Route path="/setting" element={<UserSettings />} />
+
       <Route element={<Layout />}>
         <Route path="/" element={<Home />} />
         <Route path="/mytrips" element={<MyTrips />} />
