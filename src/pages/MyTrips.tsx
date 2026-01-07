@@ -257,22 +257,24 @@ export default function MyTrips() {
       )}
 
       <div className="container" id="trip-list-ui">
-        <div className="section-header">
-          <div>
+        <div className="section-header-neob">
+          <div className="header-content">
             <h2 className="sec-title">MY PLAN BOARD</h2>
             <p className="sec-desc">수립된 여행 작전 목록입니다.</p>
           </div>
 
-          <div className="filter-tabs">
-            {(["all", "public", "private"] as Visibility[]).map((type) => (
-              <button
-                key={type}
-                className={`filter-btn ${filter === type ? "active" : ""}`}
-                onClick={() => setFilter(type)}
-              >
-                {type === "all" ? "ALL SECTORS" : type.toUpperCase()}
-              </button>
-            ))}
+          <div className="filter-wrapper-neob">
+            <div className="filter-tabs">
+              {(["all", "public", "private"] as Visibility[]).map((type) => (
+                <button
+                  key={type}
+                  className={`filter-btn ${filter === type ? "active" : ""}`}
+                  onClick={() => setFilter(type)}
+                >
+                  {type === "all" ? "ALL SECTORS" : type.toUpperCase()}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -297,28 +299,27 @@ export default function MyTrips() {
                   }}
                   onClick={() => window.location.assign("/workspace")}
                 >
+                  {/* 왼쪽 사이드 영역 */}
                   <div
                     className="mt-side"
                     style={{
-                      background: isEnd ? "#ddd" : "#000",
-                      color: isEnd ? "#555" : "#fff",
-                      borderRight: "2px solid #000",
+                      background: isEnd ? "#eee" : "#000",
+                      color: isEnd ? "#999" : "#fff",
                     }}
                   >
-                    <span style={{ fontWeight: "bold" }}>
+                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>
                       {isEnd ? "STATUS" : "D-DAY"}
                     </span>
-                    <span
-                      style={{
-                        fontSize: isEnd ? "20px" : "24px",
-                        fontWeight: "900",
-                      }}
-                    >
+                    <span style={{ fontSize: "24px", fontWeight: "900" }}>
                       {dDayText}
                     </span>
                   </div>
 
-                  <div className="mt-center">
+                  {/* 메인 정보 영역 */}
+                  <div
+                    className="mt-center"
+                    style={{ flex: 1, padding: "20px" }}
+                  >
                     <div
                       className="top-badges"
                       style={{ justifyContent: "space-between" }}
