@@ -6,6 +6,8 @@ interface WritePageProps {
   onBack: () => void;
   onSaveDraft: () => void;
   onPublish: () => void;
+  drafts: any[];
+  onShowDraftModal: () => void;
 }
 
 function WritePage({ 
@@ -13,7 +15,9 @@ function WritePage({
   currentDraft, 
   onBack, 
   onSaveDraft, 
-  onPublish 
+  onPublish,
+  drafts,
+  onShowDraftModal
 }: WritePageProps) {
   const [coverImage, setCoverImage] = useState<string | null>(editingStory?.image || null);
 
@@ -50,55 +54,208 @@ function WritePage({
     editor?.focus();
   };
 
+  const handleSaveDraftClick = () => {
+    onSaveDraft(); // 임시저장 실행
+  };
+
+  const handlePublishClick = () => {
+    // 필수 필드 검증
+    const titleInput = document.querySelector('.title-input') as HTMLInputElement;
+    const destinationInput = document.querySelector('.form-input') as HTMLInputElement;
+    const editor = document.querySelector('.blog-editor-wysiwyg') as HTMLDivElement;
+
+    const title = titleInput?.value.trim();
+    const destination = destinationInput?.value.trim();
+    const content = editor?.innerText.trim();
+
+    // 필수 필드가 비어있는지 확인
+    if (!title) {
+      alert('제목을 입력해주세요.');
+      titleInput?.focus();
+      return;
+    }
+
+    if (!destination) {
+      alert('목적지를 입력해주세요.');
+      destinationInput?.focus();
+      return;
+    }
+
+    if (!content || content === '여행 이야기를 자유롭게 작성해주세요...') {
+      alert('여행 내용을 작성해주세요.');
+      editor?.focus();
+      return;
+    }
+
+    // 모든 검증 통과시 발행
+    onPublish();
+  };
+
   return (
     <div className="write-page-container">
-      {/* Header - Mate Style */}
-      <div style={{
-        background: '#fff',
-        padding: '24px',
-        marginBottom: '24px',
-        border: '3px solid #000',
-        boxShadow: '8px 8px 0px rgba(0, 0, 0, 1)',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center'
-      }}>
-        <h1 style={{
-          fontFamily: "'Share Tech Mono', monospace",
-          fontSize: '24px',
+{/* Header - Mate Style */}
+<div style={{
+  background: '#fff',
+  padding: '24px',
+  marginBottom: '24px',
+  border: '3px solid #000',
+  boxShadow: '8px 8px 0px rgba(0, 0, 0, 1)',
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  position: 'relative'  // X 버튼 위치 잡기 위해
+}}>
+  <h1 style={{
+    fontFamily: "'Share Tech Mono', monospace",
+    fontSize: '24px',
+    fontWeight: 700,
+    textTransform: 'uppercase',
+    letterSpacing: '2px'
+  }}>
+    {editingStory ? 'EDIT STORY' : 'WRITE NEW STORY'}
+  </h1>
+  
+  <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+    {/* SAVE DRAFT 버튼 (클릭시 임시저장 + 숫자 배지) */}
+    <div style={{ position: 'relative' }}>
+      <button
+        onClick={handleSaveDraftClick}
+        style={{
+          padding: '10px 20px',
+          border: '3px solid #000',
+          background: '#fff',
+          color: '#000',
           fontWeight: 700,
+          fontSize: '12px',
+          fontFamily: "'Share Tech Mono', monospace",
           textTransform: 'uppercase',
-          letterSpacing: '2px'
-        }}>
-          {editingStory ? 'EDIT STORY' : 'WRITE NEW STORY'}
-        </h1>
-        <button
-          onClick={onBack}
-          style={{
-            padding: '10px 20px',
-            border: '3px solid #000',
-            background: '#fff',
-            color: '#000',
-            fontWeight: 700,
-            fontSize: '12px',
-            fontFamily: "'Share Tech Mono', monospace",
-            textTransform: 'uppercase',
-            cursor: 'pointer',
-            boxShadow: '4px 4px 0px rgba(0, 0, 0, 1)',
-            transition: 'all 0.2s'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = '#000';
-            e.currentTarget.style.color = '#fff';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = '#fff';
-            e.currentTarget.style.color = '#000';
-          }}
-        >
-          ← BACK
-        </button>
+          cursor: 'pointer',
+          boxShadow: '4px 4px 0px rgba(0, 0, 0, 1)',
+          transition: 'all 0.2s',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px'
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.background = '#000';
+          e.currentTarget.style.color = '#fff';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.background = '#fff';
+          e.currentTarget.style.color = '#000';
+        }}
+      >
+        SAVE DRAFT
+      </button>
+      
+      {/* 숫자 배지 - SAVE DRAFT 버튼 오른쪽 */}
+      <div
+        onClick={onShowDraftModal}
+        style={{
+          position: 'absolute',
+          top: '-8px',
+          right: '-8px',
+          background: '#000',
+          color: '#fff',
+          padding: '4px 8px',
+          fontSize: '11px',
+          fontWeight: 700,
+          fontFamily: "'Share Tech Mono', monospace",
+          border: '2px solid #000',
+          minWidth: '28px',
+          textAlign: 'center',
+          cursor: 'pointer',
+          boxShadow: '2px 2px 0px rgba(0, 0, 0, 1)',
+          transition: 'all 0.2s'
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.background = '#fff';
+          e.currentTarget.style.color = '#000';
+          e.currentTarget.style.transform = 'scale(1.1)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.background = '#000';
+          e.currentTarget.style.color = '#fff';
+          e.currentTarget.style.transform = 'scale(1)';
+        }}
+      >
+        {drafts.length}
       </div>
+    </div>
+    
+    <button
+      onClick={handlePublishClick}
+      style={{
+        padding: '10px 20px',
+        border: '3px solid #000',
+        background: '#000',
+        color: '#fff',
+        fontWeight: 700,
+        fontSize: '12px',
+        fontFamily: "'Share Tech Mono', monospace",
+        textTransform: 'uppercase',
+        cursor: 'pointer',
+        boxShadow: '4px 4px 0px rgba(0, 0, 0, 1)',
+        transition: 'all 0.2s'
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.background = '#fff';
+        e.currentTarget.style.color = '#000';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.background = '#000';
+        e.currentTarget.style.color = '#fff';
+      }}
+    >
+      PUBLISH
+    </button>
+  </div>
+
+  {/* X Button - 헤더 박스 오른쪽 위 */}
+  <button
+    onClick={onBack}
+    style={{
+      position: 'absolute',
+      top: '-15px',
+      right: '-15px',
+      border: 'none',
+      background: '#fff',
+      cursor: 'pointer',
+      padding: '4px',
+      lineHeight: 1,
+      transition: 'all 0.2s',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: '50%',
+      boxShadow: '2px 2px 4px rgba(0, 0, 0, 0.2)',
+      zIndex: 10
+    }}
+    onMouseEnter={(e) => {
+      e.currentTarget.style.background = '#000';
+      const svg = e.currentTarget.querySelector('svg');
+      if (svg) (svg as SVGElement).style.fill = '#fff';
+    }}
+    onMouseLeave={(e) => {
+      e.currentTarget.style.background = '#fff';
+      const svg = e.currentTarget.querySelector('svg');
+      if (svg) (svg as SVGElement).style.fill = '#000';
+    }}
+  >
+    <svg 
+      xmlns="http://www.w3.org/2000/svg" 
+      viewBox="0 0 24 24" 
+      style={{ 
+        width: '24px',
+        height: '24px',
+        fill: '#000',
+        transition: 'fill 0.2s'
+      }}
+    >
+      <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+    </svg>
+  </button>
+</div>
 
       {/* Form Container - Mate Style */}
       <div style={{
@@ -138,68 +295,80 @@ function WritePage({
           />
         </div>
 
-        {/* Cover Image */}
-        <div style={{ marginBottom: '40px' }}>
-          <label style={{
-            display: 'block',
-            fontSize: '11px',
-            fontWeight: 700,
-            marginBottom: '12px',
-            color: 'rgba(0,0,0,0.6)',
-            textTransform: 'uppercase',
-            fontFamily: "'Share Tech Mono', monospace",
-            letterSpacing: '1px'
-          }}>
-            COVER IMAGE
-          </label>
-          <label style={{
-            display: 'block',
-            width: '100%',
-            height: '350px',
-            border: '3px dashed #000',
-            cursor: 'pointer',
-            position: 'relative',
-            overflow: 'hidden',
-            background: '#fafafa'
-          }}>
-            {coverImage ? (
-              <img 
-                src={coverImage} 
-                alt="cover" 
-                style={{ 
-                  width: '100%', 
-                  height: '100%', 
-                  objectFit: 'cover' 
-                }} 
-              />
-            ) : (
-              <div style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                height: '100%',
-                color: '#999'
-              }}>
-                <div style={{ fontSize: '64px', marginBottom: '15px' }}>+</div>
-                <div style={{ 
-                  fontSize: '12px',
-                  fontFamily: "'Share Tech Mono', monospace",
-                  textTransform: 'uppercase',
-                  letterSpacing: '1px'
-                }}>
-                  ADD COVER IMAGE
-                </div>
-              </div>
-            )}
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleCoverImageUpload}
-              style={{ display: 'none' }}
-            />
-          </label>
+{/* Cover Image */}
+<div style={{ marginBottom: '40px' }}>
+  <label style={{
+    display: 'block',
+    fontSize: '11px',
+    fontWeight: 700,
+    marginBottom: '12px',
+    color: 'rgba(0,0,0,0.6)',
+    textTransform: 'uppercase',
+    fontFamily: "'Share Tech Mono', monospace",
+    letterSpacing: '1px'
+  }}>
+    COVER IMAGE
+  </label>
+  <label style={{
+    display: 'block',
+    width: '100%',
+    height: '350px',
+    border: '3px dashed #000',
+    cursor: 'pointer',
+    position: 'relative',
+    overflow: 'hidden',
+    background: '#fafafa'
+  }}>
+    {coverImage ? (
+      <img 
+        src={coverImage} 
+        alt="cover" 
+        style={{ 
+          width: '100%', 
+          height: '100%', 
+          objectFit: 'cover' 
+        }} 
+      />
+    ) : (
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '100%',
+        color: '#999',
+        gap: '15px'
+      }}>
+        <svg 
+          xmlns="http://www.w3.org/2000/svg" 
+          viewBox="0 0 24 24" 
+          style={{ 
+            width: '64px', 
+            height: '64px',
+            fill: '#999'
+          }}
+        >
+          <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
+        </svg>
+        <div style={{ 
+          fontSize: '12px',
+          fontFamily: "'Share Tech Mono', monospace",
+          textTransform: 'uppercase',
+          letterSpacing: '1px',
+          fontWeight: 700
+        }}>
+          ADD COVER IMAGE
         </div>
+      </div>
+    )}
+    <input
+      type="file"
+      accept="image/*"
+      onChange={handleCoverImageUpload}
+      style={{ display: 'none' }}
+    />
+  </label>
+</div>
 
         {/* Form Grid */}
         <div style={{
@@ -394,224 +563,168 @@ function WritePage({
           </div>
         </div>
 
-        {/* Content Editor */}
-        <div style={{ marginBottom: '30px' }}>
-          <label style={{
-            display: 'block',
-            fontSize: '11px',
-            fontWeight: 700,
-            marginBottom: '12px',
-            color: 'rgba(0,0,0,0.6)',
-            textTransform: 'uppercase',
-            fontFamily: "'Share Tech Mono', monospace",
-            letterSpacing: '1px'
-          }}>
-            CONTENT *
-          </label>
+{/* Content Editor */}
+<div>
+  <label style={{
+    display: 'block',
+    fontSize: '11px',
+    fontWeight: 700,
+    marginBottom: '12px',
+    color: 'rgba(0,0,0,0.6)',
+    textTransform: 'uppercase',
+    fontFamily: "'Share Tech Mono', monospace",
+    letterSpacing: '1px'
+  }}>
+    CONTENT *
+  </label>
 
-          {/* Toolbar */}
-          <div style={{
-            display: 'flex',
-            gap: '0',
-            background: '#f5f5f5',
-            border: '2px solid #000',
-            borderBottom: 'none'
-          }}>
-            <button
-              type="button"
-              onClick={() => execCommand('formatBlock', '<h2>')}
-              style={{
-                width: '50px',
-                height: '50px',
-                border: 'none',
-                borderRight: '2px solid #000',
-                background: 'transparent',
-                fontSize: '14px',
-                fontWeight: 700,
-                fontFamily: "'Share Tech Mono', monospace",
-                cursor: 'pointer',
-                transition: 'background 0.2s'
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.background = '#fff'}
-              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-              title="Heading"
-            >
-              H
-            </button>
-            <button
-              type="button"
-              onClick={() => execCommand('formatBlock', '<h3>')}
-              style={{
-                width: '50px',
-                height: '50px',
-                border: 'none',
-                borderRight: '2px solid #000',
-                background: 'transparent',
-                fontSize: '12px',
-                fontWeight: 700,
-                fontFamily: "'Share Tech Mono', monospace",
-                cursor: 'pointer',
-                transition: 'background 0.2s'
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.background = '#fff'}
-              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-              title="Subheading"
-            >
-              h
-            </button>
-            <button
-              type="button"
-              onClick={() => execCommand('bold')}
-              style={{
-                width: '50px',
-                height: '50px',
-                border: 'none',
-                borderRight: '2px solid #000',
-                background: 'transparent',
-                fontSize: '14px',
-                fontWeight: 700,
-                fontFamily: "'Share Tech Mono', monospace",
-                cursor: 'pointer',
-                transition: 'background 0.2s'
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.background = '#fff'}
-              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-              title="Bold"
-            >
-              B
-            </button>
-            <label
-              style={{
-                width: '50px',
-                height: '50px',
-                borderRight: '2px solid #000',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '18px',
-                transition: 'background 0.2s'
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.background = '#fff'}
-              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-              title="Insert Image"
-            >
-              📷
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleImageInsert}
-                style={{ display: 'none' }}
-              />
-            </label>
-            <button
-              type="button"
-              onClick={() => execCommand('insertHorizontalRule')}
-              style={{
-                width: '50px',
-                height: '50px',
-                border: 'none',
-                background: 'transparent',
-                fontSize: '18px',
-                fontFamily: "'Share Tech Mono', monospace",
-                cursor: 'pointer',
-                transition: 'background 0.2s'
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.background = '#fff'}
-              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-              title="Horizontal Line"
-            >
-              —
-            </button>
-          </div>
+  {/* Toolbar */}
+  <div style={{
+    display: 'flex',
+    gap: '0',
+    background: '#f5f5f5',
+    border: '2px solid #000',
+    borderBottom: 'none'
+  }}>
+    <button
+      type="button"
+      onClick={() => execCommand('formatBlock', '<h2>')}
+      style={{
+        width: '50px',
+        height: '50px',
+        border: 'none',
+        borderRight: '2px solid #000',
+        background: 'transparent',
+        fontSize: '14px',
+        fontWeight: 700,
+        fontFamily: "'Share Tech Mono', monospace",
+        cursor: 'pointer',
+        transition: 'background 0.2s'
+      }}
+      onMouseEnter={(e) => e.currentTarget.style.background = '#fff'}
+      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+      title="헤딩"
+    >
+      H
+    </button>
+    <button
+      type="button"
+      onClick={() => execCommand('formatBlock', '<h3>')}
+      style={{
+        width: '50px',
+        height: '50px',
+        border: 'none',
+        borderRight: '2px solid #000',
+        background: 'transparent',
+        fontSize: '12px',
+        fontWeight: 700,
+        fontFamily: "'Share Tech Mono', monospace",
+        cursor: 'pointer',
+        transition: 'background 0.2s'
+      }}
+      onMouseEnter={(e) => e.currentTarget.style.background = '#fff'}
+      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+      title="서브헤딩"
+    >
+      h
+    </button>
+    <button
+      type="button"
+      onClick={() => execCommand('bold')}
+      style={{
+        width: '50px',
+        height: '50px',
+        border: 'none',
+        borderRight: '2px solid #000',
+        background: 'transparent',
+        fontSize: '14px',
+        fontWeight: 700,
+        fontFamily: "'Share Tech Mono', monospace",
+        cursor: 'pointer',
+        transition: 'background 0.2s'
+      }}
+      onMouseEnter={(e) => e.currentTarget.style.background = '#fff'}
+      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+      title="볼드"
+    >
+      B
+    </button>
+    <label
+      style={{
+        width: '50px',
+        height: '50px',
+        borderRight: '2px solid #000',
+        cursor: 'pointer',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        transition: 'background 0.2s'
+      }}
+      onMouseEnter={(e) => e.currentTarget.style.background = '#fff'}
+      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+      title="이미지 삽입"
+    >
+      <svg 
+        xmlns="http://www.w3.org/2000/svg" 
+        viewBox="0 0 24 24" 
+        style={{ 
+          width: '24px', 
+          height: '24px',
+          fill: '#000'
+        }}
+      >
+        <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
+      </svg>
+      <input
+        type="file"
+        accept="image/*"
+        onChange={handleImageInsert}
+        style={{ display: 'none' }}
+      />
+    </label>
+    <button
+      type="button"
+      onClick={() => execCommand('insertHorizontalRule')}
+      style={{
+        width: '50px',
+        height: '50px',
+        border: 'none',
+        background: 'transparent',
+        fontSize: '18px',
+        fontFamily: "'Share Tech Mono', monospace",
+        cursor: 'pointer',
+        transition: 'background 0.2s'
+      }}
+      onMouseEnter={(e) => e.currentTarget.style.background = '#fff'}
+      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+      title="구분선"
+    >
+      —
+    </button>
+  </div>
 
-          {/* Editor */}
-          <div
-            className="blog-editor-wysiwyg"
-            contentEditable="true"
-            dangerouslySetInnerHTML={
-              (editingStory || currentDraft) 
-                ? { __html: editingStory?.description || currentDraft?.content || '' } 
-                : undefined
-            }
-            style={{
-              width: '100%',
-              minHeight: '400px',
-              padding: '30px',
-              border: '2px solid #000',
-              fontSize: '15px',
-              lineHeight: '1.8',
-              fontFamily: "'Share Tech Mono', monospace",
-              outline: 'none',
-              background: '#fff'
-            }}
-          ></div>
-        </div>
-
-        {/* Buttons */}
-        <div style={{
-          display: 'flex',
-          gap: '15px',
-          borderTop: '2px dashed rgba(0,0,0,0.2)',
-          paddingTop: '30px'
-        }}>
-          <button
-            onClick={onSaveDraft}
-            style={{
-              flex: 1,
-              padding: '15px',
-              border: '3px solid #000',
-              background: '#fff',
-              color: '#000',
-              fontSize: '14px',
-              fontWeight: 700,
-              fontFamily: "'Share Tech Mono', monospace",
-              textTransform: 'uppercase',
-              letterSpacing: '1px',
-              cursor: 'pointer',
-              boxShadow: '4px 4px 0px rgba(0, 0, 0, 1)',
-              transition: 'all 0.2s'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = '#000';
-              e.currentTarget.style.color = '#fff';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = '#fff';
-              e.currentTarget.style.color = '#000';
-            }}
-          >
-            SAVE DRAFT
-          </button>
-          <button
-            onClick={onPublish}
-            style={{
-              flex: 1,
-              padding: '15px',
-              border: '3px solid #000',
-              background: '#000',
-              color: '#fff',
-              fontSize: '14px',
-              fontWeight: 700,
-              fontFamily: "'Share Tech Mono', monospace",
-              textTransform: 'uppercase',
-              letterSpacing: '1px',
-              cursor: 'pointer',
-              boxShadow: '4px 4px 0px rgba(0, 0, 0, 1)',
-              transition: 'all 0.2s'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = '#fff';
-              e.currentTarget.style.color = '#000';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = '#000';
-              e.currentTarget.style.color = '#fff';
-            }}
-          >
-            PUBLISH
-          </button>
-        </div>
+  {/* Editor */}
+  <div
+    className="blog-editor-wysiwyg"
+    contentEditable="true"
+    dangerouslySetInnerHTML={
+      (editingStory || currentDraft) 
+        ? { __html: editingStory?.description || currentDraft?.content || '' } 
+        : undefined
+    }
+    style={{
+      width: '100%',
+      minHeight: '400px',
+      padding: '30px',
+      border: '2px solid #000',
+      fontSize: '15px',
+      lineHeight: '1.8',
+      fontFamily: "'Share Tech Mono', monospace",
+      outline: 'none',
+      background: '#fff'
+    }}
+  ></div>
+</div>
       </div>
 
       <style>{`

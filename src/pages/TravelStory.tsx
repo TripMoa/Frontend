@@ -29,6 +29,9 @@ function TravelStory() {
   const {
     currentPage,
     setCurrentPage,
+    navigateToPage,
+    goBack,
+    previousPage,
     selectedStory,
     setSelectedStory,
     filters,
@@ -46,6 +49,8 @@ function TravelStory() {
     setOpenDropdown,
     showDraftModal,
     setShowDraftModal,
+    showLikesModal,
+    setShowLikesModal,
     drafts,
     setDrafts,
     editingStory,
@@ -106,7 +111,7 @@ function TravelStory() {
               
               <div style={{ display: 'flex', gap: '12px' }}>
                 <button 
-                  onClick={() => setCurrentPage('myStories')}
+                  onClick={() => navigateToPage('myStories')}
                   style={{
                     padding: '10px 20px',
                     border: '3px solid #000',
@@ -132,7 +137,7 @@ function TravelStory() {
                   MY STORIES
                 </button>
                 <button 
-                  onClick={() => setCurrentPage('write')}
+                  onClick={() => navigateToPage('write')}
                   style={{
                     padding: '10px 20px',
                     border: '3px solid #000',
@@ -185,90 +190,366 @@ function TravelStory() {
       {/* My Stories Page */}
       {currentPage === 'myStories' && (
         <div className="container">
-          <div style={{ 
-            display: 'flex', 
-            justifyContent: 'space-between', 
-            alignItems: 'center',
-            marginBottom: '30px' 
+          {/* 통계 섹션 - VERIFIED DATA와 같은 여백 */}
+          <div style={{
+            marginBottom: '32px',
+            display: 'grid',
+            gridTemplateColumns: 'repeat(4, 1fr)',
+            gap: '15px',
+            padding: '12px 20px',
+            background: '#fff',
+            border: '3px solid #000',
+            boxShadow: '8px 8px 0px rgba(0, 0, 0, 1)',
+            position: 'relative'
           }}>
+            {/* X 버튼 - 통계 박스 오른쪽 위 */}
             <button 
-              onClick={() => setCurrentPage('main')}
+              onClick={goBack}
               style={{
-                padding: '12px 30px',
-                border: '3px solid #000',
+                position: 'absolute',
+                top: '-15px',
+                right: '-15px',
+                border: 'none',
                 background: '#fff',
-                color: '#000',
-                fontSize: '12px',
-                fontWeight: 700,
-                fontFamily: "'Share Tech Mono', monospace",
-                textTransform: 'uppercase',
-                letterSpacing: '1px',
                 cursor: 'pointer',
-                boxShadow: '4px 4px 0px rgba(0, 0, 0, 1)',
-                transition: 'all 0.3s'
+                padding: '4px',
+                lineHeight: 1,
+                transition: 'all 0.2s',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRadius: '50%',
+                boxShadow: '2px 2px 4px rgba(0, 0, 0, 0.2)',
+                zIndex: 10
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.background = '#000';
-                e.currentTarget.style.color = '#fff';
+                const svg = e.currentTarget.querySelector('svg');
+                if (svg) (svg as SVGElement).style.fill = '#fff';
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.background = '#fff';
-                e.currentTarget.style.color = '#000';
+                const svg = e.currentTarget.querySelector('svg');
+                if (svg) (svg as SVGElement).style.fill = '#000';
               }}
             >
-              ← BACK
+              <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                viewBox="0 0 24 24" 
+                style={{ 
+                  width: '24px',
+                  height: '24px',
+                  fill: '#000',
+                  transition: 'fill 0.2s'
+                }}
+              >
+                <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+              </svg>
             </button>
-            <button 
-              onClick={() => setShowDraftModal(true)}
-              style={{
-                padding: '12px 30px',
-                border: '3px solid #000',
-                background: '#fff',
-                color: '#000',
-                fontSize: '12px',
+
+            {/* 작성한 여행기 */}
+            <div style={{
+              padding: '12px 15px',
+              border: '2px solid #000',
+              background: '#fff',
+              textAlign: 'center',
+              transition: 'all 0.2s'
+            }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: '4px'
+              }}>
+                <svg 
+                  xmlns="http://www.w3.org/2000/svg" 
+                  viewBox="0 0 24 24" 
+                  style={{ 
+                    width: '20px',
+                    height: '20px',
+                    fill: '#000'
+                  }}
+                >
+                  <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>
+                </svg>
+              </div>
+              <div style={{
+                fontSize: '22px',
                 fontWeight: 700,
+                marginBottom: '4px',
+                fontFamily: "'Share Tech Mono', monospace"
+              }}>3</div>
+              <div style={{
+                fontSize: '10px',
+                color: '#666',
                 fontFamily: "'Share Tech Mono', monospace",
                 textTransform: 'uppercase',
-                letterSpacing: '1px',
+                letterSpacing: '0.5px'
+              }}>작성한 여행기</div>
+            </div>
+
+            {/* 총 조회수 */}
+            <div style={{
+              padding: '12px 15px',
+              border: '2px solid #000',
+              background: '#fff',
+              textAlign: 'center',
+              transition: 'all 0.2s'
+            }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: '4px'
+              }}>
+                <svg 
+                  xmlns="http://www.w3.org/2000/svg" 
+                  viewBox="0 0 24 24" 
+                  style={{ 
+                    width: '20px',
+                    height: '20px',
+                    fill: '#000'
+                  }}
+                >
+                  <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
+                </svg>
+              </div>
+              <div style={{
+                fontSize: '22px',
+                fontWeight: 700,
+                marginBottom: '4px',
+                fontFamily: "'Share Tech Mono', monospace"
+              }}>125</div>
+              <div style={{
+                fontSize: '10px',
+                color: '#666',
+                fontFamily: "'Share Tech Mono', monospace",
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px'
+              }}>총 조회수</div>
+            </div>
+
+            {/* 받은 좋아요 */}
+            <div style={{
+              padding: '12px 15px',
+              border: '2px solid #000',
+              background: '#fff',
+              textAlign: 'center',
+              transition: 'all 0.2s'
+            }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: '4px'
+              }}>
+                <svg 
+                  xmlns="http://www.w3.org/2000/svg" 
+                  viewBox="0 0 24 24" 
+                  style={{ 
+                    width: '20px',
+                    height: '20px',
+                    fill: '#ff4757'
+                  }}
+                >
+                  <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                </svg>
+              </div>
+              <div style={{
+                fontSize: '22px',
+                fontWeight: 700,
+                marginBottom: '4px',
+                fontFamily: "'Share Tech Mono', monospace"
+              }}>48</div>
+              <div style={{
+                fontSize: '10px',
+                color: '#666',
+                fontFamily: "'Share Tech Mono', monospace",
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px'
+              }}>받은 좋아요</div>
+            </div>
+
+            {/* 좋아요 목록 - 클릭 가능 */}
+            <div 
+              onClick={() => setShowLikesModal(true)}
+              style={{ 
+                padding: '12px 15px',
+                border: '2px solid #000',
+                background: '#fff',
+                textAlign: 'center',
                 cursor: 'pointer',
-                boxShadow: '4px 4px 0px rgba(0, 0, 0, 1)',
-                transition: 'all 0.3s'
+                transition: 'all 0.2s'
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.background = '#000';
-                e.currentTarget.style.color = '#fff';
+                e.currentTarget.style.transform = 'translateY(-3px)';
+                e.currentTarget.style.boxShadow = '4px 4px 0px rgba(0, 0, 0, 1)';
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.background = '#fff';
-                e.currentTarget.style.color = '#000';
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = 'none';
               }}
             >
-              SAVE DRAFT
-            </button>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: '4px'
+              }}>
+                <svg 
+                  xmlns="http://www.w3.org/2000/svg" 
+                  viewBox="0 0 24 24" 
+                  style={{ 
+                    width: '20px',
+                    height: '20px',
+                    fill: likedStories.length > 0 ? '#ff4757' : '#000'
+                  }}
+                >
+                  <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                </svg>
+              </div>
+              <div style={{
+                fontSize: '22px',
+                fontWeight: 700,
+                marginBottom: '4px',
+                fontFamily: "'Share Tech Mono', monospace"
+              }}>{likedStories.length}</div>
+              <div style={{
+                fontSize: '10px',
+                color: '#666',
+                fontFamily: "'Share Tech Mono', monospace",
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px'
+              }}>좋아요 목록</div>
+            </div>
           </div>
 
-          <div className="my-stats-section-main">
-            <div className="stat-box">
-              <div className="stat-number">3</div>
-              <div className="stat-label">작성한 여행기</div>
-            </div>
-            <div className="stat-box">
-              <div className="stat-number">125</div>
-              <div className="stat-label">총 조회수</div>
-            </div>
-            <div className="stat-box">
-              <div className="stat-number">48</div>
-              <div className="stat-label">받은 좋아요</div>
-            </div>
-            <div className="stat-box">
-              <div className="stat-number">12</div>
-              <div className="stat-label">받은 댓글</div>
-            </div>
-          </div>
-
+          {/* My Stories Grid */}
           <div className="posts-grid">
-            {/* Implement my stories list here */}
+            {getFilteredStories().slice(0, 3).map((story: Story) => (
+              <div key={story.id} className="story-card">
+                {/* Story Image */}
+                <div style={{ position: 'relative' }} onClick={() => handleStoryClick(story)}>
+                  <img src={story.image} alt={story.title} className="story-image" style={{
+                    width: '100%',
+                    height: '250px',
+                    objectFit: 'cover',
+                    display: 'block'
+                  }} />
+                  <div className="story-stats-badge">{story.views}</div>
+                </div>
+
+                {/* Story Content */}
+                <div className="story-content">
+                  <div className="story-header" onClick={() => handleStoryClick(story)}>
+                    <div className="author-avatar">{story.authorAvatar}</div>
+                    <div className="author-info">
+                      <div className="author-name">{story.author}</div>
+                    </div>
+                  </div>
+
+                  <h3 className="story-title" onClick={() => handleStoryClick(story)}>
+                    {story.title}
+                  </h3>
+                  <p className="story-description" onClick={() => handleStoryClick(story)}>
+                    {story.description}
+                  </p>
+
+                  <div className="story-tags">
+                    {story.tags.map((tag, index) => (
+                      <span key={index} className="story-tag">{tag}</span>
+                    ))}
+                  </div>
+
+                  {/* Stats */}
+                  <div className="story-stats-simple">
+                    <div className="stat-simple-item">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                        <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                      </svg>
+                      {story.likes}
+                    </div>
+                    <div className="stat-simple-item">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                        <path d="M12 2C6.48 2 2 6.48 2 12c0 1.54.36 3 .97 4.29L2 22l5.71-.97C9 21.64 10.46 22 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2zm0 18c-1.38 0-2.68-.3-3.86-.83l-.28-.15-2.86.49.49-2.86-.15-.28C4.3 14.68 4 13.38 4 12c0-4.41 3.59-8 8-8s8 3.59 8 8-3.59 8-8 8z"/>
+                      </svg>
+                      {story.comments}
+                    </div>
+                  </div>
+
+                  {/* Edit/Delete Buttons */}
+                  <div style={{
+                    display: 'flex',
+                    gap: '8px',
+                    marginTop: '12px',
+                    paddingTop: '12px',
+                    borderTop: '2px dashed rgba(0,0,0,0.2)'
+                  }}>
+                    <button
+                      onClick={() => handleEdit(story)}
+                      style={{
+                        flex: 1,
+                        padding: '10px',
+                        border: '2px solid #000',
+                        background: '#fff',
+                        color: '#000',
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        fontFamily: "'Share Tech Mono', monospace",
+                        textTransform: 'uppercase',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = '#000';
+                        e.currentTarget.style.color = '#fff';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = '#fff';
+                        e.currentTarget.style.color = '#000';
+                      }}
+                    >
+                      EDIT
+                    </button>
+                    <button
+                      onClick={() => handleDelete(story.id)}
+                      style={{
+                        flex: 1,
+                        padding: '10px',
+                        border: '2px solid #dc3545',
+                        background: '#fff',
+                        color: '#dc3545',
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        fontFamily: "'Share Tech Mono', monospace",
+                        textTransform: 'uppercase',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = '#dc3545';
+                        e.currentTarget.style.color = '#fff';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = '#fff';
+                        e.currentTarget.style.color = '#dc3545';
+                      }}
+                    >
+                      DELETE
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
+
+          {/* No Stories */}
+          {getFilteredStories().length === 0 && (
+            <div className="no-results-fullpage">
+              <div className="no-results-text">작성한 여행기가 없습니다.</div>
+              <div className="no-results-subtext">첫 여행기를 작성해보세요!</div>
+            </div>
+          )}
         </div>
       )}
 
@@ -297,136 +578,170 @@ function TravelStory() {
         <WritePage
           editingStory={editingStory}
           currentDraft={currentDraft}
-          onBack={() => {
-            setCurrentPage('main');
-            setEditingStory(null);
-            setCurrentDraft(null);
-          }}
+          onBack={goBack}
           onSaveDraft={handleSaveDraft}
           onPublish={handlePublish}
+          drafts={drafts}
+          onShowDraftModal={() => setShowDraftModal(true)}
         />
       )}
 
-{/* Detail Page */}
-{currentPage === 'detail' && selectedStory && (
-  <div className="detail-page-container">
-    {/* Content */}
-    <div className="detail-page-content">
-      {/* BACK Button - 오른쪽 정렬 */}
-      <div style={{ 
-        marginBottom: '30px',
-        display: 'flex',
-        justifyContent: 'flex-end'  // 오른쪽 정렬
-      }}>
-        <button
-          onClick={() => setCurrentPage('main')}
-          className="detail-header-button"
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = '#000';
-            e.currentTarget.style.color = '#fff';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = '#fff';
-            e.currentTarget.style.color = '#000';
-          }}
-        >
-          ← BACK
-        </button>
-      </div>
-
-      {/* Author Section */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: '15px',
-        paddingBottom: '25px',
-        borderBottom: '2px solid #000',
-        marginBottom: '30px'
-      }}>
-              <div style={{
-                width: '60px',
-                height: '60px',
-                background: '#000',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '24px',
-                color: '#fff',
+      {/* Detail Page */}
+      {currentPage === 'detail' && selectedStory && (
+        <div className="detail-page-container">
+          {/* Content */}
+          <div className="detail-page-content">
+            
+            {/* Title과 X Button - 같은 라인 */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '15px'
+            }}>
+              {/* Title */}
+              <h1 style={{
+                fontSize: '32px',
                 fontWeight: 700,
+                lineHeight: 1.4,
+                margin: 0,
                 fontFamily: "'Share Tech Mono', monospace"
               }}>
-                {selectedStory.authorAvatar}
+                {selectedStory.title}
+              </h1>
+
+              {/* X Button */}
+              <button
+                onClick={goBack}
+                style={{
+                  border: 'none',
+                  background: 'transparent',
+                  cursor: 'pointer',
+                  padding: 0,
+                  lineHeight: 1,
+                  transition: 'opacity 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.opacity = '0.5';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.opacity = '1';
+                }}
+              >
+                <svg 
+                  xmlns="http://www.w3.org/2000/svg" 
+                  viewBox="0 0 24 24" 
+                  style={{ 
+                    width: '40px',
+                    height: '40px',
+                    fill: '#000'
+                  }}
+                >
+                  <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                </svg>
+              </button>
+            </div>
+
+            {/* Info Tags와 Author Info - 같은 라인 */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              paddingBottom: '25px',
+              borderBottom: '2px solid #000',
+              marginBottom: '30px'
+            }}>
+              {/* Info Tags */}
+              <div style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: '10px'
+              }}>
+                <div style={{
+                  padding: '8px 16px',
+                  background: '#f5f5f5',
+                  border: '2px solid #000',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  fontFamily: "'Share Tech Mono', monospace",
+                  textTransform: 'uppercase'
+                }}>
+                  {selectedStory.destination}
+                </div>
+                <div style={{
+                  padding: '8px 16px',
+                  background: '#f5f5f5',
+                  border: '2px solid #000',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  fontFamily: "'Share Tech Mono', monospace",
+                  textTransform: 'uppercase'
+                }}>
+                  {selectedStory.duration}
+                </div>
+                <div style={{
+                  padding: '8px 16px',
+                  background: '#f5f5f5',
+                  border: '2px solid #000',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  fontFamily: "'Share Tech Mono', monospace",
+                  textTransform: 'uppercase'
+                }}>
+                  {parseInt(selectedStory.budget).toLocaleString()}원
+                </div>
               </div>
-              <div style={{ flex: 1 }}>
+
+              {/* Author Info */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                flexShrink: 0,
+                marginRight: '20px'
+              }}>
+                {/* 프로필 사진 */}
+                <div style={{
+                  width: '40px',
+                  height: '40px',
+                  background: '#000',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '16px',
+                  color: '#fff',
+                  fontWeight: 700,
+                  fontFamily: "'Share Tech Mono', monospace"
+                }}>
+                  {selectedStory.authorAvatar}
+                </div>
+
+                {/* 닉네임 */}
                 <div style={{
                   fontSize: '16px',
                   fontWeight: 700,
                   fontFamily: "'Share Tech Mono', monospace",
-                  textTransform: 'uppercase',
-                  marginBottom: '5px'
+                  textTransform: 'uppercase'
                 }}>
                   {selectedStory.author}
                 </div>
+
+                {/* 날짜, 조회수 */}
                 <div style={{
-                  fontSize: '12px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '3px',
+                  fontSize: '11px',
                   color: '#999',
                   fontFamily: "'Share Tech Mono', monospace"
                 }}>
-                  {selectedStory.date} · {selectedStory.views} VIEWS
+                  <div>{selectedStory.date}</div>
+                  <div>{selectedStory.views} VIEWS</div>
                 </div>
-              </div>
-            </div>
-
-            {/* Title */}
-            <h1 style={{
-              fontSize: '32px',
-              fontWeight: 700,
-              lineHeight: 1.4,
-              marginBottom: '20px',
-              fontFamily: "'Share Tech Mono', monospace"
-            }}>
-              {selectedStory.title}
-            </h1>
-
-            {/* Info Tags - 이모티콘 제거 */}
-            <div style={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: '10px',
-              marginBottom: '30px'
-            }}>
-              <div style={{
-                padding: '8px 16px',
-                background: '#f5f5f5',
-                border: '2px solid #000',
-                fontSize: '11px',
-                fontWeight: 700,
-                fontFamily: "'Share Tech Mono', monospace",
-                textTransform: 'uppercase'
-              }}>
-                {selectedStory.destination}
-              </div>
-              <div style={{
-                padding: '8px 16px',
-                background: '#f5f5f5',
-                border: '2px solid #000',
-                fontSize: '11px',
-                fontWeight: 700,
-                fontFamily: "'Share Tech Mono', monospace",
-                textTransform: 'uppercase'
-              }}>
-                {selectedStory.duration}
-              </div>
-              <div style={{
-                padding: '8px 16px',
-                background: '#f5f5f5',
-                border: '2px solid #000',
-                fontSize: '11px',
-                fontWeight: 700,
-                fontFamily: "'Share Tech Mono', monospace",
-                textTransform: 'uppercase'
-              }}>
-                {parseInt(selectedStory.budget).toLocaleString()}원
               </div>
             </div>
 
@@ -460,7 +775,7 @@ function TravelStory() {
               {selectedStory.description}
             </div>
 
-            {/* 여행 경비 총정리 섹션 */}
+            {/* 여행 경비 총정리 */}
             <div style={{
               background: '#fff',
               border: '2px solid #000',
@@ -487,7 +802,6 @@ function TravelStory() {
                 flexDirection: 'column',
                 gap: '0'
               }}>
-                {/* 교통비 */}
                 <div style={{
                   display: 'flex',
                   justifyContent: 'space-between',
@@ -500,7 +814,6 @@ function TravelStory() {
                   <span style={{ fontSize: '13px', fontWeight: 700 }}>95,000원</span>
                 </div>
 
-                {/* 숙박비 */}
                 <div style={{
                   display: 'flex',
                   justifyContent: 'space-between',
@@ -513,7 +826,6 @@ function TravelStory() {
                   <span style={{ fontSize: '13px', fontWeight: 700 }}>85,000원</span>
                 </div>
 
-                {/* 식비 */}
                 <div style={{
                   display: 'flex',
                   justifyContent: 'space-between',
@@ -526,7 +838,6 @@ function TravelStory() {
                   <span style={{ fontSize: '13px', fontWeight: 700 }}>98,000원</span>
                 </div>
 
-                {/* 관광/입장료 */}
                 <div style={{
                   display: 'flex',
                   justifyContent: 'space-between',
@@ -539,7 +850,6 @@ function TravelStory() {
                   <span style={{ fontSize: '13px', fontWeight: 700 }}>15,000원</span>
                 </div>
 
-                {/* 쇼핑/기타 */}
                 <div style={{
                   display: 'flex',
                   justifyContent: 'space-between',
@@ -552,7 +862,6 @@ function TravelStory() {
                   <span style={{ fontSize: '13px', fontWeight: 700 }}>35,000원</span>
                 </div>
 
-                {/* 총 합계 */}
                 <div style={{
                   display: 'flex',
                   justifyContent: 'space-between',
@@ -595,7 +904,7 @@ function TravelStory() {
               ))}
             </div>
 
-            {/* Stats - Interactive Buttons */}
+            {/* Stats - COMMENTS 제거 */}
             <div style={{
               display: 'flex',
               gap: '30px',
@@ -638,20 +947,6 @@ function TravelStory() {
                 <span className="detail-stat-number">{selectedStory.follows || 45}</span>
                 <span className="detail-stat-tooltip">FOLLOW THIS</span>
               </button>
-              
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                fontSize: '13px',
-                fontWeight: 700,
-                fontFamily: "'Share Tech Mono', monospace"
-              }}>
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style={{ width: '16px', height: '16px', fill: '#000' }}>
-                  <path d="M12 2C6.48 2 2 6.48 2 12c0 1.54.36 3 .97 4.29L2 22l5.71-.97C9 21.64 10.46 22 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2zm0 18c-1.38 0-2.68-.3-3.86-.83l-.28-.15-2.86.49.49-2.86-.15-.28C4.3 14.68 4 13.38 4 12c0-4.41 3.59-8 8-8s8 3.59 8 8-3.59 8-8 8z"/>
-                </svg>
-                {selectedStory.comments} COMMENTS
-              </div>
             </div>
           </div>
 
@@ -676,7 +971,7 @@ function TravelStory() {
           <div className="draft-modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="draft-modal-header">
               <h2 className="draft-modal-title">임시저장 목록</h2>
-              <button className="draft-close-btn" onClick={() => setShowDraftModal(false)}>×</button>
+              <button className="draft-close-btn" onClick={() => setShowDraftModal(false)}>&times;</button>
             </div>
             <div className="draft-list">
               {drafts.map((draft: any) => (
@@ -695,6 +990,75 @@ function TravelStory() {
               ))}
               {drafts.length === 0 && (
                 <div className="draft-empty">임시저장된 글이 없습니다.</div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Likes Modal - 좋아요 목록 */}
+      {showLikesModal && (
+        <div className="draft-modal-overlay" onClick={() => setShowLikesModal(false)}>
+          <div className="draft-modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="draft-modal-header">
+              <h2 className="draft-modal-title">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <svg 
+                    xmlns="http://www.w3.org/2000/svg" 
+                    viewBox="0 0 24 24" 
+                    style={{ 
+                      width: '24px', 
+                      height: '24px',
+                      fill: '#ff4757'
+                    }}
+                  >
+                    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                  </svg>
+                  좋아요 목록
+                </div>
+              </h2>
+              <button className="draft-close-btn" onClick={() => setShowLikesModal(false)}>&times;</button>
+            </div>
+            <div className="draft-list">
+              {getFilteredStories().filter(story => likedStories.includes(story.id)).map((story: Story) => (
+                <div 
+                  key={story.id} 
+                  className="draft-item"
+                  onClick={() => {
+                    handleStoryClick(story);
+                    setShowLikesModal(false);
+                  }}
+                  style={{
+                    display: 'flex',
+                    gap: '15px',
+                    alignItems: 'center'
+                  }}
+                >
+                  <img 
+                    src={story.image} 
+                    alt={story.title}
+                    style={{
+                      width: '80px',
+                      height: '80px',
+                      objectFit: 'cover',
+                      border: '2px solid #000'
+                    }}
+                  />
+                  <div style={{ flex: 1 }}>
+                    <div className="draft-item-title">{story.title}</div>
+                    <div style={{
+                      fontSize: '12px',
+                      color: '#666',
+                      marginTop: '5px',
+                      fontFamily: "'Share Tech Mono', monospace"
+                    }}>
+                      {story.destination} · {story.duration} · {parseInt(story.budget).toLocaleString()}원
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {likedStories.length === 0 && (
+                <div className="draft-empty">좋아요한 여행기가 없습니다.</div>
               )}
             </div>
           </div>
