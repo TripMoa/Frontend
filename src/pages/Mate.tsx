@@ -1,6 +1,7 @@
-// pages/Mate.tsx (슬라이드 채팅 버전)
+// pages/Mate.tsx (상세 페이지 이동 버전)
 
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { ArrowUpDown, User, ChevronDown } from "lucide-react";
 import { useMate } from "../hooks/useMate";
 import { ChatFAB } from "../components/mate/chat/ChatFAB";
@@ -11,7 +12,6 @@ import {
   MateFilters,
   MatePostCard,
   MatePagination,
-  MateDetailModal,
   MateWriteModal,
   MateMySentModal,
   MateReceivedModal,
@@ -20,6 +20,7 @@ import {
 import styles from "../styles/mate/Mate.module.css";
 
 export default function Mate(): JSX.Element {
+  const navigate = useNavigate();
   const [showChatModal, setShowChatModal] = useState<boolean>(false);
   
   const {
@@ -44,13 +45,10 @@ export default function Mate(): JSX.Element {
     allPosts,
     
     // Modal States
-    selectedPost,
     showWriteModal, setShowWriteModal,
     showApplicantsModal, setShowApplicantsModal,
     showReceivedModal, setShowReceivedModal,
     selectedApplicant, setSelectedApplicant,
-    showApplyMessage,
-    applyMessage, setApplyMessage,
     showSortDropdown, setShowSortDropdown,
     
     // Write Modal States
@@ -72,14 +70,9 @@ export default function Mate(): JSX.Element {
     groupChats,
     
     // Handlers
-    handleCardClick,
     handleLike,
     handleRemove,
     handleRestore,
-    handleApply,
-    handleSendApplication,
-    handleCloseDetailModal,
-    handleCancelApply,
     handleResetAll,
     handlePostSubmit,
     handleApprove,
@@ -93,6 +86,11 @@ export default function Mate(): JSX.Element {
     leaveGroupChat,
     createGroupChat,
   } = useMate();
+
+  // 카드 클릭 시 상세 페이지로 이동
+  const handleCardClick = (post: any) => {
+    navigate(`/mate/${post.id}`);
+  };
 
   // 1:1 채팅 생성
   const handleCreateOneOnOneChat = (postId: string, otherUserId: string) => {
@@ -137,8 +135,10 @@ export default function Mate(): JSX.Element {
           onWriteClick={() => setShowWriteModal(true)}
           onMySentClick={() => setShowApplicantsModal(true)}
           onReceivedClick={() => setShowReceivedModal(true)}
+          onChatListClick={() => setShowChatModal(true)}
           mySentCount={myApplications.length}
           receivedPendingCount={receivedApplications.filter(app => getApplicantStatus(app.id) === "pending").length}
+          unreadChatCount={unreadCount}
         />
 
         {/* Filters */}
@@ -280,20 +280,6 @@ export default function Mate(): JSX.Element {
       </div>
 
       {/* Modals */}
-      {selectedPost && (
-        <MateDetailModal
-          post={selectedPost}
-          isLiked={likedPostIds.includes(selectedPost.id)}
-          showApplyMessage={showApplyMessage}
-          applyMessage={applyMessage}
-          onClose={handleCloseDetailModal}
-          onApply={handleApply}
-          onSendApplication={handleSendApplication}
-          onApplyMessageChange={setApplyMessage}
-          onCancelApply={handleCancelApply}
-        />
-      )}
-
       {showWriteModal && (
         <MateWriteModal
           onClose={() => setShowWriteModal(false)}
