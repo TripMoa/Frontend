@@ -1,13 +1,15 @@
-/* styles/user/UserSetting.module.css */
-
-/* === Page === */
 .page {
   width: 100%;
   min-height: 100vh;
   background: #f5f5f5;
   display: flex;
   justify-content: center;
+  align-items: flex-start;
   padding: 3rem 1rem;
+
+  background-image: linear-gradient(#e5e7eb 1px, transparent 1px),
+    linear-gradient(90deg, #e5e7eb 1px, transparent 1px);
+  background-size: 40px 40px;
 }
 
 .ticket {
@@ -21,30 +23,9 @@
 
 /* === Header === */
 .header {
+  position: relative;
   text-align: center;
   margin-bottom: 2.5rem;
-  position: relative;
-}
-
-.homeButton {
-  position: absolute;
-  top: 0;
-  left: 0;
-  padding: 0.6rem;
-  background: white;
-  border: 2px solid black;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: monospace;
-}
-
-.homeButton:hover {
-  background: #fbbf24;
-  transform: translate(-2px, -2px);
-  box-shadow: 3px 3px 0 0 black;
 }
 
 .headerContent {
@@ -64,11 +45,33 @@
   margin-top: 0.5rem;
 }
 
+.closeButton {
+  position: absolute;
+  top: 0;
+  right: 0;
+  padding: 0.6rem;
+  background: white;
+  border: 2px solid black;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.closeButton:hover {
+  background: #ff4d4d;
+  color: white;
+  transform: translate(-2px, -2px);
+  box-shadow: 3px 3px 0 0 black;
+}
+
 .verifiedBadge {
-  display: inline-flex;
+  position: absolute;
+  display: flex;
   align-items: center;
   gap: 6px;
-  margin-top: 12px;
+  margin-top: 10px;
   padding: 6px 12px;
   background: #e8f5e9;
   border: 2px solid #2e7d32;
@@ -76,6 +79,37 @@
   color: #2e7d32;
   font-size: 0.75rem;
   font-weight: 700;
+}
+
+/* === Tabs === */
+.tabContainer {
+  display: flex;
+  justify-content: center;
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+  border-bottom: 2px solid #eee;
+  padding-bottom: 0.5rem;
+}
+
+.tabItem {
+  background: none;
+  border: none;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #999;
+  cursor: pointer;
+  padding: 0.5rem 0.2rem;
+  font-family: monospace;
+  transition: all 0.2s;
+}
+
+.tabItem:hover {
+  color: black;
+}
+
+.activeTab {
+  color: black;
+  border-bottom: 3px solid black;
 }
 
 /* === Section === */
@@ -93,10 +127,17 @@
 }
 
 .sectionTitle::before {
-  content: '';
+  content: "";
   width: 4px;
   height: 20px;
   background: black;
+}
+
+.desc {
+  font-size: 0.85rem;
+  color: #666;
+  margin-bottom: 1rem;
+  line-height: 1.5;
 }
 
 /* === Profile Photo === */
@@ -128,10 +169,6 @@
   box-shadow: 4px 4px 0 0 black;
 }
 
-.avatar:hover .avatarOverlay {
-  opacity: 1;
-}
-
 .avatar img {
   width: 100%;
   height: 100%;
@@ -154,6 +191,10 @@
   transition: opacity 0.2s;
 }
 
+.avatar:hover .avatarOverlay {
+  opacity: 1;
+}
+
 .avatarInfo {
   display: flex;
   flex-direction: column;
@@ -168,7 +209,7 @@
   margin: 0;
 }
 
-/* === Grid === */
+/* === Grid / Inputs === */
 .grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -204,6 +245,8 @@
   font-family: monospace;
   font-weight: 600;
   transition: all 0.2s;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .input:focus {
@@ -212,18 +255,85 @@
   box-shadow: 3px 3px 0 0 black;
 }
 
-.ageDisplay {
-  font-size: 0.75rem;
+.inputLocked {
+  background-color: #f0f0f0 !important;
+  border-color: #ccc !important;
   color: #666;
-  margin-top: 4px;
-  font-weight: 600;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
 }
 
-.desc {
-  font-size: 0.85rem;
-  color: #666;
-  margin-bottom: 1rem;
-  line-height: 1.5;
+.inputLocked:focus {
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* 입력창 에러 */
+.inputError {
+  border-color: #d32f2f !important;
+  background-color: #fff9f9 !important;
+}
+
+.errorText {
+  font-size: 0.7rem;
+  color: #d32f2f;
+  margin-top: 4px;
+  font-weight: 700;
+  font-family: monospace;
+}
+
+/* === Autocomplete (MBTI) === */
+.autocompleteWrapper {
+  position: relative;
+  width: 100%;
+  display: flex;
+}
+
+.autocompleteWrapper .input {
+  width: 100%;
+}
+
+.suggestionList {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 2px solid black;
+  box-shadow: 4px 4px 0 0 black;
+  z-index: 50;
+  margin: 4px 0 0 0;
+  padding: 0;
+  list-style: none;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.suggestionItem {
+  padding: 0.8rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  border-bottom: 1px solid #eee;
+  font-family: monospace;
+  font-weight: 700;
+  transition: background 0.2s;
+}
+
+.suggestionItem:hover {
+  background: #fbbf24;
+}
+
+.clockIcon {
+  color: #ccc;
+  font-size: 0.8rem;
+}
+
+.deleteIcon {
+  margin-left: auto;
+  color: #ccc;
 }
 
 /* === Travel Styles === */
@@ -256,7 +366,7 @@
   box-shadow: 3px 3px 0 0 black;
 }
 
-.travelStyleBtn.active {
+.active {
   background: #fbbf24;
   color: black;
   transform: translate(-2px, -2px);
@@ -336,7 +446,316 @@
   cursor: not-allowed;
 }
 
-.saveButton.saving {
+.saving {
+  background: #fbbf24;
+  color: black;
+}
+
+/* === Account / Settings Wrapper === */
+.settingsWrapper {
+  width: 100%;
+}
+
+/* === Accordion === */
+.accordionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  padding: 0.5rem 0;
+  transition: opacity 0.2s;
+}
+
+.accordionHeader:hover {
+  opacity: 0.7;
+}
+
+.accordionHeader .sectionTitle {
+  margin-bottom: 0;
+}
+
+.accordionContent {
+  margin-top: 1rem;
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* === Social / Settings Lists === */
+.socialStatusCard,
+.settingList {
+  border: 2px solid black;
+  background: white;
+  padding: 1rem;
+}
+
+.socialItem,
+.settingItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 0.8rem 0;
+}
+
+.settingItem:not(:last-child) {
+  border-bottom: 1px solid #eee;
+}
+
+.socialInfo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* 텍스트 영역 */
+.socialText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+}
+
+.socialName {
+  margin: 0;
+  font-weight: 900;
+  font-size: 0.9rem;
+  font-family: monospace;
+}
+
+.socialDetail {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #666;
+  font-family: monospace;
+}
+
+.socialIcon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid black;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  font-size: 1.2rem;
+}
+
+.kakao {
+  background-color: #fee500 !important;
+  color: #3c1e1e !important;
+}
+
+.connectionBadge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #666;
+  background: #f0f0f0;
+  padding: 4px 8px;
+  border: 1px solid black;
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.notConnected {
+  background-color: #fce4ec !important;
+  color: #d81b60 !important;
+  border-color: #d81b60 !important;
+}
+
+/* === Toggle switch === */
+.privacyToggleArea {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding-top: 1rem;
+}
+
+.toggleRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  font-size: 0.85rem;
+  font-weight: 700;
+  padding: 0.4rem 0;
+}
+
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background-color: #eee;
+  border: 2px solid black;
+  transition: 0.2s;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 14px;
+  width: 14px;
+  left: 3px;
+  bottom: 3px;
+  background-color: black;
+  transition: 0.2s;
+}
+
+.switch input:checked + .slider {
+  background-color: #fbbf24;
+}
+.switch input:checked + .slider:before {
+  transform: translateX(20px);
+}
+
+/* === Notification setting text === */
+.settingText {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.settingLabel {
+  font-size: 0.9rem;
+  font-weight: 800;
+  margin: 0;
+}
+
+.settingDesc {
+  font-size: 0.75rem;
+  color: #888;
+  margin: 0;
+}
+
+/* === Adult verify box === */
+.adultVerifyBox {
+  background: #fff0f0;
+  border: 2px solid black;
+  padding: 1.5rem;
+}
+
+.verifyTitle {
+  font-weight: 900;
+  margin-bottom: 0.5rem;
+  color: #d32f2f;
+}
+
+.verifyDesc {
+  font-size: 0.85rem;
+  line-height: 1.5;
+  margin-bottom: 1rem;
+}
+
+.confirmCheckboxArea {
+  margin-top: 0.8rem;
+}
+
+.legalWarning {
+  font-size: 0.75rem;
+  color: #666;
+  margin-top: 1rem;
+  font-style: italic;
+}
+
+/* Custom checkbox */
+.checkboxContainer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.checkboxContainer input {
+  display: none;
+}
+
+.checkboxLabel {
+  font-family: monospace;
+}
+
+.checkmark {
+  width: 20px;
+  height: 20px;
+  border: 2px solid black;
+  background: white;
+  position: relative;
+}
+
+.checkboxContainer input:checked ~ .checkmark {
+  background: #fbbf24;
+}
+
+.checkboxContainer input:checked ~ .checkmark:after {
+  content: "✔";
+  position: absolute;
+  left: 3px;
+  top: -2px;
+  font-size: 14px;
+}
+
+/* disabled styles */
+.checkboxContainer input:disabled ~ .checkboxLabel {
+  color: #999;
+  cursor: not-allowed;
+}
+.checkboxContainer input:disabled ~ .checkmark {
+  background-color: #eee;
+  border-color: #ccc;
+  cursor: not-allowed;
+}
+
+/* === Support === */
+.supportGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.supportBtn,
+.supportBtnPrimary {
+  padding: 0.8rem;
+  border: 2px solid black;
+  font-family: monospace;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.supportBtn {
+  background: white;
+}
+
+.supportBtnPrimary {
+  background: black;
+  color: white;
+  grid-column: span 2;
+}
+
+.supportBtnPrimary:hover {
   background: #fbbf24;
   color: black;
 }
@@ -368,13 +787,90 @@
   box-shadow: 5px 5px 0 0 #d32f2f;
 }
 
+/* === Report tab === */
+.reportSummary {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.statusBox {
+  flex: 1;
+  padding: 1rem;
+  border: 2px solid black;
+  text-align: center;
+}
+
+.statusLabel {
+  display: block;
+  font-size: 0.75rem;
+  color: #666;
+  margin-bottom: 0.5rem;
+}
+
+.statusValue {
+  font-size: 1.1rem;
+  font-weight: 900;
+}
+
+.reportTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: monospace;
+  font-size: 0.85rem;
+}
+
+.reportTable th,
+.reportTable td {
+  border: 1px solid #ddd;
+  padding: 0.8rem;
+  text-align: center;
+}
+
+.reportTable th {
+  background: #f5f5f5;
+  font-weight: 800;
+}
+
+.guideCard {
+  background: #fff9db;
+  border: 2px solid black;
+  padding: 1.5rem;
+}
+
+.guideList {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1.5rem 0;
+}
+
+.guideList li {
+  font-size: 0.9rem;
+  margin-bottom: 0.6rem;
+  line-height: 1.4;
+}
+
+.importantNote {
+  border-top: 2px dashed black;
+  padding-top: 1rem;
+  color: #d32f2f;
+}
+
+.noteTitle {
+  font-weight: 900;
+  font-size: 0.95rem;
+  margin-bottom: 0.5rem;
+}
+
+.noteText {
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
+
 /* === Modal === */
 .modalOverlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   background: rgba(0, 0, 0, 0.5);
   display: flex;
   align-items: center;
