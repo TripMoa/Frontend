@@ -104,7 +104,7 @@ body {
 
 .story-image {
     width: 100%;
-    height: 200px;
+    height: 250px;
     object-fit: cover;
     display: block;
 }
@@ -655,3 +655,6 @@ body {
         grid-template-columns: 1fr;
     }
 }
+
+
+
