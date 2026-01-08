@@ -126,16 +126,17 @@ export function useMate() {
     };
   };
 
-  const incrementViews = (postId: string): void => {
+  const incrementViews = (postId: string) => {
     setPostStats(prev => ({
       ...prev,
       [postId]: {
         ...prev[postId],
-        views: (prev[postId]?.views ?? DEFAULT_POSTS.find(p => p.id === postId)?.views ?? 0) + 1,
-        likes: prev[postId]?.likes ?? DEFAULT_POSTS.find(p => p.id === postId)?.likes ?? 0,
+        views: (prev[postId]?.views ?? DEFAULT_POSTS.find(p => p.id === postId)?.views ?? 0) + 1
       }
     }));
   };
+
+
 
   const toggleLike = (postId: string): void => {
     const defaultLikes = DEFAULT_POSTS.find(p => p.id === postId)?.likes ?? 0;
@@ -624,6 +625,7 @@ export function useMate() {
     // Posts
     visiblePosts,
     filteredPosts,
+    incrementViews,
     totalPages,
     likedPostIds,
     removedPosts,
