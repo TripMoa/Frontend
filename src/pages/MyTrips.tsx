@@ -115,24 +115,29 @@ export default function MyTrips() {
 
       {/* 모달 UI */}
       {isModalOpen && (
-        <div className="modal-overlay" onClick={() => setIsModalOpen(false)}>
+        <div
+          className="modal-overlay active"
+          onClick={() => setIsModalOpen(false)}
+        >
           <div
-            className="modal-content"
-            style={{ maxWidth: "500px" }}
+            className="modal-content mission-modal"
+            style={{ width: 650, maxWidth: 700 }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="modal-header">
-              <h3 className="modal-title">CREATE NEW MISSION</h3>
+            {/* 사진과 동일한 블랙 헤더 영역 */}
+            <div className="modal-header-black">
+              <h3 className="modal-title-black">CREATE NEW MISSION</h3>
               <button
-                className="close-btn"
+                className="close-btn-black"
                 onClick={() => setIsModalOpen(false)}
               >
-                ×
+                CLOSE [X]
               </button>
             </div>
-            <form onSubmit={handleSubmit} className="modal-form">
+
+            <form onSubmit={handleSubmit} className="modal-body-neob">
               <div className="input-group">
-                <label>여행 제목</label>
+                <label>MISSION TITLE</label>
                 <input
                   type="text"
                   value={formData.title}
@@ -143,9 +148,10 @@ export default function MyTrips() {
                   required
                 />
               </div>
+
               <div className="date-row">
                 <div className="input-group">
-                  <label>출발 날짜</label>
+                  <label>START DATE</label>
                   <input
                     type="date"
                     value={formData.startDate}
@@ -156,7 +162,7 @@ export default function MyTrips() {
                   />
                 </div>
                 <div className="input-group">
-                  <label>복귀 날짜</label>
+                  <label>END DATE</label>
                   <input
                     type="date"
                     value={formData.endDate}
@@ -168,68 +174,54 @@ export default function MyTrips() {
                   />
                 </div>
               </div>
+
               <div className="input-group">
-                <label>공개 여부</label>
-                <div className="radio-group">
-                  <label className="radio-label">
-                    <input
-                      type="radio"
-                      checked={formData.visibility === "public"}
-                      onChange={() =>
-                        setFormData({ ...formData, visibility: "public" })
-                      }
-                    />
-                    <span>PUBLIC</span>
-                  </label>
-                  <label className="radio-label">
-                    <input
-                      type="radio"
-                      checked={formData.visibility === "private"}
-                      onChange={() =>
-                        setFormData({ ...formData, visibility: "private" })
-                      }
-                    />
-                    <span>PRIVATE</span>
-                  </label>
-                </div>
-              </div>
-              <div className="input-group">
-                <label>초대할 에이전트</label>
-                <div className="invite-input-wrapper">
+                <label>AGENTS</label>
+                <div className="agent-input-row">
                   <input
                     type="text"
                     value={inviteeInput}
                     onChange={(e) => setInviteeInput(e.target.value)}
-                    onKeyDown={(e) =>
-                      e.key === "Enter" &&
-                      (e.preventDefault(),
-                      (formData.invitees.includes(inviteeInput) ||
-                        setFormData({
-                          ...formData,
-                          invitees: [...formData.invitees, inviteeInput],
-                        })) &&
-                        setInviteeInput(""))
-                    }
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        if (
+                          inviteeInput &&
+                          !formData.invitees.includes(inviteeInput)
+                        ) {
+                          setFormData({
+                            ...formData,
+                            invitees: [...formData.invitees, inviteeInput],
+                          });
+                          setInviteeInput("");
+                        }
+                      }
+                    }}
                     placeholder="아이디 입력"
                   />
                   <button
                     type="button"
-                    onClick={() =>
-                      (formData.invitees.includes(inviteeInput) ||
+                    onClick={() => {
+                      if (
+                        inviteeInput &&
+                        !formData.invitees.includes(inviteeInput)
+                      ) {
                         setFormData({
                           ...formData,
                           invitees: [...formData.invitees, inviteeInput],
-                        })) &&
-                      setInviteeInput("")
-                    }
-                    className="add-invite-btn"
+                        });
+                        setInviteeInput("");
+                      }
+                    }}
+                    className="add-text-btn"
                   >
                     ADD
                   </button>
                 </div>
-                <div className="invitee-list">
+                {/* 추가된 에이전트 태그 목록 */}
+                <div className="agent-tag-list">
                   {formData.invitees.map((name) => (
-                    <span key={name} className="invitee-tag">
+                    <span key={name} className="agent-tag">
                       {name}
                       <button
                         type="button"
@@ -248,8 +240,9 @@ export default function MyTrips() {
                   ))}
                 </div>
               </div>
-              <button type="submit" className="submit-btn">
-                작전 수립 시작
+
+              <button type="submit" className="submit-btn-black">
+                SAVE MISSION
               </button>
             </form>
           </div>
@@ -257,22 +250,24 @@ export default function MyTrips() {
       )}
 
       <div className="container" id="trip-list-ui">
-        <div className="section-header">
-          <div>
+        <div className="section-header-neob">
+          <div className="header-content">
             <h2 className="sec-title">MY PLAN BOARD</h2>
             <p className="sec-desc">수립된 여행 작전 목록입니다.</p>
           </div>
 
-          <div className="filter-tabs">
-            {(["all", "public", "private"] as Visibility[]).map((type) => (
-              <button
-                key={type}
-                className={`filter-btn ${filter === type ? "active" : ""}`}
-                onClick={() => setFilter(type)}
-              >
-                {type === "all" ? "ALL SECTORS" : type.toUpperCase()}
-              </button>
-            ))}
+          <div className="filter-wrapper-neob">
+            <div className="filter-tabs">
+              {(["all", "public", "private"] as Visibility[]).map((type) => (
+                <button
+                  key={type}
+                  className={`filter-btn ${filter === type ? "active" : ""}`}
+                  onClick={() => setFilter(type)}
+                >
+                  {type === "all" ? "ALL SECTORS" : type.toUpperCase()}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -297,28 +292,27 @@ export default function MyTrips() {
                   }}
                   onClick={() => window.location.assign("/workspace")}
                 >
+                  {/* 왼쪽 사이드 영역 */}
                   <div
                     className="mt-side"
                     style={{
-                      background: isEnd ? "#ddd" : "#000",
-                      color: isEnd ? "#555" : "#fff",
-                      borderRight: "2px solid #000",
+                      background: isEnd ? "#eee" : "#000",
+                      color: isEnd ? "#999" : "#fff",
                     }}
                   >
-                    <span style={{ fontWeight: "bold" }}>
+                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>
                       {isEnd ? "STATUS" : "D-DAY"}
                     </span>
-                    <span
-                      style={{
-                        fontSize: isEnd ? "20px" : "24px",
-                        fontWeight: "900",
-                      }}
-                    >
+                    <span style={{ fontSize: "24px", fontWeight: "900" }}>
                       {dDayText}
                     </span>
                   </div>
 
-                  <div className="mt-center">
+                  {/* 메인 정보 영역 */}
+                  <div
+                    className="mt-center"
+                    style={{ flex: 1, padding: "20px" }}
+                  >
                     <div
                       className="top-badges"
                       style={{ justifyContent: "space-between" }}

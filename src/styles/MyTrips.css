@@ -1,41 +1,49 @@
-/* mytrips.css */
+/* MyTrips.css - 통합 최종본 */
 
-/* 플로팅 액션 버튼 (FAB) */
-.fab-btn {
-  position: fixed;
-  bottom: 30px; /* 40px -> 30px 더 구석으로 */
-  right: 30px;
+/* === [1. 헤더 및 필터 영역] === */
+.section-header-neob {
+  position: relative;
+  background: #fff;
+  border: 3px solid #000;
+  padding: 40px 30px 30px 30px;
+  margin-bottom: 50px;
+  box-shadow: 10px 10px 0px #000;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.sys-badge {
+  position: absolute;
+  top: -18px;
+  right: 25px;
   background: #000;
   color: #fff;
-  border: 2px solid #fff;
-  outline: 3px solid #000;
-  height: 50px; /* 60px -> 50px 축소 */
-  padding: 0 18px; /* 25px -> 18px 축소 */
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  padding: 5px 15px;
   font-family: var(--font-mono);
-  font-weight: 800;
-  font-size: 14px; /* 18px -> 14px 축소 */
-  cursor: pointer;
-  z-index: 1500;
-  box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.5); /* 그림자도 살짝 축소 */
-  transition: transform 0.2s, box-shadow 0.2s;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 1px;
 }
 
-.fab-btn:hover {
-  transform: translate(-4px, -4px);
-  box-shadow: 10px 10px 0px rgba(0, 0, 0, 0.5);
-  background: var(--accent);
-  outline-color: var(--accent);
+.sec-title {
+  font-family: var(--font-mono);
+  font-size: 38px;
+  font-weight: 900;
+  margin-bottom: 5px;
 }
 
-.fab-btn:active {
-  transform: translate(2px, 2px);
-  box-shadow: 2px 2px 0px rgba(0, 0, 0, 0.5);
+.sec-desc {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: #666;
 }
 
-/* 상단 필터 탭 */
+.filter-wrapper-neob {
+  border-top: 2px solid #000;
+  padding-top: 20px;
+}
+
 .filter-tabs {
   display: flex;
   gap: 10px;
@@ -43,33 +51,66 @@
 
 .filter-btn {
   font-family: var(--font-mono);
-  font-weight: bold;
-  font-size: 14px;
-  padding: 8px 16px;
-  border: 2px solid transparent;
-  background: transparent;
-  color: #999;
+  font-weight: 800;
+  border: 2px solid #000;
+  background: #fff;
+  color: #000;
+  padding: 8px 18px;
   cursor: pointer;
-  border-bottom: 2px solid transparent;
+  transition: all 0.1s;
 }
 
 .filter-btn:hover {
-  color: #000;
+  transform: translate(-3px, -3px);
+  box-shadow: 3px 3px 0px #000;
+  background: #f0f0f0;
 }
 
 .filter-btn.active {
-  color: #000;
-  border: 2px solid #000;
-  background: #fff;
-  box-shadow: 2px 2px 0px #000;
+  background: #000;
+  color: #fff;
+  box-shadow: none;
+  transform: none;
 }
 
+/* === [2. 여행 목록 그리드 및 카드] === */
 .trip-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr); /* 2열 배치 */
+  gap: 25px;
+}
+
+.trip-card {
+  display: flex;
+  background: #fff;
+  border: 3px solid #000; /* 테두리 강화 */
+  box-shadow: 8px 8px 0px #000; /* 강한 그림자 */
+  transition: all 0.2s;
+  height: 100%;
+}
+
+.trip-card:hover {
+  transform: translate(-4px, -4px);
+  box-shadow: 12px 12px 0px #000;
+}
+
+.trip-card.is-end {
+  opacity: 0.7;
+  filter: grayscale(0.5);
+}
+
+.mt-side {
+  width: 100px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  align-items: center;
+  justify-content: center;
+  border-right: 3px solid #000; /* 구분선 강화 */
+  font-family: var(--font-mono);
+  font-weight: 900;
 }
 
+/* === [3. 카드 내부 컴포넌트] === */
 .top-badges {
   display: flex;
   align-items: center;
@@ -79,19 +120,20 @@
 
 .sys-tag.private {
   background: #fff;
-  border: 1px solid #000;
+  border: 2px solid #000;
   color: #000;
 }
+
 .sys-tag.public {
   background: var(--accent);
   color: #fff;
-  border: 1px solid #000;
+  border: 2px solid #000;
 }
 
 .participants {
   margin-top: 15px;
   padding-top: 10px;
-  border-top: 1px dashed #ccc;
+  border-top: 2px solid #000;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -106,112 +148,143 @@
 
 .p-avatars {
   display: flex;
-  gap: -5px;
 }
 
 .p-circle {
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   background: #eee;
-  border: 2px solid #fff;
-  box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.2);
+  border: 2px solid #000;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
-  font-weight: bold;
+  font-size: 11px;
+  font-weight: 900;
   font-family: var(--font-mono);
-  color: #333;
-  margin-left: -8px;
+  margin-left: -10px;
 }
+
 .p-circle:first-child {
   margin-left: 0;
 }
 
-/* 여행 카드 삭제 버튼 */
 .delete-trip-btn {
   background: transparent;
   border: none;
   color: #999;
   cursor: pointer;
   padding: 5px;
-  font-size: 16px;
-  transition: color 0.2s, transform 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  font-size: 18px;
+  transition: all 0.2s;
 }
 
 .delete-trip-btn:hover {
-  color: #ff4d4d; /* 삭제 강조색 */
+  color: #ff4d4d;
   transform: scale(1.1);
 }
 
-.delete-trip-btn:active {
-  transform: scale(0.9);
-}
-
-/* 모달 관련 스타일 */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.7);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 9999;
-}
-
+/* === [4. 모달 스타일] === */
 .page-section .modal-overlay {
   display: flex;
 }
 
-.modal-content {
-  background: #fff;
-  border: 3px solid #000;
-  padding: 30px;
-  width: 90%;
-  max-width: 500px;
-  box-shadow: 10px 10px 0px #000;
+.mission-modal {
+  padding: 0 !important;
+  border: 3px solid #000 !important;
+  border-radius: 0 !important;
+  box-shadow: 15px 15px 0px #000 !important;
+  max-width: 800px;
 }
 
-.modal-header {
+.modal-header-black {
+  background: #000;
+  color: #fff;
+  padding: 12px 20px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 25px;
-  border-bottom: 2px solid #000;
-  padding-bottom: 10px;
 }
 
-.modal-title {
-  font-family: var(--font-mono);
+.modal-title-black {
+  font-family: "Share Tech Mono", monospace;
+  font-size: 18px;
   font-weight: 900;
-  font-size: 20px;
+  letter-spacing: 1px;
 }
 
-.close-btn {
+.close-btn-black {
   background: none;
-  border: none;
-  font-size: 28px;
+  border: 1px solid #fff;
+  color: #fff;
+  padding: 4px 8px;
+  font-size: 12px;
   font-weight: bold;
   cursor: pointer;
 }
 
-.modal-form {
+.close-btn-black:hover {
+  background: #fff;
+  color: #000;
+}
+
+.modal-body-neob {
+  padding: 30px;
   display: flex;
   flex-direction: column;
   gap: 20px;
 }
 
-.input-group {
+.modal-body-neob .input-group label {
+  font-weight: 900;
+  font-size: 14px;
+  color: #000;
+  margin-bottom: 8px;
+  letter-spacing: 0.5px;
+}
+
+.modal-body-neob input[type="text"],
+.modal-body-neob input[type="date"] {
+  border: 2px solid #eee !important;
+  padding: 12px;
+  font-weight: bold;
+}
+
+.modal-body-neob input:focus {
+  border-color: #000 !important;
+  outline: none;
+}
+
+.submit-btn-black {
+  margin-top: 10px;
+  background: #000;
+  color: #fff;
+  border: none;
+  padding: 18px;
+  font-weight: 900;
+  font-size: 18px;
+  letter-spacing: 2px;
+  cursor: pointer;
+  transition: 0.1s;
+}
+
+.submit-btn-black:hover {
+  background: #333;
+  transform: translateY(-2px);
+}
+
+.radio-group-neob {
   display: flex;
-  flex-direction: column;
-  gap: 5px;
+  gap: 15px;
+}
+
+.radio-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: bold;
+  font-size: 14px;
+  cursor: pointer;
 }
 
 .input-group label {
@@ -221,125 +294,73 @@
   color: #555;
 }
 
-.input-group input {
-  padding: 10px;
-  border: 2px solid #000;
-  font-family: inherit;
-  font-size: 15px;
-  outline: none;
-}
-
-.input-group input:focus {
-  background: #f0f0f0;
-  box-shadow: 4px 4px 0px var(--accent);
-}
-
 .date-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 15px;
 }
 
-.submit-btn {
-  margin-top: 10px;
-  background: #000;
-  color: #fff;
-  border: none;
-  padding: 15px;
-  font-family: var(--font-mono);
-  font-weight: 800;
-  font-size: 16px;
-  cursor: pointer;
-  transition: 0.2s;
-}
-
-.submit-btn:hover {
-  background: var(--accent);
-  transform: translate(-2px, -2px);
-  box-shadow: 4px 4px 0px #000;
-}
-
-.radio-group {
-  display: flex;
-  gap: 20px;
-  padding: 5px 0;
-}
-
-.radio-label {
+/* 초대 에이전트 태그 */
+/* AGENTS 가로 배치 로우 */
+.agent-input-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  font-family: var(--font-mono);
-  font-weight: bold;
-  font-size: 14px;
+  gap: 12px; /* 입력창과 ADD 사이 간격 */
 }
 
-.radio-label input[type="radio"] {
-  appearance: none;
-  width: 18px;
-  height: 18px;
-  border: 2px solid #000;
-  border-radius: 50%;
-  cursor: pointer;
-  position: relative;
-}
-
-.radio-label input[type="radio"]:checked {
-  background-color: var(--accent);
-}
-
-.radio-label input[type="radio"]:checked::after {
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 8px;
-  height: 8px;
-  background: #000;
-  border-radius: 50%;
-}
-
-/* 초대 입력창 레이아웃 */
-.invite-input-wrapper {
-  display: flex;
-  gap: 10px;
-}
-
-.invite-input-wrapper input {
+.agent-input-row input {
   flex: 1;
+  border: 1px solid #ddd !important; /* 이미지처럼 얇은 테두리 */
+  padding: 10px;
+  font-size: 14px;
+  background: #fff;
 }
 
-.add-invite-btn {
-  background: #000;
-  color: #fff;
+/* 텍스트 형태의 ADD 버튼 */
+.add-text-btn {
+  background: none;
   border: none;
-  padding: 0 15px;
-  font-family: var(--font-mono);
-  font-weight: bold;
+  font-family: var(--font-mono); /* 고정폭 폰트 사용 권장 */
+  font-weight: 900;
+  font-size: 16px;
+  color: #000;
   cursor: pointer;
+  padding: 0;
+  white-space: nowrap;
+  transition: color 0.2s;
 }
 
-/* 추가된 에이전트 태그 목록 */
-.invitee-list {
+.add-text-btn:hover {
+  color: #666;
+}
+
+/* 추가된 태그 디자인 (네오 브루탈리즘 스타일 유지) */
+.agent-tag-list {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 10px;
-  min-height: 30px;
-
-  max-height: 120px;
-  overflow-y: auto;
-  padding-right: 5px;
 }
 
-.invitee-list::-webkit-scrollbar {
-  width: 4px;
+.agent-tag {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: #fff;
+  border: 2px solid #000;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: bold;
+  box-shadow: 2px 2px 0px #000;
 }
-.invitee-list::-webkit-scrollbar-thumb {
-  background: #000;
-  border-radius: 10px;
+
+.agent-tag button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 14px;
+  padding: 0;
 }
 
 .invitee-tag {
@@ -352,33 +373,43 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  animation: fadeIn 0.2s ease-out;
 }
 
-.invitee-tag button {
-  background: none;
-  border: none;
-  font-size: 16px;
-  cursor: pointer;
-  padding: 0;
+/* === [5. FAB 및 미디어 쿼리] === */
+.fab-btn {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  background: #000;
+  color: #fff;
+  border: 2px solid #fff;
+  outline: 3px solid #000;
+  height: 50px;
+  padding: 0 18px;
   display: flex;
   align-items: center;
-  color: #ff4d4d;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-weight: 800;
+  font-size: 14px;
+  cursor: pointer;
+  z-index: 1500;
+  box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.5);
+  transition: transform 0.2s, box-shadow 0.2s;
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(5px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.fab-btn:hover {
+  transform: translate(-4px, -4px);
+  box-shadow: 10px 10px 0px rgba(0, 0, 0, 0.5);
+  background: var(--accent);
+  outline-color: var(--accent);
 }
 
-/* 모바일 대응 */
-@media (max-width: 900px) {
+@media (max-width: 850px) {
+  .trip-grid {
+    grid-template-columns: 1fr; /* 1열 전환 */
+  }
+
   .fab-btn {
     bottom: 20px;
     right: 20px;
