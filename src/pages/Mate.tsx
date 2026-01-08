@@ -41,6 +41,7 @@ export default function Mate(): JSX.Element {
     removedPosts,
     isLikedOnlyMode,
     isRemovedOnlyMode,
+    isAppliedOnlyMode,
     hasActiveFilters,
     allPosts,
     
@@ -62,6 +63,7 @@ export default function Mate(): JSX.Element {
     // Applications
     myApplications,
     receivedApplications,
+    allReceivedApplications,
     getApplicantStatus,
     approvedApplicants,
     
@@ -77,6 +79,7 @@ export default function Mate(): JSX.Element {
     handlePostSubmit,
     handleApprove,
     handleReject,
+    handleDeletePost,
     
     // Chat Handlers
     sendOneOnOneMessage,
@@ -84,6 +87,7 @@ export default function Mate(): JSX.Element {
     getOrCreateOneOnOneChat,
     leaveOneOnOneChat,
     leaveGroupChat,
+    createOneOnOneChat,
     createGroupChat,
   } = useMate();
 
@@ -203,6 +207,9 @@ export default function Mate(): JSX.Element {
                           {option.value === "removed-only" && removedPosts.length > 0 && (
                             <span className="ml-2 text-xs opacity-60">({removedPosts.length})</span>
                           )}
+                          {option.value === "applied-only" && myApplications.length > 0 && (
+                            <span className="ml-2 text-xs opacity-60">({myApplications.length})</span>
+                          )}
                         </button>
                       ))}
                     </div>
@@ -235,6 +242,11 @@ export default function Mate(): JSX.Element {
                 <p className="text-black/60 text-lg font-bold uppercase">NO PASSED POSTS</p>
                 <p className="text-black/40 text-sm mt-2">// 아직 패스한 게시물이 없습니다</p>
               </>
+            ) : isAppliedOnlyMode ? (
+              <>
+                <p className="text-black/60 text-lg font-bold uppercase">NO APPLIED POSTS</p>
+                <p className="text-black/40 text-sm mt-2">// 아직 신청한 게시물이 없습니다</p>
+              </>
             ) : (
               <>
                 <p className="text-black/60 text-lg font-bold uppercase">NO POSTS FOUND</p>
@@ -256,6 +268,7 @@ export default function Mate(): JSX.Element {
                 isLiked={likedPostIds.includes(post.id)}
                 isRemoved={removedPosts.includes(post.id)}
                 isRemovedMode={isRemovedOnlyMode}
+                onDelete={handleDeletePost}
                 onCardClick={handleCardClick}
                 onLike={handleLike}
                 onRemove={handleRemove}
@@ -339,12 +352,12 @@ export default function Mate(): JSX.Element {
         groupChats={groupChats}
         allPosts={allPosts}
         myApplications={myApplications}
-        receivedApplications={receivedApplications}
+        receivedApplications={allReceivedApplications}
         approvedApplicants={approvedApplicants}
         onSendOneOnOneMessage={sendOneOnOneMessage}
         onSendGroupMessage={sendGroupMessage}
-        onCreateOneOnOneChat={handleCreateOneOnOneChat}
-        onCreateGroupChat={handleCreateGroupChat}
+        onCreateOneOnOneChat={createOneOnOneChat}
+        onCreateGroupChat={createGroupChat}
         onLeaveOneOnOneChat={leaveOneOnOneChat}
         onLeaveGroupChat={leaveGroupChat}
       />

@@ -1,4 +1,4 @@
-// pages/MateDetail.tsx (무한 루프 수정)
+// pages/MateDetail.tsx (수정 완료 - receivedApplications 연동)
 
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
@@ -14,7 +14,8 @@ export default function MateDetail(): JSX.Element {
   const { postId } = useParams<{ postId: string }>();
   const navigate = useNavigate();
 
-  const { allPosts, likedPostIds, handleLike: mateLike } = useMate();
+  // ✅ handleSendApplication 추가
+  const { allPosts, likedPostIds, handleLike: mateLike, handleSendApplication } = useMate();
 
   const [post, setPost] = useState<Post | null>(null);
   const [showApplyForm, setShowApplyForm] = useState(false);
@@ -56,32 +57,18 @@ export default function MateDetail(): JSX.Element {
     mateLike(postId, e); // useMate가 allPosts 업데이트 → 위 useEffect가 자동으로 처리
   };
 
-  /** 신청 메시지 제출 */
+  /** 신청 메시지 제출 - ✅ 수정된 부분 */
   const handleApplySubmit = () => {
     if (!postId || !applyMessage.trim() || !post) return;
 
-    const list = JSON.parse(localStorage.getItem("myApplications") || "[]");
-
-    list.push({
-      id: `APP_${Date.now()}`,
-      postId,
-      message: applyMessage,
-      appliedDate: new Date().toISOString(),
-      status: "pending",
-      applicant: {
-        name: "나",
-        email: "user@example.com",
-        age: 25,
-        gender: "성별무관",
-        avatar: "👤",
-      },
-    });
-
-    localStorage.setItem("myApplications", JSON.stringify(list));
+    // ✅ useMate의 handleSendApplication 사용
+    // 이 함수가 myApplications와 receivedApplications 모두에 저장
+    handleSendApplication(post, applyMessage);
 
     setHasApplied(true);
     setShowApplyForm(false);
     setApplyMessage("");
+    navigate("/mate", { replace: true });
   };
 
   /** Loading UI */

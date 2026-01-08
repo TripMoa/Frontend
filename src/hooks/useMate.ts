@@ -1,4 +1,4 @@
-// hooks/useMate.ts
+// hooks/useMate.ts (타입 불일치 수정)
 
 import { useState, useEffect, MouseEvent } from "react";
 import type { Post, MyApplication, ReceivedApplication, PostStats, SelectedApplicant, Author } from "../components/mate/mate.types";
@@ -60,7 +60,7 @@ export function useMate() {
   const [rejectedApplicants, setRejectedApplicants] = useLocalStorage<string[]>(STORAGE_KEYS.REJECTED_APPLICANTS, []);
   const [postStats, setPostStats] = useLocalStorage<PostStats>(STORAGE_KEYS.POST_STATS, {});
   const [myApplications, setMyApplications] = useLocalStorage<MyApplication[]>(STORAGE_KEYS.MY_APPLICATIONS, []);
-  const [receivedApplications] = useLocalStorage<ReceivedApplication[]>(
+  const [receivedApplications, setReceivedApplications] = useLocalStorage<ReceivedApplication[]>(
     STORAGE_KEYS.RECEIVED_APPLICATIONS, 
     DEFAULT_RECEIVED_APPLICATIONS
   );
@@ -201,10 +201,12 @@ export function useMate() {
   // Special filter modes
   const isLikedOnlyMode = sortBy === "liked-only";
   const isRemovedOnlyMode = sortBy === "removed-only";
+  const isAppliedOnlyMode = sortBy === "applied-only";
 
   const filteredPosts = allPosts.filter((post) => {
     if (isLikedOnlyMode) return likedPostIds.includes(post.id);
     if (isRemovedOnlyMode) return removedPosts.includes(post.id);
+    if (isAppliedOnlyMode) return myApplications.some(app => app.postId === post.id);
 
     if (removedPosts.includes(post.id)) return false;
     const matchesTags = selectedTags.length === 0 || selectedTags.some((tag) => post.tags.includes(tag));
@@ -220,82 +222,138 @@ export function useMate() {
     return matchesTags && matchesLocation && matchesDate && matchesGender && matchesAge;
   });
 
-  const sortedPosts = [...filteredPosts].sort((a, b) => {
-    if (isLikedOnlyMode || isRemovedOnlyMode) return 0;
-    switch (sortBy) {
-      case "budget-high": return b.budgetNumber - a.budgetNumber;
-      case "budget-low": return a.budgetNumber - b.budgetNumber;
-      case "views": return b.views - a.views;
-      case "likes": return b.likes - a.likes;
-      default: return 0;
-    }
-  });
+  // 정렬 처리
+  let sortedPosts = [...filteredPosts];
+  if (sortBy === "views") {
+    sortedPosts.sort((a, b) => b.views - a.views);
+  } else if (sortBy === "likes") {
+    sortedPosts.sort((a, b) => b.likes - a.likes);
+  } else if (sortBy === "date") {
+    sortedPosts.sort((a, b) => new Date(b.dates.start).getTime() - new Date(a.dates.start).getTime());
+  } else if (sortBy === "budget-high") {
+    sortedPosts.sort((a, b) => b.budgetNumber - a.budgetNumber);
+  } else if (sortBy === "budget-low") {
+    sortedPosts.sort((a, b) => a.budgetNumber - b.budgetNumber);
+  }
 
-  const POSTS_PER_PAGE = 5;
-  const visiblePosts = sortedPosts.slice((currentPage - 1) * POSTS_PER_PAGE, currentPage * POSTS_PER_PAGE);
-  const totalPages = Math.ceil(filteredPosts.length / POSTS_PER_PAGE);
+  // 페이지네이션
+  const POSTS_PER_PAGE = 6;
+  const totalPages = Math.ceil(sortedPosts.length / POSTS_PER_PAGE);
+  const startIdx = (currentPage - 1) * POSTS_PER_PAGE;
+  const visiblePosts = sortedPosts.slice(startIdx, startIdx + POSTS_PER_PAGE);
 
+  // ✅ 채팅 관련 함수들 - 타입에 맞게 수정
+  
+  // ✅ 1:1 채팅 생성 (ChatSlideModal의 onCreateOneOnOneChat 시그니처에 맞춤)
+  const createOneOnOneChat = (postId: string, otherUserId: string): void => {
+    const post = allPosts.find(p => p.id === postId);
+    if (!post) return;
 
-  // 1:1 채팅 찾기 또는 생성
-  const getOrCreateOneOnOneChat = (postId: string, postAuthor: Author): OneOnOneChat => {
-    const existing = oneOnOneChats.find(
+    const isAuthor = post.author.email === CURRENT_USER.email;
+    const postAuthorId = post.author.email;
+    const applicantId = isAuthor ? otherUserId : CURRENT_USER.email;
+
+    // 이미 존재하는 채팅인지 확인
+    const existingChat = oneOnOneChats.find(
       chat => chat.postId === postId && 
-      chat.applicantId === CURRENT_USER.email
+             chat.postAuthorId === postAuthorId && 
+             chat.applicantId === applicantId
     );
-    
-    if (existing) return existing;
-    
+
+    if (!existingChat) {
+      const now = new Date().toISOString();
+      const newChat: OneOnOneChat = {
+        id: `chat-1on1-${Date.now()}`,
+        postId: postId,
+        postAuthorId: postAuthorId,
+        applicantId: applicantId,
+        messages: [],
+        createdAt: now,
+        lastMessageAt: now,
+      };
+
+      setOneOnOneChats(prev => [...prev, newChat]);
+    }
+  };
+
+  const getOrCreateOneOnOneChat = (participant: Author): OneOnOneChat => {
+    const existingChat = oneOnOneChats.find(
+      chat => chat.applicantId === participant.email || chat.postAuthorId === participant.email
+    );
+
+    if (existingChat) {
+      return existingChat;
+    }
+
+    const now = new Date().toISOString();
     const newChat: OneOnOneChat = {
-      id: `chat-1on1-${Date.now()}`,
-      postId,
-      postAuthorId: postAuthor.email,
-      applicantId: CURRENT_USER.email,
+      id: `chat-${Date.now()}`,
+      postId: "temp", // 임시값
+      postAuthorId: CURRENT_USER.email,
+      applicantId: participant.email,
       messages: [],
-      createdAt: new Date().toISOString(),
-      lastMessageAt: new Date().toISOString(),
+      createdAt: now,
+      lastMessageAt: now,
     };
-    
-    setOneOnOneChats([...oneOnOneChats, newChat]);
+
+    setOneOnOneChats(prev => [...prev, newChat]);
     return newChat;
   };
 
-  // 그룹 채팅 찾기
-  const getGroupChat = (postId: string): GroupChat | null => {
-    return groupChats.find(chat => chat.postId === postId) || null;
+  const getGroupChat = (postId: string): GroupChat | undefined => {
+    return groupChats.find(chat => chat.postId === postId);
   };
 
-  // 그룹 채팅 생성 (승인 시 자동 생성)
-  const createGroupChat = (post: Post, approvedMembers: Author[]): GroupChat => {
-    const existingChat = groupChats.find(chat => chat.postId === post.id);
+  // ✅ 그룹 채팅 생성 - 타입에 맞게 수정
+  const createGroupChat = (postId: string): void => {
+    const post = allPosts.find(p => p.id === postId);
+    if (!post) return;
+
+    const existingChat = groupChats.find(chat => chat.postId === postId);
     
+    // 승인된 신청자들 찾기
+    const approvedApps = receivedApplications.filter(app => 
+      app.postId === postId && approvedApplicants.includes(app.id)
+    );
+
+    const members: Author[] = [
+      post.author,
+      ...approvedApps.map(app => ({
+        name: app.applicant.name,
+        age: app.applicant.age,
+        gender: app.applicant.gender,
+        avatar: app.applicant.avatar,
+        email: app.applicant.email,
+        travelStyle: app.applicant.travelStyle || [],
+      }))
+    ];
+
     if (existingChat) {
-      // 이미 있으면 멤버만 업데이트
-      const updatedChat = {
-        ...existingChat,
-        members: approvedMembers,
+      // 기존 채팅 업데이트
+      setGroupChats(prev => 
+        prev.map(chat => 
+          chat.id === existingChat.id 
+            ? { ...chat, members }
+            : chat
+        )
+      );
+    } else {
+      // 새 그룹 채팅 생성
+      const now = new Date().toISOString();
+      const newGroupChat: GroupChat = {
+        id: `group-${Date.now()}`,
+        postId: post.id,
+        postDestination: post.destination,
+        postDates: post.dates,
+        members,
+        messages: [],
+        createdAt: now,
+        lastMessageAt: now,
       };
-      setGroupChats(groupChats.map(chat => 
-        chat.postId === post.id ? updatedChat : chat
-      ));
-      return updatedChat;
+      setGroupChats(prev => [...prev, newGroupChat]);
     }
-    
-    const newGroupChat: GroupChat = {
-      id: `chat-group-${Date.now()}`,
-      postId: post.id,
-      postDestination: post.destination,
-      postDates: post.dates,
-      members: approvedMembers,
-      messages: [],
-      createdAt: new Date().toISOString(),
-      lastMessageAt: new Date().toISOString(),
-    };
-    
-    setGroupChats([...groupChats, newGroupChat]);
-    return newGroupChat;
   };
 
-  // 1:1 채팅 메시지 전송
   const sendOneOnOneMessage = (chatId: string, content: string): void => {
     const newMessage: ChatMessage = {
       id: `msg-${Date.now()}`,
@@ -306,20 +364,20 @@ export function useMate() {
       timestamp: new Date().toISOString(),
       isRead: false,
     };
-    
-    setOneOnOneChats(oneOnOneChats.map(chat => {
-      if (chat.id === chatId) {
-        return {
-          ...chat,
-          messages: [...chat.messages, newMessage],
-          lastMessageAt: new Date().toISOString(),
-        };
-      }
-      return chat;
-    }));
+
+    setOneOnOneChats(prev =>
+      prev.map(chat =>
+        chat.id === chatId
+          ? {
+              ...chat,
+              messages: [...chat.messages, newMessage],
+              lastMessageAt: newMessage.timestamp,
+            }
+          : chat
+      )
+    );
   };
 
-  // 그룹 채팅 메시지 전송
   const sendGroupMessage = (chatId: string, content: string): void => {
     const newMessage: ChatMessage = {
       id: `msg-${Date.now()}`,
@@ -330,61 +388,60 @@ export function useMate() {
       timestamp: new Date().toISOString(),
       isRead: false,
     };
-    
-    setGroupChats(groupChats.map(chat => {
-      if (chat.id === chatId) {
-        return {
-          ...chat,
-          messages: [...chat.messages, newMessage],
-          lastMessageAt: new Date().toISOString(),
-        };
-      }
-      return chat;
-    }));
+
+    setGroupChats(prev =>
+      prev.map(chat =>
+        chat.id === chatId
+          ? {
+              ...chat,
+              messages: [...chat.messages, newMessage],
+              lastMessageAt: newMessage.timestamp,
+            }
+          : chat
+      )
+    );
   };
 
-  // 1:1 채팅 열기
-  const openOneOnOneChat = (post: Post): void => {
-    const chat = getOrCreateOneOnOneChat(post.id, post.author);
-    setActiveChatId(chat.id);
+  const openOneOnOneChat = (participant: Author): void => {
+    const chat = getOrCreateOneOnOneChat(participant);
     setActiveChatType("one-on-one");
+    setActiveChatId(chat.id);
     setShowChatModal(true);
   };
 
-  // 그룹 채팅 열기
   const openGroupChat = (postId: string): void => {
     const chat = getGroupChat(postId);
     if (chat) {
-      setActiveChatId(chat.id);
       setActiveChatType("group");
+      setActiveChatId(chat.id);
       setShowChatModal(true);
     }
   };
 
-  // 채팅 닫기
   const closeChatModal = (): void => {
     setShowChatModal(false);
-    setActiveChatId(null);
     setActiveChatType(null);
-  };
-  // Event Handlers
-  const handleCardClick = (post: Post): void => {
-    incrementViews(post.id);
-    setSelectedPost({ ...post, views: getPostStats(post.id).views + 1 });
+    setActiveChatId(null);
   };
 
-  const handleLike = (postId: string, e: MouseEvent<HTMLButtonElement>): void => {
-    e.stopPropagation();
+  // Event Handlers
+  const handleCardClick = (post: Post): void => {
+    setSelectedPost(post);
+    incrementViews(post.id);
+  };
+
+  const handleLike = (postId: string, e?: MouseEvent<HTMLButtonElement>): void => {
+    e?.stopPropagation();
     toggleLike(postId);
   };
 
-  const handleRemove = (postId: string, e: MouseEvent<HTMLButtonElement>): void => {
-    e.stopPropagation();
+  const handleRemove = (postId: string, e?: MouseEvent<HTMLButtonElement>): void => {
+    e?.stopPropagation();
     setRemovedPosts([...removedPosts, postId]);
   };
 
-  const handleRestore = (postId: string, e: MouseEvent<HTMLButtonElement>): void => {
-    e.stopPropagation();
+  const handleRestore = (postId: string, e?: MouseEvent<HTMLButtonElement>): void => {
+    e?.stopPropagation();
     setRemovedPosts(removedPosts.filter(id => id !== postId));
   };
 
@@ -392,28 +449,54 @@ export function useMate() {
     setShowApplyMessage(true);
   };
 
-  const handleSendApplication = (post: Post): void => {
-    const newApplication: MyApplication = {
-      id: `app-${Date.now()}`,
+  // ✅ 신청하기 함수 - MateDetail에서도 사용 가능하도록 수정
+  const handleSendApplication = (post: Post, message: string): string => {
+    const applicationId = `app-${Date.now()}`;
+    
+    // MyApplication 추가 (내가 보낸 신청)
+    const newMyApplication: MyApplication = {
+      id: applicationId,
       postId: post.id,
       postDestination: post.destination,
       postDates: post.dates,
       postAuthor: post.author,
       applicant: {
         ...CURRENT_USER,
-        message: applyMessage,
-        preferredActivities: selectedTravelTypes.length > 0 ? selectedTravelTypes : ["미정"],
+        message: message,
+        preferredActivities: ["미정"],
         budget: post.budget,
         appliedDate: new Date().toISOString().split("T")[0],
       },
     };
 
-    setMyApplications([...myApplications, newApplication]);
-    setSelectedPost(null);
-    setRemovedPosts([...removedPosts, post.id]);
-    setShowApplyMessage(false);
-    setApplyMessage("");
+    // ReceivedApplication 추가 (게시물 작성자가 받는 신청)
+    const newReceivedApplication: ReceivedApplication = {
+      id: applicationId,
+      postId: post.id,
+      postAuthorEmail: post.author.email,
+      postDestination: post.destination,
+      postDates: post.dates,
+      applicant: {
+        name: CURRENT_USER.name,
+        age: CURRENT_USER.age,
+        gender: CURRENT_USER.gender,
+        email: CURRENT_USER.email,
+        avatar: CURRENT_USER.avatar,
+        travelStyle: CURRENT_USER.travelStyle,
+        message: message,
+        appliedDate: new Date().toISOString().split("T")[0],
+      },
+    };
+
+    setMyApplications(prev => [...prev, newMyApplication]);
+    setReceivedApplications(prev => [...prev, newReceivedApplication]);
+    
+    return applicationId;
   };
+
+  const myReceivedApplications = receivedApplications.filter(
+    app => app.postAuthorEmail === CURRENT_USER.email
+  );
 
   const handleCloseDetailModal = (): void => {
     setSelectedPost(null);
@@ -478,8 +561,9 @@ export function useMate() {
     setSelectedGender("무관");
   };
 
+  // ✅ handleApprove - 1:1 채팅 자동 생성 추가
   const handleApprove = (applicantId: string, e?: MouseEvent<HTMLButtonElement>): void => {
-  e?.stopPropagation();
+    e?.stopPropagation();
     if (!approvedApplicants.includes(applicantId)) {
       setApprovedApplicants([...approvedApplicants, applicantId]);
       setRejectedApplicants(rejectedApplicants.filter(id => id !== applicantId));
@@ -490,25 +574,11 @@ export function useMate() {
         // 해당 게시물 찾기
         const post = allPosts.find(p => p.id === application.postId);
         if (post) {
-          // 승인된 모든 멤버 수집
-          const approvedApps = receivedApplications.filter(app => 
-            app.postId === application.postId && 
-            approvedApplicants.includes(app.id)
-          );
-          const approvedMembers = [
-            post.author, // 방장
-            ...approvedApps.map(app => ({
-              name: app.applicant.name,
-              age: app.applicant.age,
-              gender: app.applicant.gender,
-              avatar: app.applicant.avatar,
-              email: app.applicant.email,
-              travelStyle: app.applicant.travelStyle,
-            }))
-          ];
+          // ✅ 1:1 채팅 자동 생성
+          createOneOnOneChat(post.id, application.applicant.email);
           
           // 그룹 채팅 생성 또는 업데이트
-          createGroupChat(post, approvedMembers);
+          createGroupChat(post.id);
         }
       }
     }
@@ -520,6 +590,21 @@ export function useMate() {
       setRejectedApplicants([...rejectedApplicants, applicantId]);
       setApprovedApplicants(approvedApplicants.filter(id => id !== applicantId));
     }
+  };
+
+  const handleDeletePost = (postId: string, e?: MouseEvent<HTMLButtonElement>): void => {
+    e?.stopPropagation();
+    if (!window.confirm("정말로 이 게시글을 삭제하시겠습니까?")) return;
+    
+    setUserPosts(prev => prev.filter(post => post.id !== postId));
+    setLikedPostIds(prev => prev.filter(id => id !== postId));
+    setRemovedPosts(prev => prev.filter(id => id !== postId));
+    // postStats에서도 해당 데이터 삭제
+    setPostStats(prev => {
+      const newStats = { ...prev };
+      delete newStats[postId];
+      return newStats;
+    });
   };
 
   const hasActiveFilters = removedPosts.length > 0 || selectedTags.length > 0 || 
@@ -544,6 +629,7 @@ export function useMate() {
     removedPosts,
     isLikedOnlyMode,
     isRemovedOnlyMode,
+    isAppliedOnlyMode,
     hasActiveFilters,
     
     // Modal States
@@ -566,7 +652,10 @@ export function useMate() {
     
     // Applications
     myApplications,
-    receivedApplications,
+    receivedApplications: myReceivedApplications,
+    allReceivedApplications: receivedApplications, // ✅ 전체 receivedApplications 추가
+    approvedApplicants,     // ✅ 추가!
+    rejectedApplicants,     // ✅ 추가 (필요할 수 있음)
     getApplicantStatus,
     
     // Handlers
@@ -582,8 +671,9 @@ export function useMate() {
     handlePostSubmit,
     handleApprove,
     handleReject,
+    handleDeletePost,
 
-    // 채팅 관련
+    // ✅ 채팅 관련 - createOneOnOneChat, createGroupChat 추가
     allPosts,
     oneOnOneChats,
     groupChats,
@@ -599,5 +689,7 @@ export function useMate() {
     getGroupChat,
     leaveOneOnOneChat,
     leaveGroupChat,
+    createOneOnOneChat,  // ✅ export 추가
+    createGroupChat,     // ✅ export 추가
   };
 }

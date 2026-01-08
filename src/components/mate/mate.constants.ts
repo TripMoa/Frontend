@@ -71,6 +71,7 @@ export const SORT_OPTIONS = [
   ]},
   { group: "나의 활동", options: [
     { value: "liked-only", label: "좋아요 누른 항목" },
+    { value: "applied-only", label: "내가 신청한 항목" },
     { value: "removed-only", label: "패스한 항목" },
   ]},
 ];
