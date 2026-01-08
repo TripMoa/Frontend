@@ -396,7 +396,7 @@ export function MateMySentModal({
                         <span>예산: {app.applicant.budget}</span>
                       </div>
                       
-                      {/* 대신 채팅 페이지로 안내하는 텍스트 추가 (선택사항) */}
+                      {/* 승인 시 채팅 페이지 안내 */}
                       {status === "approved" && (
                         <div className="mt-3 px-4 py-2 bg-purple-50 border-2 border-purple-300 rounded-lg text-center">
                           <span className="text-purple-700 text-sm font-bold">
@@ -436,8 +436,15 @@ export function MateReceivedModal({
   onSelectApplicant, 
   onClose,
 }: ReceivedModalProps): JSX.Element {
+  // ✅ ReceivedApplication에서 직접 postDestination과 postDates 사용
   const groupedByPost = applications.reduce((acc, app) => {
-    if (!acc[app.postId]) acc[app.postId] = { destination: app.postDestination, dates: app.postDates, applicants: [] };
+    if (!acc[app.postId]) {
+      acc[app.postId] = { 
+        destination: app.postDestination, 
+        dates: app.postDates, 
+        applicants: [] 
+      };
+    }
     acc[app.postId].applicants.push(app);
     return acc;
   }, {} as Record<string, { destination: string; dates: { start: string; end: string }; applicants: ReceivedApplication[] }>);
@@ -489,7 +496,12 @@ export function MateReceivedModal({
                         const status = getApplicantStatus(app.id);
                         return (
                           <div key={app.id}
-                            onClick={() => onSelectApplicant({ postId: app.postId, postDestination: app.postDestination, applicant: app.applicant })}
+                            onClick={() => onSelectApplicant({ 
+                              id: app.id,  // ✅ ID 추가
+                              postId: app.postId, 
+                              postDestination: app.postDestination, 
+                              applicant: app.applicant 
+                            })}
                             className={`border-2 border-black p-4 cursor-pointer transition-colors ${status === "pending" ? "bg-[#eee] hover:bg-[#ddd]" : status === "approved" ? "bg-green-100" : "bg-red-100"}`}>
                             <div className="flex items-center justify-between flex-wrap gap-3">
                               <div className="flex items-center gap-3">
@@ -550,9 +562,15 @@ interface ApplicantDetailModalProps {
   onClose: () => void;
 }
 
-export function MateApplicantDetailModal({ applicant, getApplicantStatus, onApprove, onReject, onClose }: ApplicantDetailModalProps): JSX.Element {
-  const applicantId = applicant.applicant.appliedDate + applicant.applicant.email;
-  const status = getApplicantStatus(applicantId);
+export function MateApplicantDetailModal({ 
+  applicant, 
+  getApplicantStatus, 
+  onApprove, 
+  onReject, 
+  onClose 
+}: ApplicantDetailModalProps): JSX.Element {
+  // ✅ applicant.id 사용 (SelectedApplicant에 id 포함되어 있음)
+  const status = getApplicantStatus(applicant.id);
 
   return (
     <div className={`fixed inset-0 flex items-center justify-center p-4 z-[60] ${styles.overlay}`} onClick={onClose}>
@@ -591,23 +609,29 @@ export function MateApplicantDetailModal({ applicant, getApplicantStatus, onAppr
             <div className={`bg-[#f5f5f5] p-4 ${styles.infoBox}`}>
               <div className="text-xs text-black/50 uppercase font-bold mb-2">Travel Style</div>
               <div className="flex flex-wrap gap-2">
-                {applicant.applicant.travelStyle.map((s) => (
+                {applicant.applicant.travelStyle?.map((s) => (
                   <span key={s} className={`px-2 py-1 text-xs font-bold ${styles.badge}`}>{s}</span>
                 ))}
               </div>
             </div>
-            <div className={`bg-[#f5f5f5] p-4 ${styles.infoBox}`}>
-              <div className="text-xs text-black/50 uppercase font-bold mb-2">Preferred Activities</div>
-              <div className="flex flex-wrap gap-2">
-                {applicant.applicant.preferredActivities.map((a) => (
-                  <span key={a} className={`px-2 py-1 text-xs font-bold ${styles.badge}`}>{a}</span>
-                ))}
+            
+            {applicant.applicant.preferredActivities && applicant.applicant.preferredActivities.length > 0 && (
+              <div className={`bg-[#f5f5f5] p-4 ${styles.infoBox}`}>
+                <div className="text-xs text-black/50 uppercase font-bold mb-2">Preferred Activities</div>
+                <div className="flex flex-wrap gap-2">
+                  {applicant.applicant.preferredActivities.map((a) => (
+                    <span key={a} className={`px-2 py-1 text-xs font-bold ${styles.badge}`}>{a}</span>
+                  ))}
+                </div>
               </div>
-            </div>
-            <div className={`bg-[#f5f5f5] p-4 ${styles.infoBox}`}>
-              <div className="text-xs text-black/50 uppercase font-bold mb-2">Budget</div>
-              <div className="font-bold font-mono text-lg">{applicant.applicant.budget}</div>
-            </div>
+            )}
+            
+            {applicant.applicant.budget && (
+              <div className={`bg-[#f5f5f5] p-4 ${styles.infoBox}`}>
+                <div className="text-xs text-black/50 uppercase font-bold mb-2">Budget</div>
+                <div className="font-bold font-mono text-lg">{applicant.applicant.budget}</div>
+              </div>
+            )}
           </div>
 
           {/* Message */}
@@ -618,11 +642,11 @@ export function MateApplicantDetailModal({ applicant, getApplicantStatus, onAppr
 
           {/* Actions */}
           <div className="flex gap-4">
-            <button onClick={() => onReject(applicantId)}
+            <button onClick={() => onReject(applicant.id)}
               className={`flex-1 py-3 font-bold uppercase tracking-wide transition-colors ${styles.button} ${status === "rejected" ? styles.bgRed : "bg-white text-black hover:bg-[#eee]"}`}>
               {status === "rejected" ? "REJECTED" : "REJECT"}
             </button>
-            <button onClick={() => onApprove(applicantId)}
+            <button onClick={() => onApprove(applicant.id)}
               className={`flex-1 py-3 font-bold uppercase tracking-wide transition-colors flex items-center justify-center gap-2 ${styles.button} ${status === "approved" ? styles.bgGreen : styles.bgBlack}`}>
               {status === "approved" ? "APPROVED" : <><Check className="w-4 h-4" />APPROVE</>}
             </button>

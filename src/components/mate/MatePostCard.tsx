@@ -1,7 +1,7 @@
 import { MouseEvent } from "react";
-import { Heart, X, Eye, RotateCcw } from "lucide-react";
+import { Heart, X, Eye, RotateCcw, Trash2 } from "lucide-react";
 import type { Post } from "./mate.types";
-import { getAirportDisplay } from "./mate.constants";
+import { getAirportDisplay, CURRENT_USER } from "./mate.constants";
 import styles from "../../styles/mate/MatePostCard.module.css";
 
 interface MatePostCardProps {
@@ -13,6 +13,7 @@ interface MatePostCardProps {
   onLike: (postId: string, e: MouseEvent<HTMLButtonElement>) => void;
   onRemove: (postId: string, e: MouseEvent<HTMLButtonElement>) => void;
   onRestore: (postId: string, e: MouseEvent<HTMLButtonElement>) => void;
+  onDelete: (postId: string, e: MouseEvent<HTMLButtonElement>) => void;
 }
 
 export function MatePostCard({ 
@@ -23,8 +24,12 @@ export function MatePostCard({
   onCardClick, 
   onLike, 
   onRemove, 
-  onRestore 
+  onRestore,
+  onDelete 
 }: MatePostCardProps): JSX.Element {
+
+  const isAuthor = post.author.email === CURRENT_USER.email;
+
   return (
     <div className={`bg-white flex overflow-hidden relative group transition-all ${styles.card}`}>
       {/* Passed Badge */}
@@ -114,38 +119,56 @@ export function MatePostCard({
 
         {/* Action Buttons */}
         <div className="absolute inset-0 flex flex-col gap-4 items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity p-4">
-          {/* Pass / Unpass Toggle */}
-          {isRemoved ? (
+          
+          {isAuthor ? (
+            /* 1. 작성자 본인인 경우: 삭제 버튼만 표시 */
             <>
               <button 
-                onClick={(e) => onRestore(post.id, e)} 
-                className={`w-14 h-14 transition-colors flex items-center justify-center ${styles.actionButton} ${styles.bgBlackHoverable}`}
+                onClick={(e) => onDelete?.(post.id, e)} 
+                className={`w-14 h-14 bg-white transition-colors flex items-center justify-center ${styles.actionButton} group/del`}
+                title="삭제하기"
               >
-                <RotateCcw className="w-6 h-6" />
+                <Trash2 className="w-6 h-6 text-[#999] group-hover/del:text-[#ff4d4d] group-hover/del:scale-110 transition-all" />
               </button>
-              <div className="text-xs font-bold text-black">UNPASS</div>
+              <div className="text-xs font-bold text-[#ff4d4d]">DELETE</div>
             </>
           ) : (
+            /* 2. 작성자가 아닌 경우: 기존 PASS/LIKE 버튼 표시 */
             <>
+              {/* Pass / Unpass Toggle */}
+              {isRemoved ? (
+                <>
+                  <button 
+                    onClick={(e) => onRestore(post.id, e)} 
+                    className={`w-14 h-14 transition-colors flex items-center justify-center ${styles.actionButton} ${styles.bgBlackHoverable}`}
+                  >
+                    <RotateCcw className="w-6 h-6" />
+                  </button>
+                  <div className="text-xs font-bold text-black">UNPASS</div>
+                </>
+              ) : (
+                <>
+                  <button 
+                    onClick={(e) => onRemove(post.id, e)} 
+                    className={`w-14 h-14 bg-white hover:bg-[#eee] transition-colors flex items-center justify-center ${styles.actionButton}`}
+                  >
+                    <X className="w-6 h-6" />
+                  </button>
+                  <div className="text-xs font-bold text-black">PASS</div>
+                </>
+              )}
+
+              <div className="border-t-2 border-black/20 w-full my-2"></div>
+
               <button 
-                onClick={(e) => onRemove(post.id, e)} 
-                className={`w-14 h-14 bg-white hover:bg-[#eee] transition-colors flex items-center justify-center ${styles.actionButton}`}
+                onClick={(e) => onLike(post.id, e)} 
+                className={`w-14 h-14 transition-colors flex items-center justify-center ${styles.actionButton} ${isLiked ? styles.bgRed : styles.bgBlackHoverable}`}
               >
-                <X className="w-6 h-6" />
+                <Heart className={`w-6 h-6 ${isLiked ? "fill-current" : ""}`} />
               </button>
-              <div className="text-xs font-bold text-black">PASS</div>
+              <div className="text-xs font-bold text-black">{isLiked ? "UNLIKE" : "LIKE"}</div>
             </>
           )}
-
-          <div className="border-t-2 border-black/20 w-full my-2"></div>
-
-          <button 
-            onClick={(e) => onLike(post.id, e)} 
-            className={`w-14 h-14 transition-colors flex items-center justify-center ${styles.actionButton} ${isLiked ? styles.bgRed : styles.bgBlackHoverable}`}
-          >
-            <Heart className={`w-6 h-6 ${isLiked ? "fill-current" : ""}`} />
-          </button>
-          <div className="text-xs font-bold text-black">{isLiked ? "UNLIKE" : "LIKE"}</div>
         </div>
       </div>
     </div>

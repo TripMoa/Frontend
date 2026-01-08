@@ -1,6 +1,6 @@
-// pages/MateDetail.tsx (무한 루프 수정)
+// pages/MateDetail.tsx (수정 완료 - receivedApplications 연동)
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft, Heart, Calendar, Users, Wallet, MapPin
@@ -14,7 +14,8 @@ export default function MateDetail(): JSX.Element {
   const { postId } = useParams<{ postId: string }>();
   const navigate = useNavigate();
 
-  const { allPosts, likedPostIds, handleLike: mateLike } = useMate();
+  // ✅ handleSendApplication 추가
+  const { allPosts, likedPostIds, handleLike: mateLike, handleSendApplication, incrementViews } = useMate();
 
   const [post, setPost] = useState<Post | null>(null);
   const [showApplyForm, setShowApplyForm] = useState(false);
@@ -25,29 +26,38 @@ export default function MateDetail(): JSX.Element {
   /** -------------------------------
    *   POST LOAD (초기 1회만)
    *  ------------------------------ */
+  const hasCountedRef = useRef(false);
+
   useEffect(() => {
     if (!postId) return;
 
     const found = allPosts.find((p) => p.id === postId);
-    if (found) {
-      setPost(found);
+    if (!found) return;
 
-      const apps = JSON.parse(localStorage.getItem("myApplications") || "[]");
-      setHasApplied(apps.some((app: any) => app.postId === postId));
+    setPost(found);
+
+    /** ⭐ 핵심: StrictMode가 같은 effect를 2번 호출하는 것을 딱 1번만 막아줌 */
+    if (!hasCountedRef.current) {
+      incrementViews(postId);
+      hasCountedRef.current = true;
     }
 
+    const apps = JSON.parse(localStorage.getItem("myApplications") || "[]");
+    setHasApplied(apps.some((app: any) => app.postId === postId));
+
     setIsLoading(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [postId]); // ← allPosts 제거해서 무한 루프 방지!
+  }, [postId]);
+
 
   /** allPosts 변경 시 post 상태만 업데이트 (좋아요 반영) */
   useEffect(() => {
     if (!postId || !post) return;
     
     const updated = allPosts.find((p) => p.id === postId);
-    if (updated && updated.likes !== post.likes) {
+    if (updated && (updated.likes !== post.likes || updated.views !== post.views)) 
+      {
       setPost(updated);
-    }
+      }
   }, [allPosts, postId, post]);
 
   /** 좋아요 클릭 */
@@ -56,32 +66,18 @@ export default function MateDetail(): JSX.Element {
     mateLike(postId, e); // useMate가 allPosts 업데이트 → 위 useEffect가 자동으로 처리
   };
 
-  /** 신청 메시지 제출 */
+  /** 신청 메시지 제출 - ✅ 수정된 부분 */
   const handleApplySubmit = () => {
     if (!postId || !applyMessage.trim() || !post) return;
 
-    const list = JSON.parse(localStorage.getItem("myApplications") || "[]");
-
-    list.push({
-      id: `APP_${Date.now()}`,
-      postId,
-      message: applyMessage,
-      appliedDate: new Date().toISOString(),
-      status: "pending",
-      applicant: {
-        name: "나",
-        email: "user@example.com",
-        age: 25,
-        gender: "성별무관",
-        avatar: "👤",
-      },
-    });
-
-    localStorage.setItem("myApplications", JSON.stringify(list));
+    // ✅ useMate의 handleSendApplication 사용
+    // 이 함수가 myApplications와 receivedApplications 모두에 저장
+    handleSendApplication(post, applyMessage);
 
     setHasApplied(true);
     setShowApplyForm(false);
     setApplyMessage("");
+    navigate("/mate", { replace: true });
   };
 
   /** Loading UI */
