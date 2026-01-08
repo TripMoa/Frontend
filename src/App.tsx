@@ -9,6 +9,7 @@ import Workspace from "./pages/Workspace";
 import TravelStory from './pages/TravelStory';
 import Login from "./pages/Login";
 import UserSettings from "./pages/UserSetting";
+import MateDetail from "./pages/MateDetail";
 
 export default function App() {
   return (
@@ -21,6 +22,7 @@ export default function App() {
         <Route path="/mytrips" element={<MyTrips />} />
         <Route path="/community" element={<Community />} />
         <Route path="/mate" element={<Mate />} />
+        <Route path="/mate/:postId" element={<MateDetail />} />
         <Route path="/workspace" element={<Workspace />} />
         <Route path="/travelstory" element={<TravelStory />} />
         <Route path="*" element={<Navigate to="/" replace />} />
