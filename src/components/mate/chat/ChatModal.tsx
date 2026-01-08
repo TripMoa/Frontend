@@ -3,8 +3,8 @@
 import { useState, useEffect, useRef } from "react";
 import { X, MessageSquare, Users, Send, Search } from "lucide-react";
 import type { OneOnOneChat, GroupChat } from "./chat/chat.types";
-import type { Post } from "./mate.types";
-import { CURRENT_USER } from "./mate.constants";
+import type { Post } from "../mate.types";
+import { CURRENT_USER } from "../mate.constants";
 import styles from "../../styles/mate/Mate.module.css";
 
 interface ChatModalProps {
