@@ -1,20 +1,18 @@
-// pages/MateDetail.tsx (수정 완료 - receivedApplications 연동)
+// pages/MateDetail.tsx
 
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft, Heart, Calendar, Users, Wallet, MapPin
 } from "lucide-react";
-import type { Post } from "../components/mate/mate.types";
-import { getAirportDisplay } from "../components/mate/mate.constants";
-import { useMate } from "../hooks/useMate";
+import type { Post } from "../hooks/mate/mate.types";
+import { getAirportDisplay } from "../hooks/mate/mate.constants";
+import { useMate } from "../hooks/mate/useMate";
 import "../styles/mate/MateDetail.css";
 
 export default function MateDetail(): JSX.Element {
   const { postId } = useParams<{ postId: string }>();
   const navigate = useNavigate();
-
-  // ✅ handleSendApplication 추가
   const { allPosts, likedPostIds, handleLike: mateLike, handleSendApplication, incrementViews } = useMate();
 
   const [post, setPost] = useState<Post | null>(null);
@@ -24,7 +22,7 @@ export default function MateDetail(): JSX.Element {
   const [hasApplied, setHasApplied] = useState(false);
 
   /** -------------------------------
-   *   POST LOAD (초기 1회만)
+   *   POST LOAD
    *  ------------------------------ */
   const hasCountedRef = useRef(false);
 
@@ -33,10 +31,8 @@ export default function MateDetail(): JSX.Element {
 
     const found = allPosts.find((p) => p.id === postId);
     if (!found) return;
-
     setPost(found);
 
-    /** ⭐ 핵심: StrictMode가 같은 effect를 2번 호출하는 것을 딱 1번만 막아줌 */
     if (!hasCountedRef.current) {
       incrementViews(postId);
       hasCountedRef.current = true;
@@ -63,15 +59,11 @@ export default function MateDetail(): JSX.Element {
   /** 좋아요 클릭 */
   const onLikeClick = (e: React.MouseEvent<HTMLButtonElement>) => {
     if (!postId) return;
-    mateLike(postId, e); // useMate가 allPosts 업데이트 → 위 useEffect가 자동으로 처리
+    mateLike(postId, e);
   };
 
-  /** 신청 메시지 제출 - ✅ 수정된 부분 */
   const handleApplySubmit = () => {
     if (!postId || !applyMessage.trim() || !post) return;
-
-    // ✅ useMate의 handleSendApplication 사용
-    // 이 함수가 myApplications와 receivedApplications 모두에 저장
     handleSendApplication(post, applyMessage);
 
     setHasApplied(true);

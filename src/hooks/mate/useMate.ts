@@ -1,19 +1,15 @@
-// hooks/useMate.ts (타입 불일치 수정)
+// hooks/mate/useMate.ts
 
 import { useState, useEffect, MouseEvent } from "react";
 import type { Post, MyApplication, ReceivedApplication, PostStats, SelectedApplicant, Author } from "../components/mate/mate.types";
-import type {
-  ChatMessage,
-  OneOnOneChat,
-  GroupChat,
-} from "../components/mate/chat/chat.types";
+import type { ChatMessage, OneOnOneChat } from "./chat.types";
 
 import {
   STORAGE_KEYS,
   DEFAULT_POSTS,
   DEFAULT_RECEIVED_APPLICATIONS,
   CURRENT_USER,
-} from "../components/mate/mate.constants";
+} from "./mate.constants";
 
 // localStorage 유틸리티
 function getFromStorage<T>(key: string, defaultValue: T): T {
@@ -65,12 +61,9 @@ export function useMate() {
     DEFAULT_RECEIVED_APPLICATIONS
   );
 
+  // 1:1 채팅방
   const [oneOnOneChats, setOneOnOneChats] = useLocalStorage<OneOnOneChat[]>(
     STORAGE_KEYS.ONE_ON_ONE_CHATS, 
-    []
-  );
-  const [groupChats, setGroupChats] = useLocalStorage<GroupChat[]>(
-    STORAGE_KEYS.GROUP_CHATS, 
     []
   );
 
@@ -78,12 +71,7 @@ export function useMate() {
     setOneOnOneChats(prev => prev.filter(chat => chat.id !== chatId));
   };
 
-  const leaveGroupChat = (chatId: string): void => {
-    setGroupChats(prev => prev.filter(chat => chat.id !== chatId));
-  };
-
   const [showChatModal, setShowChatModal] = useState<boolean>(false);
-  const [activeChatType, setActiveChatType] = useState<"one-on-one" | "group" | null>(null);
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
 
   // Date filter
@@ -135,8 +123,6 @@ export function useMate() {
       }
     }));
   };
-
-
 
   const toggleLike = (postId: string): void => {
     const defaultLikes = DEFAULT_POSTS.find(p => p.id === postId)?.likes ?? 0;
@@ -242,10 +228,8 @@ export function useMate() {
   const totalPages = Math.ceil(sortedPosts.length / POSTS_PER_PAGE);
   const startIdx = (currentPage - 1) * POSTS_PER_PAGE;
   const visiblePosts = sortedPosts.slice(startIdx, startIdx + POSTS_PER_PAGE);
-
-  // ✅ 채팅 관련 함수들 - 타입에 맞게 수정
   
-  // ✅ 1:1 채팅 생성 (ChatSlideModal의 onCreateOneOnOneChat 시그니처에 맞춤)
+  // 1:1 채팅 생성
   const createOneOnOneChat = (postId: string, otherUserId: string): void => {
     const post = allPosts.find(p => p.id === postId);
     if (!post) return;
@@ -261,98 +245,66 @@ export function useMate() {
              chat.applicantId === applicantId
     );
 
-    if (!existingChat) {
-      const now = new Date().toISOString();
-      const newChat: OneOnOneChat = {
-        id: `chat-1on1-${Date.now()}`,
-        postId: postId,
-        postAuthorId: postAuthorId,
-        applicantId: applicantId,
-        messages: [],
-        createdAt: now,
-        lastMessageAt: now,
-      };
+    if (existingChat) return;
 
-      setOneOnOneChats(prev => [...prev, newChat]);
+    // 신청자 정보 찾기
+    let applicant: Author | undefined;
+    if (isAuthor) {
+      // 내가 작성자면 신청자 정보 찾기
+      const application = receivedApplications.find(
+        app => app.postId === postId && app.applicant.email === otherUserId
+      );
+      applicant = application ? {
+        name: application.applicant.name,
+        age: application.applicant.age,
+        gender: application.applicant.gender,
+        email: application.applicant.email,
+        avatar: application.applicant.avatar,
+        travelStyle: application.applicant.travelStyle || [],
+      } : undefined;
+    } else {
+      // 내가 신청자면 내 정보
+      applicant = CURRENT_USER;
     }
-  };
 
-  const getOrCreateOneOnOneChat = (participant: Author): OneOnOneChat => {
-    const existingChat = oneOnOneChats.find(
-      chat => chat.applicantId === participant.email || chat.postAuthorId === participant.email
-    );
-
-    if (existingChat) {
-      return existingChat;
-    }
+    if (!applicant) return;
 
     const now = new Date().toISOString();
     const newChat: OneOnOneChat = {
-      id: `chat-${Date.now()}`,
-      postId: "temp", // 임시값
-      postAuthorId: CURRENT_USER.email,
-      applicantId: participant.email,
+      id: `chat-1on1-${Date.now()}`,
+      postId: postId,
+      postAuthorId: postAuthorId,
+      applicantId: applicantId,
+      
+      // 채팅 시작 시 저장되는 핵심 정보 (글이 삭제되어도 유지)
+      destination: post.destination,
+      dates: {
+        start: post.dates.start,
+        end: post.dates.end
+      },
+      postAuthor: {
+        name: post.author.name,
+        email: post.author.email,
+        avatar: post.author.avatar,
+        age: post.author.age,
+        gender: post.author.gender,
+        travelStyle: post.author.travelStyle || [],
+      },
+      applicant: {
+        name: applicant.name,
+        email: applicant.email,
+        avatar: applicant.avatar,
+        age: applicant.age,
+        gender: applicant.gender,
+        travelStyle: applicant.travelStyle || [],
+      },
+      
       messages: [],
       createdAt: now,
       lastMessageAt: now,
     };
 
     setOneOnOneChats(prev => [...prev, newChat]);
-    return newChat;
-  };
-
-  const getGroupChat = (postId: string): GroupChat | undefined => {
-    return groupChats.find(chat => chat.postId === postId);
-  };
-
-  // ✅ 그룹 채팅 생성 - 타입에 맞게 수정
-  const createGroupChat = (postId: string): void => {
-    const post = allPosts.find(p => p.id === postId);
-    if (!post) return;
-
-    const existingChat = groupChats.find(chat => chat.postId === postId);
-    
-    // 승인된 신청자들 찾기
-    const approvedApps = receivedApplications.filter(app => 
-      app.postId === postId && approvedApplicants.includes(app.id)
-    );
-
-    const members: Author[] = [
-      post.author,
-      ...approvedApps.map(app => ({
-        name: app.applicant.name,
-        age: app.applicant.age,
-        gender: app.applicant.gender,
-        avatar: app.applicant.avatar,
-        email: app.applicant.email,
-        travelStyle: app.applicant.travelStyle || [],
-      }))
-    ];
-
-    if (existingChat) {
-      // 기존 채팅 업데이트
-      setGroupChats(prev => 
-        prev.map(chat => 
-          chat.id === existingChat.id 
-            ? { ...chat, members }
-            : chat
-        )
-      );
-    } else {
-      // 새 그룹 채팅 생성
-      const now = new Date().toISOString();
-      const newGroupChat: GroupChat = {
-        id: `group-${Date.now()}`,
-        postId: post.id,
-        postDestination: post.destination,
-        postDates: post.dates,
-        members,
-        messages: [],
-        createdAt: now,
-        lastMessageAt: now,
-      };
-      setGroupChats(prev => [...prev, newGroupChat]);
-    }
   };
 
   const sendOneOnOneMessage = (chatId: string, content: string): void => {
@@ -363,7 +315,6 @@ export function useMate() {
       senderAvatar: CURRENT_USER.avatar,
       content,
       timestamp: new Date().toISOString(),
-      isRead: false,
     };
 
     setOneOnOneChats(prev =>
@@ -379,49 +330,13 @@ export function useMate() {
     );
   };
 
-  const sendGroupMessage = (chatId: string, content: string): void => {
-    const newMessage: ChatMessage = {
-      id: `msg-${Date.now()}`,
-      senderId: CURRENT_USER.email,
-      senderName: CURRENT_USER.name,
-      senderAvatar: CURRENT_USER.avatar,
-      content,
-      timestamp: new Date().toISOString(),
-      isRead: false,
-    };
-
-    setGroupChats(prev =>
-      prev.map(chat =>
-        chat.id === chatId
-          ? {
-              ...chat,
-              messages: [...chat.messages, newMessage],
-              lastMessageAt: newMessage.timestamp,
-            }
-          : chat
-      )
-    );
-  };
-
-  const openOneOnOneChat = (participant: Author): void => {
-    const chat = getOrCreateOneOnOneChat(participant);
-    setActiveChatType("one-on-one");
-    setActiveChatId(chat.id);
+  const openOneOnOneChat = (chatId: string): void => {
+    setActiveChatId(chatId);
     setShowChatModal(true);
-  };
-
-  const openGroupChat = (postId: string): void => {
-    const chat = getGroupChat(postId);
-    if (chat) {
-      setActiveChatType("group");
-      setActiveChatId(chat.id);
-      setShowChatModal(true);
-    }
   };
 
   const closeChatModal = (): void => {
     setShowChatModal(false);
-    setActiveChatType(null);
     setActiveChatId(null);
   };
 
@@ -450,7 +365,7 @@ export function useMate() {
     setShowApplyMessage(true);
   };
 
-  // ✅ 신청하기 함수 - MateDetail에서도 사용 가능하도록 수정
+  // 신청하기 함수
   const handleSendApplication = (post: Post, message: string): string => {
     const applicationId = `app-${Date.now()}`;
     
@@ -562,7 +477,7 @@ export function useMate() {
     setSelectedGender("무관");
   };
 
-  // ✅ handleApprove - 1:1 채팅 자동 생성 추가
+  // handleApprove - 1:1 채팅 자동 생성
   const handleApprove = (applicantId: string, e?: MouseEvent<HTMLButtonElement>): void => {
     e?.stopPropagation();
     if (!approvedApplicants.includes(applicantId)) {
@@ -575,11 +490,8 @@ export function useMate() {
         // 해당 게시물 찾기
         const post = allPosts.find(p => p.id === application.postId);
         if (post) {
-          // ✅ 1:1 채팅 자동 생성
+          // 1:1 채팅 자동 생성
           createOneOnOneChat(post.id, application.applicant.email);
-          
-          // 그룹 채팅 생성 또는 업데이트
-          createGroupChat(post.id);
         }
       }
     }
@@ -655,9 +567,9 @@ export function useMate() {
     // Applications
     myApplications,
     receivedApplications: myReceivedApplications,
-    allReceivedApplications: receivedApplications, // ✅ 전체 receivedApplications 추가
-    approvedApplicants,     // ✅ 추가!
-    rejectedApplicants,     // ✅ 추가 (필요할 수 있음)
+    allReceivedApplications: receivedApplications,
+    approvedApplicants,
+    rejectedApplicants,
     getApplicantStatus,
     
     // Handlers
@@ -675,23 +587,17 @@ export function useMate() {
     handleReject,
     handleDeletePost,
 
-    // ✅ 채팅 관련 - createOneOnOneChat, createGroupChat 추가
+    // Data
     allPosts,
+    
+    // Chat
     oneOnOneChats,
-    groupChats,
     showChatModal,
-    activeChatType,
     activeChatId,
     openOneOnOneChat,
-    openGroupChat,
     closeChatModal,
     sendOneOnOneMessage,
-    sendGroupMessage,
-    getOrCreateOneOnOneChat,
-    getGroupChat,
     leaveOneOnOneChat,
-    leaveGroupChat,
-    createOneOnOneChat,  // ✅ export 추가
-    createGroupChat,     // ✅ export 추가
+    createOneOnOneChat,
   };
 }

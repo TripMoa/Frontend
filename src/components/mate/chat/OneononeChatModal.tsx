@@ -1,11 +1,11 @@
 // components/mate/chat/OneOnOneChatModal.tsx
 
 import { useEffect, useRef } from "react";
-import type { Post } from "../mate.types";
+import type { Post } from "../../../hooks/mate/mate.types";
 import type { ChatMessage } from "./chat.types";
 import ChatBubble from "./ChatBubble";
 import ChatInput from "./ChatInput";
-import { CURRENT_USER } from "../mate.constants";
+import { CURRENT_USER } from "../../../hooks/mate/mate.constants";
 
 interface OneOnOneChatModalProps {
   post: Post;

@@ -1,35 +1,35 @@
-/* MatePagination.module.css */
+/* MatePagination.css */
 
-.button {
+.pagination-button {
   border: 3px solid #000;
   box-shadow: 4px 4px 0px rgba(0, 0, 0, 1);
 }
 
-.button:hover:not(:disabled) {
+.pagination-button:hover:not(:disabled) {
   transform: translate(-2px, -2px);
   box-shadow: 6px 6px 0px rgba(0, 0, 0, 1);
 }
 
-.button:active:not(:disabled) {
+.pagination-button:active:not(:disabled) {
   transform: translate(0, 0);
   box-shadow: 2px 2px 0px rgba(0, 0, 0, 1);
 }
 
-.buttonDisabled {
+.pagination-button-disabled {
   box-shadow: none;
 }
 
-.pageButton {
+.page-button {
   border: 3px solid #000;
   box-shadow: 3px 3px 0px rgba(0, 0, 0, 1);
 }
 
-.pageButton:hover {
+.page-button:hover {
   transform: translate(-1px, -1px);
   box-shadow: 4px 4px 0px rgba(0, 0, 0, 1);
 }
 
-.pageButtonActive {
+.page-button-active {
   background-color: #000 !important;
   color: #fff !important;
   transform: translate(-2px, -2px);

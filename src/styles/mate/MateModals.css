@@ -1,0 +1,161 @@
+/* MateModals.css - 외부는 workspace, 내부는 neobrutalism */
+
+/* ========== 외부 구조 (workspace 스타일) ========== */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.modal-overlay.active {
+  display: flex;
+}
+
+.modal-window {
+  background: white;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.write-window {
+  width: 90%;
+  max-width: 800px;
+}
+
+.sent-window {
+  width: 90%;
+  max-width: 700px;
+}
+
+.received-window {
+  width: 90%;
+  max-width: 900px;
+}
+
+.detail-window {
+  width: 90%;
+  max-width: 500px;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  background: #000;
+  color: #fff;
+  border-bottom: 2px solid #000;
+}
+
+.mh-title {
+  font-family: "Share Tech Mono", monospace;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.mh-close {
+  background: none;
+  border: 2px solid #fff;
+  color: #fff;
+  padding: 6px 12px;
+  font-family: "Share Tech Mono", monospace;
+  font-weight: bold;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.mh-close:hover {
+  background: #fff;
+  color: #000;
+}
+
+/* ========== 내부 컨텐츠 (원래 neobrutalism 디자인) ========== */
+.modal-body {
+  padding: 24px;
+  overflow-y: auto;
+  background: #fff;
+  font-family: var(--font-mono);
+}
+
+/* Neobrutalism 스타일 유지 */
+.modal {
+  border: 3px solid #000;
+}
+
+.header {
+  border-bottom: 3px solid #000;
+}
+
+.infoBox {
+  border: 2px solid #000;
+}
+
+.infoBoxLarge {
+  border: 3px solid #000;
+}
+
+.button {
+  border: 3px solid #000;
+  box-shadow: 4px 4px 0px rgba(0, 0, 0, 1);
+}
+
+.card {
+  border: 3px solid #000;
+}
+
+.cardApproved {
+  box-shadow: 0 0 0 4px #22c55e;
+}
+
+.cardRejected {
+  box-shadow: 0 0 0 4px #ef4444;
+}
+
+.bgBlack {
+  background-color: #000 !important;
+  color: #fff !important;
+}
+
+.bgBlackHoverable {
+  background-color: #000 !important;
+  color: #fff !important;
+}
+
+.bgBlackHoverable:hover {
+  background-color: #fff !important;
+  color: #000 !important;
+}
+
+.bgWhiteHoverable:hover {
+  background-color: #000 !important;
+  color: #fff !important;
+}
+
+.bgGreen {
+  background-color: #22c55e !important;
+  color: #fff !important;
+}
+
+.bgRed {
+  background-color: #ef4444 !important;
+  color: #fff !important;
+}
+
+.overlay {
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+.badge {
+  background-color: #000 !important;
+  color: #fff !important;
+}
