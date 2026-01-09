@@ -1,6 +1,6 @@
-// components/mate/chat/chat.types.ts
+// hooks/mate/chat.types.ts
 
-import type { Author } from "../mate.types";
+import type { Author } from "./mate.types";
 
 export interface ChatMessage {
   id: string;
@@ -9,17 +9,31 @@ export interface ChatMessage {
   senderAvatar: string;
   content: string;
   timestamp: string;
-  isRead: boolean;
 }
 
 export interface OneOnOneChat {
   id: string;
   postId: string;
   postAuthorId: string;
-  applicantId: string;
+  applicantId: string;   
+  destination: string;     
+  dates: {
+    start: string;         
+    end: string;           
+  };
+  postAuthor: {            
+    name: string;
+    email: string;
+    avatar: string;
+  };
+  applicant: {             
+    name: string;
+    email: string;
+    avatar: string;
+  };
   messages: ChatMessage[];
-  createdAt: string;
   lastMessageAt: string;
+  createdAt: string;
 }
 
 export interface GroupChat {

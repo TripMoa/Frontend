@@ -1,57 +1,46 @@
-// components/mate/chat/ChatSlideModal.tsx (탭 + 나가기 기능)
+// components/mate/chat/ChatSlideModal.tsx
 
 import { useState, useEffect, useRef } from "react";
-import { X, MessageSquare, Users, Send, Plus, LogOut } from "lucide-react";
-import type { OneOnOneChat, GroupChat } from "./chat.types";
-import type { Post, MyApplication, ReceivedApplication } from "../mate.types";
-import { CURRENT_USER } from "../mate.constants";
-import styles from "../../../styles/mate/ChatSlide.module.css";
+import { X, MessageSquare, Send, Plus, LogOut, MapPin, Calendar, User } from "lucide-react";
+import type { OneOnOneChat } from "../../../hooks/mate/chat.types";
+import type { Post, MyApplication, ReceivedApplication } from "../../../hooks/mate/mate.types";
+import { CURRENT_USER } from "../../../hooks/mate/mate.constants";
+import "../../../styles/mate/ChatSlide.css";
 
 interface ChatSlideModalProps {
   isOpen: boolean;
   onClose: () => void;
   oneOnOneChats: OneOnOneChat[];
-  groupChats: GroupChat[];
   allPosts: Post[];
   myApplications: MyApplication[];
   receivedApplications: ReceivedApplication[];
-  approvedApplicants: string[];
   onSendOneOnOneMessage: (chatId: string, content: string) => void;
-  onSendGroupMessage: (chatId: string, content: string) => void;
   onCreateOneOnOneChat: (postId: string, otherUserId: string) => void;
-  onCreateGroupChat: (postId: string) => void;
   onLeaveOneOnOneChat: (chatId: string) => void;
-  onLeaveGroupChat: (chatId: string) => void;
 }
 
 type SelectedChat = 
   | { type: "one-on-one"; chat: OneOnOneChat; post: Post }
-  | { type: "group"; chat: GroupChat }
   | null;
 
-type TabType = "personal" | "group";
+type TabType = "active" | "available";
 
 export function ChatSlideModal({
   isOpen,
   onClose,
   oneOnOneChats,
-  groupChats,
   allPosts,
   myApplications,
   receivedApplications,
-  approvedApplicants,
   onSendOneOnOneMessage,
-  onSendGroupMessage,
   onCreateOneOnOneChat,
-  onCreateGroupChat,
   onLeaveOneOnOneChat,
-  onLeaveGroupChat,
 }: ChatSlideModalProps): JSX.Element | null {
   const [selectedChat, setSelectedChat] = useState<SelectedChat>(null);
   const [messageInput, setMessageInput] = useState("");
   const [showNewChatList, setShowNewChatList] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
-  const [activeTab, setActiveTab] = useState<TabType>("personal");
+  const [activeTab, setActiveTab] = useState<TabType>("active");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // 모달 닫을 때 애니메이션
@@ -82,31 +71,38 @@ export function ChatSlideModal({
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
       }, 100);
     }
-  }, [selectedChat?.type === "one-on-one" ? selectedChat?.chat.messages : selectedChat?.type === "group" ? selectedChat?.chat.messages : []]);
+  }, [selectedChat?.chat.messages]);
 
   // 채팅 업데이트 감지
   useEffect(() => {
-    if (selectedChat) {
-      if (selectedChat.type === "one-on-one") {
-        const updatedChat = oneOnOneChats.find(c => c.id === selectedChat.chat.id);
-        if (updatedChat && updatedChat.messages.length !== selectedChat.chat.messages.length) {
-          const post = getPostInfo(selectedChat.chat.postId);
-          if (post) {
-            setSelectedChat({ type: "one-on-one", chat: updatedChat, post });
-          }
-        }
-      } else if (selectedChat.type === "group") {
-        const updatedChat = groupChats.find(c => c.id === selectedChat.chat.id);
-        if (updatedChat && updatedChat.messages.length !== selectedChat.chat.messages.length) {
-          setSelectedChat({ type: "group", chat: updatedChat });
-        }
+    if (selectedChat && selectedChat.type === "one-on-one") {
+      const updatedChat = oneOnOneChats.find(c => c.id === selectedChat.chat.id);
+      if (updatedChat && updatedChat.messages.length !== selectedChat.chat.messages.length) {
+        const post = getPostInfo(updatedChat);
+        setSelectedChat({ type: "one-on-one", chat: updatedChat, post });
       }
     }
-  }, [oneOnOneChats, groupChats]);
+  }, [oneOnOneChats]);
 
   if (!isOpen) return null;
 
-  const getPostInfo = (postId: string) => allPosts.find(p => p.id === postId);
+  const getPostInfo = (chat: OneOnOneChat) => {
+    // 채팅 객체에 이미 모든 정보가 있으므로 바로 반환
+    const isIamAuthor = chat.postAuthorId === CURRENT_USER.email;
+    
+    return {
+      id: chat.postId,
+      destination: chat.destination,
+      dates: chat.dates,
+      author: isIamAuthor ? chat.postAuthor : chat.applicant
+    };
+  };
+
+  const getOtherUser = (chat: OneOnOneChat) => {
+    // 상대방 정보 가져오기
+    const isIamAuthor = chat.postAuthorId === CURRENT_USER.email;
+    return isIamAuthor ? chat.applicant : chat.postAuthor;
+  };
 
   const formatTime = (timestamp: string) => {
     const date = new Date(timestamp);
@@ -130,18 +126,18 @@ export function ChatSlideModal({
     return minutes > 0 ? `${minutes}분 전` : "방금";
   };
 
-  // 새 채팅 가능한 목록
+  // 새 채팅 가능한 목록 (1:1만)
   const getAvailableChats = () => {
     const available: Array<{
-      type: "sent" | "received" | "group";
+      type: "sent" | "received";
       postId: string;
       post: Post;
-      otherUser?: { name: string; email: string; avatar: string };
-      groupMembers?: number;
+      otherUser: { name: string; email: string; avatar: string };
     }> = [];
 
+    // 내가 신청한 목록
     myApplications.forEach(app => {
-      const post = getPostInfo(app.postId);
+      const post = allPosts.find(p => p.id === app.postId);
       if (!post) return;
       const hasChat = oneOnOneChats.some(
         chat => chat.postId === app.postId && chat.applicantId === CURRENT_USER.email
@@ -156,8 +152,9 @@ export function ChatSlideModal({
       }
     });
 
+    // 받은 신청 목록
     receivedApplications.forEach(app => {
-      const post = getPostInfo(app.postId);
+      const post = allPosts.find(p => p.id === app.postId);
       if (!post) return;
       const hasChat = oneOnOneChats.some(
         chat => chat.postId === app.postId && chat.postAuthorId === CURRENT_USER.email && chat.applicantId === app.applicant.email
@@ -172,74 +169,32 @@ export function ChatSlideModal({
       }
     });
 
-    const myPostIds = allPosts.filter(p => p.author.email === CURRENT_USER.email).map(p => p.id);
-    myPostIds.forEach(postId => {
-      const approvedAppsForPost = receivedApplications.filter(
-        app => app.postId === postId && approvedApplicants.includes(app.id)
-      );
-      if (approvedAppsForPost.length > 0) {
-        const hasGroupChat = groupChats.some(chat => chat.postId === postId);
-        if (!hasGroupChat) {
-          const post = getPostInfo(postId);
-          if (post) {
-            available.push({
-              type: "group",
-              postId,
-              post,
-              groupMembers: approvedAppsForPost.length + 1
-            });
-          }
-        }
-      }
-    });
-
     return available;
   };
 
   const availableChats = getAvailableChats();
-  const availablePersonalChats = availableChats.filter(c => c.type !== "group");
-  const availableGroupChats = availableChats.filter(c => c.type === "group");
 
   const handleCreateNewChat = (item: typeof availableChats[0]) => {
-    if (item.type === "group") {
-      onCreateGroupChat(item.postId);
-      setShowNewChatList(false);
-      setTimeout(() => {
-        const newGroupChat = groupChats.find(chat => chat.postId === item.postId);
-        if (newGroupChat) {
-          setSelectedChat({ type: "group", chat: newGroupChat });
-        }
-      }, 100);
-    } else if (item.otherUser) {
-      onCreateOneOnOneChat(item.postId, item.otherUser.email);
-      setShowNewChatList(false);
-      setTimeout(() => {
-        const newChat = oneOnOneChats.find(
-          chat => chat.postId === item.postId && 
-          (chat.applicantId === item.otherUser!.email || chat.postAuthorId === item.otherUser!.email)
-        );
-        if (newChat) {
-          const post = getPostInfo(item.postId);
-          if (post) {
-            setSelectedChat({ type: "one-on-one", chat: newChat, post });
-          }
-        }
-      }, 100);
-    }
+    onCreateOneOnOneChat(item.postId, item.otherUser.email);
+    // 채팅 생성 후 자동으로 해당 채팅방 열기
+    setTimeout(() => {
+      const newChat = oneOnOneChats.find(
+        chat => chat.postId === item.postId && 
+        (chat.applicantId === item.otherUser.email || chat.postAuthorId === item.otherUser.email)
+      );
+      if (newChat) {
+        const post = getPostInfo(newChat);
+        setSelectedChat({ type: "one-on-one", chat: newChat, post });
+      }
+    }, 100);
   };
 
-  const handleLeaveChat = (chatId: string, type: "personal" | "group", chatName: string) => {
+  const handleLeaveChat = (chatId: string, chatName: string) => {
     if (window.confirm(`"${chatName}" 채팅방을 나가시겠습니까?`)) {
-      if (type === "personal") {
-        onLeaveOneOnOneChat(chatId);
-      } else {
-        onLeaveGroupChat(chatId);
-      }
+      onLeaveOneOnOneChat(chatId);
       
       // 현재 선택된 채팅이면 선택 해제
-      if (selectedChat && 
-          ((selectedChat.type === "one-on-one" && selectedChat.chat.id === chatId) ||
-           (selectedChat.type === "group" && selectedChat.chat.id === chatId))) {
+      if (selectedChat && selectedChat.chat.id === chatId) {
         setSelectedChat(null);
       }
     }
@@ -247,117 +202,125 @@ export function ChatSlideModal({
 
   const handleSendMessage = () => {
     if (!messageInput.trim() || !selectedChat) return;
-    if (selectedChat.type === "one-on-one") {
-      onSendOneOnOneMessage(selectedChat.chat.id, messageInput);
-    } else {
-      onSendGroupMessage(selectedChat.chat.id, messageInput);
-    }
+    onSendOneOnOneMessage(selectedChat.chat.id, messageInput);
     setMessageInput("");
   };
 
   const handleSelectOneOnOne = (chat: OneOnOneChat) => {
-    const post = getPostInfo(chat.postId);
-    if (post) setSelectedChat({ type: "one-on-one", chat, post });
+    const post = getPostInfo(chat);
+    setSelectedChat({ type: "one-on-one", chat, post });
   };
 
-  const handleSelectGroup = (chat: GroupChat) => {
-    setSelectedChat({ type: "group", chat });
-  };
-
-  const allChatsEmpty = oneOnOneChats.length === 0 && groupChats.length === 0;
+  const allChatsEmpty = oneOnOneChats.length === 0;
+  const totalUnreadCount = 0; // 추후 구현 가능
 
   return (
     <>
       {/* 배경 오버레이 */}
-      <div className={styles.overlay} onClick={handleClose} />
+      <div className="chat-slide-overlay" onClick={handleClose} />
 
       {/* 슬라이드 패널 */}
-      <div className={`${styles.slidePanel} ${isClosing ? styles.closing : ""}`}>
+      <div className={`chat-slide-slidePanel ${isClosing ? "chat-slide-closing" : ""}`}>
         {!selectedChat ? (
           // 채팅 목록
           <>
-            <div className={styles.header}>
-              <h2 className={styles.headerTitle}>
+            <div className="chat-slide-header">
+              <div className="chat-slide-headerTitle">
                 <MessageSquare size={24} />
-                채팅
-              </h2>
-              <button onClick={handleClose} className={styles.closeBtn}>
+                <div>
+                  <div style={{ fontSize: "20px" }}>채팅</div>
+                  <div style={{ fontSize: "12px", fontWeight: 400, opacity: 0.8, textTransform: "none", letterSpacing: "normal" }}>
+                    {oneOnOneChats.length}개의 대화
+                  </div>
+                </div>
+              </div>
+              <button onClick={handleClose} className="chat-slide-closeBtn">
                 <X size={24} />
               </button>
             </div>
 
-            {/* 탭 */}
-            <div className={styles.tabContainer}>
-              <button
-                onClick={() => setActiveTab("personal")}
-                className={`${styles.tab} ${activeTab === "personal" ? styles.tabActive : ""}`}
-              >
-                <MessageSquare size={18} />
-                개인 채팅 ({oneOnOneChats.length})
-              </button>
-              <button
-                onClick={() => setActiveTab("group")}
-                className={`${styles.tab} ${activeTab === "group" ? styles.tabActive : ""}`}
-              >
-                <Users size={18} />
-                단체 채팅 ({groupChats.length})
-              </button>
-            </div>
+            {/* 탭 (활성 채팅이 있을 때만) */}
+            {oneOnOneChats.length > 0 && (
+              <div className="chat-slide-tabContainer">
+                <button
+                  onClick={() => setActiveTab("active")}
+                  className={`chat-slide-tab ${activeTab === "active" ? "chat-slide-tabActive" : ""}`}
+                >
+                  <MessageSquare size={18} />
+                  활성 채팅
+                  <span className="chat-slide-badge chat-slide-badgeGreen">
+                    {oneOnOneChats.length}
+                  </span>
+                </button>
+                <button
+                  onClick={() => setActiveTab("available")}
+                  className={`chat-slide-tab ${activeTab === "available" ? "chat-slide-tabActive" : ""}`}
+                >
+                  <Plus size={18} />
+                  시작 가능
+                  <span className="chat-slide-badge chat-slide-badgeYellow">
+                    {availableChats.length}
+                  </span>
+                </button>
+              </div>
+            )}
 
-            <div className={styles.content}>
+            <div className="chat-slide-content">
               {allChatsEmpty && availableChats.length === 0 ? (
-                <div className={styles.emptyState}>
-                  <MessageSquare className={styles.emptyIcon} />
-                  <p className={styles.emptyTitle}>채팅이 없습니다</p>
-                  <p className={styles.emptyText}>메이트 신청을 해보세요</p>
+                // 완전히 비어있을 때
+                <div className="chat-slide-emptyState">
+                  <div className="chat-slide-emptyIcon">💬</div>
+                  <p className="chat-slide-emptyTitle">채팅이 없습니다</p>
+                  <p className="chat-slide-emptyText">메이트 신청을 하고 대화를 시작해보세요!</p>
                 </div>
-              ) : (
-                <div className={styles.chatList}>
-                  {/* 새 채팅 시작 버튼 */}
-                  {((activeTab === "personal" && availablePersonalChats.length > 0) ||
-                    (activeTab === "group" && availableGroupChats.length > 0)) && (
-                    <button
-                      onClick={() => setShowNewChatList(!showNewChatList)}
-                      className={styles.newChatBtn}
-                    >
-                      <Plus size={20} />
-                      새 채팅 시작하기 (
-                      {activeTab === "personal" ? availablePersonalChats.length : availableGroupChats.length})
-                    </button>
-                  )}
+              ) : oneOnOneChats.length === 0 ? (
+                // 활성 채팅 없고 시작 가능한 채팅만 있을 때
+                <div className="chat-slide-chatList">
+                  <button
+                    onClick={() => setShowNewChatList(!showNewChatList)}
+                    className="chat-slide-newChatBtn"
+                  >
+                    <Plus size={20} />
+                    새 채팅 시작하기
+                    <span className="chat-slide-badge chat-slide-badgeYellow">
+                      {availableChats.length}
+                    </span>
+                  </button>
 
-                  {/* 새 채팅 목록 */}
                   {showNewChatList && (
-                    <div className={styles.newChatList}>
-                      <div className={styles.sectionTitle}>새로 시작할 수 있는 채팅</div>
-                      {(activeTab === "personal" ? availablePersonalChats : availableGroupChats).map((item, idx) => (
+                    <div className="chat-slide-newChatList">
+                      <div className="chat-slide-sectionTitle">
+                        ✨ 새로 시작할 수 있는 채팅
+                      </div>
+                      {availableChats.map((item, idx) => (
                         <div
                           key={`${item.type}-${item.postId}-${idx}`}
                           onClick={() => handleCreateNewChat(item)}
-                          className={styles.newChatCard}
+                          className="chat-slide-newChatCard"
                         >
-                          <div className={styles.chatCardContent}>
-                            {item.type === "group" ? (
-                              <div className={`${styles.avatar} ${styles.avatarPurple}`}>
-                                <Users size={24} />
+                          <div className="chat-slide-chatCardContent">
+                            <div className="chat-slide-avatarWrapper">
+                              <div className={`chat-slide-avatar chat-slide-avatarPink`}>
+                                {item.otherUser.avatar || "👤"}
                               </div>
-                            ) : (
-                              <div className={`${styles.avatar} ${styles.avatarPink}`}>
-                                {item.otherUser?.avatar || "👤"}
-                              </div>
-                            )}
-                            <div className={styles.chatInfo}>
-                              <div className={styles.chatHeader}>
-                                <span className={styles.chatName}>
-                                  {item.type === "group" ? `${item.post.destination} 여행` : item.otherUser?.name}
+                              <div className="chat-slide-onlineDot"></div>
+                            </div>
+                            <div className="chat-slide-chatInfo">
+                              <div className="chat-slide-chatHeader">
+                                <span className="chat-slide-chatName">
+                                  {item.otherUser.name}
+                                </span>
+                                <span className={`chat-slide-badge ${item.type === "sent" ? "chat-slide-badgeBlue" : "chat-slide-badgeGreen"}`}>
+                                  {item.type === "sent" ? "내가 신청" : "신청 받음"}
                                 </span>
                               </div>
-                              <div className={styles.chatLocation}>📍 {item.post.destination}</div>
-                              <div>
-                                <span className={`${styles.badge} ${item.type === "sent" ? styles.badgeBlue : item.type === "received" ? styles.badgeGreen : styles.badgePurple}`}>
-                                  {item.type === "sent" ? "내가 신청" : item.type === "received" ? "신청 받음" : `${item.groupMembers}명`}
-                                </span>
-                                <span className={`${styles.badge} ${styles.badgeYellow}`}>NEW</span>
+                              <div className="chat-slide-chatLocation">
+                                <MapPin size={14} />
+                                {item.post.destination}
+                              </div>
+                              <div className="chat-slide-chatDates">
+                                <Calendar size={14} />
+                                {item.post.dates.start} ~ {item.post.dates.end}
                               </div>
                             </div>
                           </div>
@@ -366,142 +329,149 @@ export function ChatSlideModal({
                     </div>
                   )}
 
-                  {/* 구분선 */}
-                  {((activeTab === "personal" && availablePersonalChats.length > 0 && oneOnOneChats.length > 0) ||
-                    (activeTab === "group" && availableGroupChats.length > 0 && groupChats.length > 0)) && (
+                  {!showNewChatList && (
+                    <div className="chat-slide-emptyState">
+                      <div className="chat-slide-emptyIcon">👆</div>
+                      <p className="chat-slide-emptyTitle">위 버튼을 눌러</p>
+                      <p className="chat-slide-emptyText">새로운 채팅을 시작해보세요!</p>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                // 활성 채팅 있을 때 - 탭으로 구분
+                <div className="chat-slide-chatList">
+                  {activeTab === "active" ? (
+                    // 활성 채팅 목록
                     <>
-                      <div className={styles.divider} />
-                      <div className={styles.sectionTitle}>진행 중인 채팅</div>
-                    </>
-                  )}
+                      {oneOnOneChats.map((chat) => {
+                        const post = getPostInfo(chat);
+                        const otherUser = getOtherUser(chat);
+                        const lastMessage = chat.messages[chat.messages.length - 1];
+                        const unreadCount = 0; // 추후 구현 가능
 
-                  {/* 개인 채팅 목록 */}
-                  {activeTab === "personal" && oneOnOneChats.map((chat) => {
-                    const post = getPostInfo(chat.postId);
-                    const isMyChat = chat.applicantId === CURRENT_USER.email;
-                    const otherUser = isMyChat ? post?.author : null;
-                    const lastMessage = chat.messages[chat.messages.length - 1];
-
-                    return (
-                      <div key={chat.id} className={styles.chatCard}>
-                        <div className={styles.chatCardContent} onClick={() => handleSelectOneOnOne(chat)}>
-                          <div className={`${styles.avatar} ${styles.avatarPink}`}>
-                            {otherUser?.avatar || "👤"}
-                          </div>
-                          <div className={styles.chatInfo}>
-                            <div className={styles.chatHeader}>
-                              <span className={styles.chatName}>{otherUser?.name || "Unknown"}</span>
-                              <span className={styles.chatTime}>{formatLastMessageTime(chat.lastMessageAt)}</span>
-                            </div>
-                            <div className={styles.chatLocation}>📍 {post?.destination || "Unknown"}</div>
-                            {lastMessage && <div className={styles.chatMessage}>{lastMessage.content}</div>}
-                          </div>
-                        </div>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleLeaveChat(chat.id, "personal", otherUser?.name || "Unknown");
-                          }}
-                          className={styles.leaveBtn}
-                          title="채팅방 나가기"
-                        >
-                          <LogOut size={18} />
-                        </button>
-                      </div>
-                    );
-                  })}
-
-                  {/* 단체 채팅 목록 */}
-                  {activeTab === "group" && groupChats.map((chat) => {
-                    const lastMessage = chat.messages[chat.messages.length - 1];
-
-                    return (
-                      <div key={chat.id} className={styles.chatCard}>
-                        <div className={styles.chatCardContent} onClick={() => handleSelectGroup(chat)}>
-                          <div className={`${styles.avatar} ${styles.avatarPurple}`}>
-                            <Users size={24} />
-                          </div>
-                          <div className={styles.chatInfo}>
-                            <div className={styles.chatHeader}>
-                              <span className={styles.chatName}>{chat.postDestination} 여행</span>
-                              <span className={styles.chatTime}>{formatLastMessageTime(chat.lastMessageAt)}</span>
-                            </div>
-                            <div className={styles.chatLocation}>👥 {chat.members.length}명</div>
-                            {lastMessage && (
-                              <div className={styles.chatMessage}>
-                                <strong>{lastMessage.senderName}:</strong> {lastMessage.content}
+                        return (
+                          <div key={chat.id} className="chat-slide-chatCard">
+                            <div className="chat-slide-chatCardContent" onClick={() => handleSelectOneOnOne(chat)}>
+                              <div className="chat-slide-avatarWrapper">
+                                <div className={`chat-slide-avatar chat-slide-avatarPink`}>
+                                  {otherUser.avatar}
+                                </div>
+                                {unreadCount > 0 && (
+                                  <div className="chat-slide-unreadBadge">{unreadCount}</div>
+                                )}
                               </div>
-                            )}
+                              <div className="chat-slide-chatInfo">
+                                <div className="chat-slide-chatHeader">
+                                  <span className="chat-slide-chatName">{otherUser.name}</span>
+                                  <span className="chat-slide-chatTime">{formatLastMessageTime(chat.lastMessageAt)}</span>
+                                </div>
+                                <div className="chat-slide-chatLocation">
+                                  <MapPin size={14} />
+                                  {post.destination}
+                                </div>
+                                {lastMessage && (
+                                  <div className="chat-slide-chatMessage">
+                                    <MessageSquare size={14} />
+                                    {lastMessage.content}
+                                  </div>
+                                )}
+                                <div className="chat-slide-chatDates">
+                                  <Calendar size={14} />
+                                  {post.dates.start} ~ {post.dates.end}
+                                </div>
+                              </div>
+                            </div>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleLeaveChat(chat.id, otherUser.name);
+                              }}
+                              className="chat-slide-leaveBtn"
+                              title="채팅방 나가기"
+                            >
+                              <LogOut size={18} />
+                            </button>
                           </div>
+                        );
+                      })}
+                    </>
+                  ) : (
+                    // 시작 가능한 채팅 목록
+                    <>
+                      {availableChats.length === 0 ? (
+                        <div className="chat-slide-emptyState">
+                          <div className="chat-slide-emptyIcon">✅</div>
+                          <p className="chat-slide-emptyTitle">모든 채팅이 활성화되었습니다</p>
+                          <p className="chat-slide-emptyText">새로운 메이트를 찾아보세요!</p>
                         </div>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleLeaveChat(chat.id, "group", `${chat.postDestination} 여행`);
-                          }}
-                          className={styles.leaveBtn}
-                          title="채팅방 나가기"
-                        >
-                          <LogOut size={18} />
-                        </button>
-                      </div>
-                    );
-                  })}
-
-                  {/* 탭별 빈 상태 */}
-                  {activeTab === "personal" && oneOnOneChats.length === 0 && availablePersonalChats.length === 0 && (
-                    <div className={styles.emptyState}>
-                      <MessageSquare className={styles.emptyIcon} />
-                      <p className={styles.emptyTitle}>개인 채팅이 없습니다</p>
-                      <p className={styles.emptyText}>메이트에게 신청해보세요</p>
-                    </div>
-                  )}
-                  {activeTab === "group" && groupChats.length === 0 && availableGroupChats.length === 0 && (
-                    <div className={styles.emptyState}>
-                      <Users className={styles.emptyIcon} />
-                      <p className={styles.emptyTitle}>단체 채팅이 없습니다</p>
-                      <p className={styles.emptyText}>신청을 승인하고 그룹을 만들어보세요</p>
-                    </div>
+                      ) : (
+                        <>
+                          <div className="chat-slide-sectionTitle">
+                            ✨ 새로 시작할 수 있는 채팅
+                          </div>
+                          {availableChats.map((item, idx) => (
+                            <div
+                              key={`${item.type}-${item.postId}-${idx}`}
+                              onClick={() => handleCreateNewChat(item)}
+                              className="chat-slide-newChatCard"
+                            >
+                              <div className="chat-slide-chatCardContent">
+                                <div className="chat-slide-avatarWrapper">
+                                  <div className={`chat-slide-avatar chat-slide-avatarPink`}>
+                                    {item.otherUser.avatar || "👤"}
+                                  </div>
+                                  <div className="chat-slide-onlineDot"></div>
+                                </div>
+                                <div className="chat-slide-chatInfo">
+                                  <div className="chat-slide-chatHeader">
+                                    <span className="chat-slide-chatName">
+                                      {item.otherUser.name}
+                                    </span>
+                                    <span className={`chat-slide-badge ${item.type === "sent" ? "chat-slide-badgeBlue" : "chat-slide-badgeGreen"}`}>
+                                      {item.type === "sent" ? "내가 신청" : "신청 받음"}
+                                    </span>
+                                  </div>
+                                  <div className="chat-slide-chatLocation">
+                                    <MapPin size={14} />
+                                    {item.post.destination}
+                                  </div>
+                                  <div className="chat-slide-chatDates">
+                                    <Calendar size={14} />
+                                    {item.post.dates.start} ~ {item.post.dates.end}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </>
+                      )}
+                    </>
                   )}
                 </div>
               )}
             </div>
           </>
         ) : (
-          // 채팅 화면 (동일)
+          // 채팅 화면
           <>
-            <div className={styles.header}>
+            <div className="chat-slide-header">
               <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                {selectedChat.type === "one-on-one" ? (
-                  <>
-                    <div className={`${styles.avatar} ${styles.avatarPink}`} style={{ width: "40px", height: "40px", fontSize: "20px" }}>
-                      {selectedChat.post.author.avatar}
-                    </div>
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: "16px" }}>{selectedChat.post.author.name}</div>
-                      <div style={{ fontSize: "13px", opacity: 0.8 }}>📍 {selectedChat.post.destination}</div>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div className={`${styles.avatar} ${styles.avatarPurple}`} style={{ width: "40px", height: "40px" }}>
-                      <Users size={20} />
-                    </div>
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: "16px" }}>{selectedChat.chat.postDestination} 여행</div>
-                      <div style={{ fontSize: "13px", opacity: 0.8 }}>👥 {selectedChat.chat.members.length}명</div>
-                    </div>
-                  </>
-                )}
+                <div className={`chat-slide-avatar chat-slide-avatarPink`} style={{ width: "40px", height: "40px", fontSize: "20px" }}>
+                  {selectedChat.post.author.avatar}
+                </div>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: "16px" }}>{selectedChat.post.author.name}</div>
+                  <div style={{ fontSize: "13px", opacity: 0.8 }}>📍 {selectedChat.post.destination}</div>
+                </div>
               </div>
-              <button onClick={() => setSelectedChat(null)} className={styles.closeBtn}>
+              <button onClick={() => setSelectedChat(null)} className="chat-slide-closeBtn">
                 <X size={20} />
               </button>
             </div>
 
             <div style={{ flex: 1, overflowY: "auto", padding: "20px", background: "#eff6ff" }}>
               <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-                {(selectedChat.type === "one-on-one" ? selectedChat.chat.messages : selectedChat.chat.messages).map((msg) => {
+                {selectedChat.chat.messages.map((msg) => {
                   const isMyMessage = msg.senderId === CURRENT_USER.email;
 
                   return (

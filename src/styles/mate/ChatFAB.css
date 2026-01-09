@@ -1,6 +1,6 @@
-/* styles/mate/ChatFAB.module.css */
+/* styles/mate/ChatFAB.css */
 
-.fabBtn {
+.chat-fab-fabBtn {
   position: fixed;
   bottom: 30px;
   right: 30px;
@@ -22,7 +22,7 @@
   transition: transform 0.2s, box-shadow 0.2s;
 }
 
-.fabBtn:hover {
+.chat-fab-fabBtn:hover {
   transform: translate(-4px, -4px);
   box-shadow: 10px 10px 0px rgba(0, 0, 0, 0.5);
   background: #FFD700;
@@ -30,12 +30,12 @@
   color: #000;
 }
 
-.fabBtn:active {
+.chat-fab-fabBtn:active {
   transform: translate(2px, 2px);
   box-shadow: 2px 2px 0px rgba(0, 0, 0, 0.5);
 }
 
-.fabIcon {
+.chat-fab-fabIcon {
   width: 18px;
   height: 18px;
   display: flex;
@@ -43,13 +43,13 @@
   justify-content: center;
 }
 
-.fabText {
+.chat-fab-fabText {
   text-transform: uppercase;
   letter-spacing: 1px;
 }
 
 /* 읽지 않은 메시지 배지 */
-.badge {
+.chat-fab-badge {
   position: absolute;
   top: -8px;
   right: -8px;

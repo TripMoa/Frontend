@@ -1,16 +1,22 @@
-/* MateHeader.module.css */
+/* MateHeader.css */
 
 .header {
+  margin-top: 20px;
+  position: relative;
+  background: #fff;
   border: 3px solid #000;
-  box-shadow: 8px 8px 0px rgba(0, 0, 0, 1);
+  padding: 40px 30px 30px 30px;
+  box-shadow: 10px 10px 0px #000;
+  font-family: 'Share Tech Mono', monospace;
 }
 
 .button {
-  border: 3px solid #000;
-  box-shadow: 4px 4px 0px rgba(0, 0, 0, 1);
+  border: 2px solid #000;
+  font-family: 'Share Tech Mono', monospace;
+  transition: all 0.2s;
 }
 
-/* hover 시 bg-black 강제 적용 (Globals.css 오버라이드) */
+/* hover 시 효과 */
 .button:hover {
   background-color: #000 !important;
   color: #fff !important;

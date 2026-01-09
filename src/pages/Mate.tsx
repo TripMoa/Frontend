@@ -1,30 +1,31 @@
-// pages/Mate.tsx (상세 페이지 이동 버전)
+// pages/Mate.tsx
 
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowUpDown, User, ChevronDown } from "lucide-react";
-import { useMate } from "../hooks/useMate";
+import { useMate } from "../hooks/mate/useMate";
+
 import { ChatFAB } from "../components/mate/chat/ChatFAB";
 import { ChatSlideModal } from "../components/mate/chat/ChatSlide";
-import { SORT_OPTIONS, getSortLabel } from "../components/mate/mate.constants";
-import {
-  MateHeader,
-  MateFilters,
-  MatePostCard,
-  MatePagination,
-  MateWriteModal,
-  MateMySentModal,
-  MateReceivedModal,
-  MateApplicantDetailModal,
-} from "../components/mate";
-import styles from "../styles/mate/Mate.module.css";
+
+import { SORT_OPTIONS, getSortLabel } from "../hooks/mate/mate.constants";
+
+import { MateHeader } from "../components/mate/MateHeader";
+import { MateFilters } from "../components/mate/MateFilters";
+import { MatePostCard } from "../components/mate/MatePostCard";
+import { MatePagination } from "../components/mate/MatePagination";
+
+import { MateWriteModal } from "../components/mate/MateWriteModal";
+import { MateSentModal } from "../components/mate/MateSentModal";
+import { MateReceivedModal } from "../components/mate/MateReceiveModal";
+
+import "../styles/mate/Mate.css";
 
 export default function Mate(): JSX.Element {
   const navigate = useNavigate();
   const [showChatModal, setShowChatModal] = useState<boolean>(false);
-  
+
   const {
-    // Filter States
     locationFilter, setLocationFilter,
     dateFilter, setDateFilter,
     genderFilter, setGenderFilter,
@@ -32,8 +33,7 @@ export default function Mate(): JSX.Element {
     selectedTags, toggleTag,
     sortBy, setSortBy,
     currentPage, setCurrentPage,
-    
-    // Posts
+
     visiblePosts,
     filteredPosts,
     totalPages,
@@ -44,34 +44,28 @@ export default function Mate(): JSX.Element {
     isAppliedOnlyMode,
     hasActiveFilters,
     allPosts,
-    
-    // Modal States
+
     showWriteModal, setShowWriteModal,
     showApplicantsModal, setShowApplicantsModal,
     showReceivedModal, setShowReceivedModal,
     selectedApplicant, setSelectedApplicant,
     showSortDropdown, setShowSortDropdown,
-    
-    // Write Modal States
+
     startDate, setStartDate,
     endDate, setEndDate,
     selectedTransport, setSelectedTransport,
     selectedTravelTypes, setSelectedTravelTypes,
     selectedAgeGroups, setSelectedAgeGroups,
     selectedGender, setSelectedGender,
-    
-    // Applications
+
     myApplications,
     receivedApplications,
     allReceivedApplications,
     getApplicantStatus,
     approvedApplicants,
-    
-    // Chat States
+
     oneOnOneChats,
-    groupChats,
-    
-    // Handlers
+
     handleLike,
     handleRemove,
     handleRestore,
@@ -80,110 +74,78 @@ export default function Mate(): JSX.Element {
     handleApprove,
     handleReject,
     handleDeletePost,
-    
-    // Chat Handlers
+
     sendOneOnOneMessage,
-    sendGroupMessage,
-    getOrCreateOneOnOneChat,
     leaveOneOnOneChat,
-    leaveGroupChat,
     createOneOnOneChat,
-    createGroupChat,
   } = useMate();
 
-  // 카드 클릭 시 상세 페이지로 이동
   const handleCardClick = (post: any) => {
     navigate(`/mate/${post.id}`);
   };
 
-  // 1:1 채팅 생성
-  const handleCreateOneOnOneChat = (postId: string, otherUserId: string) => {
-    const post = allPosts.find(p => p.id === postId);
-    if (!post) return;
-    getOrCreateOneOnOneChat(postId, post.author);
-  };
-
-  // 그룹 채팅 생성
-  const handleCreateGroupChat = (postId: string) => {
-    const post = allPosts.find(p => p.id === postId);
-    if (!post) return;
-    
-    // 승인된 멤버 수집
-    const approvedApps = receivedApplications.filter(app => 
-      app.postId === postId && approvedApplicants.includes(app.id)
-    );
-    
-    const approvedMembers = [
-      post.author,
-      ...approvedApps.map(app => ({
-        name: app.applicant.name,
-        age: app.applicant.age,
-        gender: app.applicant.gender,
-        avatar: app.applicant.avatar,
-        email: app.applicant.email,
-        travelStyle: app.applicant.travelStyle,
-      }))
-    ];
-    
-    createGroupChat(post, approvedMembers);
-  };
-
-  // 읽지 않은 메시지 개수 (옵션)
   const unreadCount = 0;
 
   return (
-    <div className="min-h-screen">
-      <div className="max-w-5xl mx-auto py-12 px-4">
+    <section className="page-section">
+      <div className="container" style={{ paddingTop: '40px', paddingBottom: '40px' }}>
+
         {/* Header */}
-        <MateHeader
-          onWriteClick={() => setShowWriteModal(true)}
-          onMySentClick={() => setShowApplicantsModal(true)}
-          onReceivedClick={() => setShowReceivedModal(true)}
-          onChatListClick={() => setShowChatModal(true)}
-          mySentCount={myApplications.length}
-          receivedPendingCount={receivedApplications.filter(app => getApplicantStatus(app.id) === "pending").length}
-          unreadChatCount={unreadCount}
-        />
+        <div style={{ marginBottom: '35px' }}>
+          <MateHeader
+            onWriteClick={() => setShowWriteModal(true)}
+            onMySentClick={() => setShowApplicantsModal(true)}
+            onReceivedClick={() => setShowReceivedModal(true)}
+            onChatListClick={() => setShowChatModal(true)}
+            mySentCount={myApplications.length}
+            receivedPendingCount={receivedApplications.filter(app => getApplicantStatus(app.id) === "pending").length}
+            unreadChatCount={unreadCount}
+          />
+        </div>
 
         {/* Filters */}
-        <MateFilters
-          locationFilter={locationFilter}
-          setLocationFilter={setLocationFilter}
-          dateFilter={dateFilter}
-          setDateFilter={setDateFilter}
-          genderFilter={genderFilter}
-          setGenderFilter={setGenderFilter}
-          ageFilter={ageFilter}
-          setAgeFilter={setAgeFilter}
-          selectedTags={selectedTags}
-          toggleTag={toggleTag}
-          setCurrentPage={setCurrentPage}
-        />
+        <div style={{ marginBottom: '30px' }}>
+          <MateFilters
+            locationFilter={locationFilter}
+            setLocationFilter={setLocationFilter}
+            dateFilter={dateFilter}
+            setDateFilter={setDateFilter}
+            genderFilter={genderFilter}
+            setGenderFilter={setGenderFilter}
+            ageFilter={ageFilter}
+            setAgeFilter={setAgeFilter}
+            selectedTags={selectedTags}
+            toggleTag={toggleTag}
+            setCurrentPage={setCurrentPage}
+          />
+        </div>
 
-        {/* Sort & Reset */}
-        <div className="mb-8 flex items-center justify-between flex-wrap gap-4">
+        {/* Sort / Filter */}
+        <div style={{ marginBottom: '30px' }} className="flex items-center justify-between flex-wrap gap-4">
           <div className="flex items-center gap-3">
             <ArrowUpDown className="w-5 h-5 text-black/60" />
             <span className="text-sm text-black/60">SORT BY:</span>
-            
+
             <div className="relative dropdown-sort">
               <button
                 type="button"
                 onClick={() => setShowSortDropdown(!showSortDropdown)}
                 className={`min-w-[180px] px-4 py-2 border-2 border-black text-left text-sm font-bold flex items-center justify-between transition-all ${
-                  sortBy !== "default" ? styles.bgActive : "bg-white text-black hover:bg-[#f5f5f5]"
+                  sortBy !== "default" ? "bgActive" : "bg-white text-black hover:bg-[#f5f5f5]"
                 }`}
               >
                 <span>{getSortLabel(sortBy)}</span>
                 <ChevronDown className={`w-4 h-4 ml-2 transition-transform ${showSortDropdown ? "rotate-180" : ""}`} />
               </button>
+
               {showSortDropdown && (
-                <div className={`absolute top-full left-0 mt-1 min-w-[200px] bg-white z-50 overflow-hidden ${styles.sortDropdown}`}>
+                <div className="absolute top-full left-0 mt-1 min-w-[200px] bg-white z-50 overflow-hidden sortDropdown">
                   {SORT_OPTIONS.map((group, groupIdx) => (
                     <div key={group.group}>
                       <div className="px-4 py-2 bg-[#f4f4f4] text-xs font-bold text-black/50 uppercase border-b border-black/20">
                         {group.group}
                       </div>
+
                       {group.options.map((option, optIdx) => (
                         <button
                           key={option.value}
@@ -194,22 +156,13 @@ export default function Mate(): JSX.Element {
                             setShowSortDropdown(false);
                           }}
                           className={`w-full px-4 py-2.5 text-left text-sm font-bold transition-colors ${
-                            optIdx !== group.options.length - 1 || groupIdx !== SORT_OPTIONS.length - 1 
+                            optIdx !== group.options.length - 1 || groupIdx !== SORT_OPTIONS.length - 1
                               ? "border-b border-black/10" : ""
                           } ${
-                            sortBy === option.value ? styles.bgActive : "bg-white text-black hover:bg-[#eee]"
+                            sortBy === option.value ? "bgActive" : "bg-white text-black hover:bg-[#eee]"
                           }`}
                         >
                           {option.label}
-                          {option.value === "liked-only" && likedPostIds.length > 0 && (
-                            <span className="ml-2 text-xs opacity-60">({likedPostIds.length})</span>
-                          )}
-                          {option.value === "removed-only" && removedPosts.length > 0 && (
-                            <span className="ml-2 text-xs opacity-60">({removedPosts.length})</span>
-                          )}
-                          {option.value === "applied-only" && myApplications.length > 0 && (
-                            <span className="ml-2 text-xs opacity-60">({myApplications.length})</span>
-                          )}
                         </button>
                       ))}
                     </div>
@@ -218,6 +171,7 @@ export default function Mate(): JSX.Element {
               )}
             </div>
           </div>
+
           <div className="flex items-center gap-4">
             <span className="text-sm text-black/70">{filteredPosts.length} posts found</span>
             {hasActiveFilters && (
@@ -230,37 +184,12 @@ export default function Mate(): JSX.Element {
 
         {/* Posts */}
         {visiblePosts.length === 0 ? (
-          <div className={`bg-white p-12 text-center ${styles.emptyState}`}>
+          <div className="bg-white p-12 text-center emptyState">
             <User className="w-16 h-16 mx-auto mb-4 text-black/30" />
-            {isLikedOnlyMode ? (
-              <>
-                <p className="text-black/60 text-lg font-bold uppercase">NO LIKED POSTS</p>
-                <p className="text-black/40 text-sm mt-2">// 아직 좋아요한 게시물이 없습니다</p>
-              </>
-            ) : isRemovedOnlyMode ? (
-              <>
-                <p className="text-black/60 text-lg font-bold uppercase">NO PASSED POSTS</p>
-                <p className="text-black/40 text-sm mt-2">// 아직 패스한 게시물이 없습니다</p>
-              </>
-            ) : isAppliedOnlyMode ? (
-              <>
-                <p className="text-black/60 text-lg font-bold uppercase">NO APPLIED POSTS</p>
-                <p className="text-black/40 text-sm mt-2">// 아직 신청한 게시물이 없습니다</p>
-              </>
-            ) : (
-              <>
-                <p className="text-black/60 text-lg font-bold uppercase">NO POSTS FOUND</p>
-                <p className="text-black/40 text-sm mt-2">// 필터를 조정해보세요</p>
-              </>
-            )}
-            {(removedPosts.length > 0 && !isRemovedOnlyMode) && (
-              <button onClick={handleResetAll} className="mt-4 px-6 py-2 bg-black text-white border-2 border-black hover:bg-white hover:text-black transition-colors font-bold text-sm">
-                RESET ALL
-              </button>
-            )}
+            <p className="text-black/60 text-lg font-bold uppercase">NO POSTS FOUND</p>
           </div>
         ) : (
-          <div className="flex flex-col gap-6 mb-8">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '25px', marginBottom: '40px' }}>
             {visiblePosts.map((post) => (
               <MatePostCard
                 key={post.id}
@@ -278,13 +207,6 @@ export default function Mate(): JSX.Element {
           </div>
         )}
 
-        {visiblePosts.length > 0 && (
-          <div className="text-center">
-            <p className="text-sm text-black/60 font-mono">// 카드를 클릭하면 상세 정보를 확인할 수 있습니다</p>
-          </div>
-        )}
-
-        {/* Pagination */}
         <MatePagination
           currentPage={currentPage}
           totalPages={totalPages}
@@ -292,7 +214,6 @@ export default function Mate(): JSX.Element {
         />
       </div>
 
-      {/* Modals */}
       {showWriteModal && (
         <MateWriteModal
           onClose={() => setShowWriteModal(false)}
@@ -313,7 +234,7 @@ export default function Mate(): JSX.Element {
       )}
 
       {showApplicantsModal && (
-        <MateMySentModal
+        <MateSentModal
           applications={myApplications}
           getApplicantStatus={getApplicantStatus}
           onClose={() => setShowApplicantsModal(false)}
@@ -326,41 +247,23 @@ export default function Mate(): JSX.Element {
           getApplicantStatus={getApplicantStatus}
           onApprove={handleApprove}
           onReject={handleReject}
-          onSelectApplicant={setSelectedApplicant}
           onClose={() => setShowReceivedModal(false)}
         />
       )}
 
-      {selectedApplicant && (
-        <MateApplicantDetailModal
-          applicant={selectedApplicant}
-          getApplicantStatus={getApplicantStatus}
-          onApprove={handleApprove}
-          onReject={handleReject}
-          onClose={() => setSelectedApplicant(null)}
-        />
-      )}
-
-      {/* 플로팅 채팅 버튼 */}
       <ChatFAB onClick={() => setShowChatModal(true)} unreadCount={unreadCount} />
 
-      {/* 슬라이드 채팅 모달 */}
       <ChatSlideModal
         isOpen={showChatModal}
         onClose={() => setShowChatModal(false)}
         oneOnOneChats={oneOnOneChats}
-        groupChats={groupChats}
         allPosts={allPosts}
         myApplications={myApplications}
         receivedApplications={allReceivedApplications}
-        approvedApplicants={approvedApplicants}
         onSendOneOnOneMessage={sendOneOnOneMessage}
-        onSendGroupMessage={sendGroupMessage}
         onCreateOneOnOneChat={createOneOnOneChat}
-        onCreateGroupChat={createGroupChat}
         onLeaveOneOnOneChat={leaveOneOnOneChat}
-        onLeaveGroupChat={leaveGroupChat}
       />
-    </div>
+    </section>
   );
 }
