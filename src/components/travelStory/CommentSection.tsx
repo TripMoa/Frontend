@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 interface Comment {
   id: number;
@@ -8,392 +8,364 @@ interface Comment {
   date: string;
 }
 
-function CommentSection() {
-  const [comments, setComments] = useState<Comment[]>([
-    {
-      id: 1,
-      author: '김여행',
-      authorAvatar: '김',
-      content: '정보 감사합니다! 저도 다음 달에 가보려고 해요 ^^',
-      date: '2023.12.28'
-    },
-    {
-      id: 2,
-      author: '박바다',
-      authorAvatar: '박',
-      content: '사진이 너무 예쁘네요! 혹시 카메라 뭐 쓰시나요?',
-      date: '2023.12.29'
-    }
-  ]);
-  const [newComment, setNewComment] = useState('');
-  const [showReportModal, setShowReportModal] = useState(false);
-  const [reportingCommentId, setReportingCommentId] = useState<number | null>(null);
-  const [selectedReportReason, setSelectedReportReason] = useState('');
+interface CommentSectionProps {
+  storyId: number;
+}
 
-  const handleAddComment = () => {
+function CommentSection({ storyId }: CommentSectionProps) {
+  const STORAGE_KEY = `comments_${storyId}`;
+
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [newComment, setNewComment] = useState('');
+
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingContent, setEditingContent] = useState('');
+
+  const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
+  const [loaded, setLoaded] = useState(false); // ✅ 로드 완료 플래그
+
+  /* ================= 로컬스토리지 로드 ================= */
+  useEffect(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      setComments(JSON.parse(saved));
+    }
+    setLoaded(true); // ✅ 로드 끝
+  }, [STORAGE_KEY]);
+
+  /* ================= 로컬스토리지 저장 ================= */
+  useEffect(() => {
+    if (!loaded) return; // ✅ 로드 전에는 저장 금지
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(comments));
+  }, [comments, STORAGE_KEY, loaded]);
+
+  const handleSubmit = () => {
     if (!newComment.trim()) return;
-    
+
     const comment: Comment = {
       id: Date.now(),
       author: '나',
       authorAvatar: '나',
       content: newComment,
-      date: new Date().toLocaleDateString('ko-KR').replace(/\. /g, '.').slice(0, -1)
+      date: new Date()
+        .toLocaleDateString('ko-KR')
+        .replace(/\. /g, '.')
+        .slice(0, -1)
     };
-    
+
+    // 처음 댓글이 위, 새 댓글은 아래
     setComments([...comments, comment]);
     setNewComment('');
   };
 
-  const handleReportClick = (commentId: number) => {
-    setReportingCommentId(commentId);
-    setShowReportModal(true);
-    setSelectedReportReason('');
+  const handleEditSave = (id: number) => {
+    setComments(
+      comments.map((c) =>
+        c.id === id ? { ...c, content: editingContent } : c
+      )
+    );
+    setEditingId(null);
+    setEditingContent('');
   };
 
-  const handleReportSubmit = () => {
-    if (!selectedReportReason) {
-      alert('신고 사유를 선택해주세요.');
-      return;
-    }
-    alert('신고가 접수되었습니다.');
-    setShowReportModal(false);
-    setReportingCommentId(null);
-    setSelectedReportReason('');
+  const handleDeleteConfirm = () => {
+    if (deleteTarget === null) return;
+    setComments(comments.filter((c) => c.id !== deleteTarget));
+    setDeleteTarget(null);
   };
-
-  const reportReasons = [
-    '스팸입니다.',
-    '음란물입니다.',
-    '욕설/혐오표현이 있습니다.',
-    '불쾌한 표현이 있습니다.'
-  ];
 
   return (
-    <>
-      <div style={{
+    <div
+      style={{
         background: '#fff',
-        padding: '40px',
         border: '3px solid #000',
-        boxShadow: '4px 4px 0px rgba(0, 0, 0, 1)',
-        marginTop: '30px'
-      }}>
-        {/* 댓글 헤더 */}
-        <h3 style={{
+        padding: '30px',
+        marginTop: '40px',
+        boxShadow: '4px 4px 0px rgba(0, 0, 0, 1)'
+      }}
+    >
+      <h3
+        style={{
           fontSize: '18px',
           fontWeight: 700,
           fontFamily: "'Share Tech Mono', monospace",
-          textTransform: 'uppercase',
-          marginBottom: '25px',
+          marginBottom: '20px',
           paddingBottom: '15px',
-          borderBottom: '2px solid #000'
-        }}>
-          COMMENTS ({comments.length})
-        </h3>
+          borderBottom: '3px solid #000'
+        }}
+      >
+        COMMENTS ({comments.length})
+      </h3>
 
-        {/* 댓글 목록 */}
-        <div style={{ marginBottom: '30px' }}>
-          {comments.map((comment) => (
-            <div
-              key={comment.id}
-              style={{
-                padding: '20px',
-                marginBottom: '15px',
-                border: '2px solid #000',
-                background: '#fafafa',
-                position: 'relative'
-              }}
-            >
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                marginBottom: '12px'
-              }}>
-                <div style={{
-                  width: '40px',
-                  height: '40px',
+      {/* 댓글 리스트 */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '30px' }}>
+        {comments.map((comment) => (
+          <div
+            key={comment.id}
+            style={{
+              padding: '20px',
+              border: '2px solid #000',
+              background: '#f9f9f9',
+              position: 'relative'
+            }}
+          >
+            {/* 수정 | 삭제 */}
+            {comment.author === '나' && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '12px',
+                  right: '12px',
+                  fontSize: '11px',
+                  fontFamily: "'Share Tech Mono', monospace",
+                  color: '#999',
+                  display: 'flex',
+                  gap: '6px'
+                }}
+              >
+                <span
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => {
+                    setEditingId(comment.id);
+                    setEditingContent(comment.content);
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.color = '#000')}
+                  onMouseLeave={(e) => (e.currentTarget.style.color = '#999')}
+                >
+                  EDIT
+                </span>
+                <span>|</span>
+                <span
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => setDeleteTarget(comment.id)}
+                  onMouseEnter={(e) => (e.currentTarget.style.color = '#d00000')}
+                  onMouseLeave={(e) => (e.currentTarget.style.color = '#999')}
+                >
+                  DELETE
+                </span>
+              </div>
+            )}
+
+            {/* 작성자 */}
+            <div style={{ display: 'flex', gap: '12px', marginBottom: '12px' }}>
+              <div
+                style={{
+                  width: '36px',
+                  height: '36px',
                   background: '#000',
                   color: '#fff',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  fontWeight: 700,
-                  fontFamily: "'Share Tech Mono', monospace",
-                  fontSize: '14px'
-                }}>
-                  {comment.authorAvatar}
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{
-                    fontSize: '13px',
-                    fontWeight: 700,
-                    fontFamily: "'Share Tech Mono', monospace",
-                    marginBottom: '4px'
-                  }}>
-                    {comment.author}
-                  </div>
-                  <div style={{
-                    fontSize: '11px',
-                    color: '#999',
-                    fontFamily: "'Share Tech Mono', monospace"
-                  }}>
-                    {comment.date}
-                  </div>
-                </div>
-                {/* 신고하기 버튼 */}
-                <button
-                  onClick={() => handleReportClick(comment.id)}
+                  fontWeight: 700
+                }}
+              >
+                {comment.authorAvatar}
+              </div>
+              <div>
+                <div style={{ fontWeight: 700 }}>{comment.author}</div>
+                <div style={{ fontSize: '11px', color: '#999' }}>{comment.date}</div>
+              </div>
+            </div>
+
+            {/* 내용 / 수정 */}
+            {editingId === comment.id ? (
+              <>
+                <textarea
+                  value={editingContent}
+                  onChange={(e) => setEditingContent(e.target.value)}
                   style={{
-                    padding: '6px 12px',
+                    width: '100%',
+                    minHeight: '80px',
+                    border: '2px solid #000',
+                    padding: '10px',
+                    fontFamily: "'Share Tech Mono', monospace",
+                    marginBottom: '10px'
+                  }}
+                />
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                  <button
+                    onClick={() => handleEditSave(comment.id)}
+                    style={{
+                      border: '2px solid #000',
+                      background: '#000',
+                      color: '#fff',
+                      padding: '6px 12px',
+                      fontWeight: 700,
+                      fontSize: '11px',
+                      fontFamily: "'Share Tech Mono', monospace"
+                    }}
+                  >
+                    SAVE
+                  </button>
+                  <button
+                    onClick={() => setEditingId(null)}
+                    style={{
+                      border: '2px solid #000',
+                      background: '#fff',
+                      padding: '6px 12px',
+                      fontWeight: 700,
+                      fontSize: '11px',
+                      fontFamily: "'Share Tech Mono', monospace"
+                    }}
+                  >
+                    CANCEL
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div
+                style={{
+                  fontSize: '14px',
+                  lineHeight: '1.6',
+                  fontFamily: "'Share Tech Mono', monospace",
+                  color: '#333',
+                  paddingLeft: '48px'
+                }}
+              >
+                {comment.content}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* 댓글 작성 */}
+      <textarea
+        value={newComment}
+        onChange={(e) => setNewComment(e.target.value)}
+        placeholder="댓글을 작성해주세요..."
+        style={{
+          width: '100%',
+          minHeight: '120px',
+          padding: '15px',
+          border: '2px solid #000',
+          fontFamily: "'Share Tech Mono', monospace",
+          marginBottom: '12px'
+        }}
+      />
+      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <button
+          onClick={handleSubmit}
+          style={{
+            padding: '12px 24px',
+            border: '3px solid #000',
+            background: '#000',
+            color: '#fff',
+            fontWeight: 700,
+            fontSize: '12px',
+            fontFamily: "'Share Tech Mono', monospace"
+          }}
+        >
+          POST COMMENT
+        </button>
+      </div>
+
+      {/* ================= 삭제 확인 모달 (통일된 디자인) ================= */}
+      {deleteTarget !== null && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.7)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 100000
+          }}
+          onClick={() => setDeleteTarget(null)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: '#fff',
+              border: '3px solid #000',
+              boxShadow: '15px 15px 0px #000',
+              width: '360px'
+            }}
+          >
+            {/* 헤더 */}
+            <div
+              style={{
+                background: '#000',
+                color: '#fff',
+                padding: '12px 20px'
+              }}
+            >
+              <span
+                style={{
+                  fontFamily: "'Share Tech Mono', monospace",
+                  fontSize: '16px',
+                  fontWeight: 900,
+                  letterSpacing: '1px'
+                }}
+              >
+                댓글 삭제
+              </span>
+            </div>
+
+            {/* 본문 */}
+            <div style={{ padding: '24px' }}>
+              <p
+                style={{
+                  fontFamily: "'Share Tech Mono', monospace",
+                  fontSize: '14px',
+                  lineHeight: '1.6',
+                  marginBottom: '24px'
+                }}
+              >
+                댓글을 삭제하시겠습니까?<br />
+                삭제된 댓글은 복구할 수 없습니다.
+              </p>
+
+              {/* 버튼 */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                <button
+                  onClick={() => setDeleteTarget(null)}
+                  style={{
                     border: '2px solid #000',
                     background: '#fff',
-                    color: '#000',
-                    fontSize: '10px',
-                    fontWeight: 700,
+                    padding: '8px 16px',
+                    fontWeight: 900,
+                    fontSize: '12px',
                     fontFamily: "'Share Tech Mono', monospace",
-                    textTransform: 'uppercase',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    letterSpacing: '0.5px'
+                    cursor: 'pointer'
+                  }}
+                >
+                  취소
+                </button>
+                <button
+                  onClick={handleDeleteConfirm}
+                  style={{
+                    border: '2px solid #d00000',
+                    background: '#fff',
+                    color: '#d00000',
+                    padding: '8px 16px',
+                    fontWeight: 900,
+                    fontSize: '12px',
+                    fontFamily: "'Share Tech Mono', monospace",
+                    cursor: 'pointer'
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.background = '#000';
+                    e.currentTarget.style.background = '#d00000';
                     e.currentTarget.style.color = '#fff';
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.background = '#fff';
-                    e.currentTarget.style.color = '#000';
+                    e.currentTarget.style.color = '#d00000';
                   }}
                 >
-                  신고하기
+                  삭제
                 </button>
               </div>
-              <div style={{
-                fontSize: '14px',
-                lineHeight: '1.6',
-                fontFamily: "'Share Tech Mono', monospace"
-              }}>
-                {comment.content}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* 댓글 작성 */}
-        <div style={{
-          borderTop: '2px dashed rgba(0,0,0,0.2)',
-          paddingTop: '25px',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'flex-end'
-        }}>
-          <textarea
-            value={newComment}
-            onChange={(e) => setNewComment(e.target.value)}
-            placeholder="댓글을 입력하세요..."
-            style={{
-              width: '100%',
-              minHeight: '100px',
-              padding: '15px',
-              border: '2px solid #000',
-              fontSize: '14px',
-              fontFamily: "'Share Tech Mono', monospace",
-              resize: 'vertical',
-              outline: 'none',
-              marginBottom: '15px'
-            }}
-          />
-          <button
-            onClick={handleAddComment}
-            style={{
-              padding: '10px 20px',
-              border: '3px solid #000',
-              background: '#000',
-              color: '#fff',
-              fontSize: '11px',
-              fontWeight: 700,
-              fontFamily: "'Share Tech Mono', monospace",
-              textTransform: 'uppercase',
-              cursor: 'pointer',
-              boxShadow: '4px 4px 0px rgba(0, 0, 0, 1)',
-              transition: 'all 0.2s',
-              letterSpacing: '1px'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = '#fff';
-              e.currentTarget.style.color = '#000';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = '#000';
-              e.currentTarget.style.color = '#fff';
-            }}
-          >
-            POST COMMENT
-          </button>
-        </div>
-      </div>
-
-      {/* 신고 모달 - 새로운 디자인 */}
-      {showReportModal && (
-        <div 
-          className="modal-overlay active"
-          onClick={() => setShowReportModal(false)}
-        >
-          <div 
-            className="modal-content"
-            style={{
-              maxWidth: '500px',
-              borderRadius: '12px',
-              padding: 0,
-              overflow: 'hidden'
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* 모달 헤더 */}
-            <div className="modal-header" style={{
-              background: '#f9f9f9',
-              borderBottom: '1px solid #eee',
-              padding: '16px 24px'
-            }}>
-              <h2 style={{
-                fontSize: '18px',
-                fontWeight: 700,
-                fontFamily: "'Share Tech Mono', monospace",
-                margin: 0
-              }}>
-                댓글 신고
-              </h2>
-              <button 
-                className="close-btn"
-                onClick={() => setShowReportModal(false)}
-                style={{
-                  fontSize: '28px',
-                  color: '#999',
-                  lineHeight: 1
-                }}
-              >
-                ×
-              </button>
-            </div>
-
-            {/* 모달 바디 */}
-            <div className="modal-body" style={{
-              padding: '24px',
-              background: '#fff'
-            }}>
-              <div style={{
-                fontSize: '13px',
-                fontFamily: "'Share Tech Mono', monospace",
-                marginBottom: '20px',
-                color: '#666',
-                lineHeight: 1.6,
-                background: '#f9f9f9',
-                padding: '12px',
-                borderRadius: '8px'
-              }}>
-                <strong style={{ color: '#333' }}>신고하기 전에 참고!</strong>
-                <br /><br />
-                개인정보 언급 및 명예훼손, 저작권/상표권 침해, 청소년 유해물 등은 별도 문의하시기 바랍니다.
-                <br />
-                허위신고나 중복신고 시 서비스 이용에 제약이 있을 수 있습니다.
-              </div>
-
-              <div className="input-group" style={{ marginBottom: 0 }}>
-                <label style={{
-                  fontSize: '13px',
-                  fontWeight: 600,
-                  color: '#333',
-                  marginBottom: '12px',
-                  display: 'block'
-                }}>
-                  사유 선택
-                </label>
-                {reportReasons.map((reason, index) => (
-                  <label 
-                    key={index}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      padding: '10px',
-                      marginBottom: '8px',
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      fontFamily: "'Share Tech Mono', monospace",
-                      background: selectedReportReason === reason ? '#f0f0f0' : '#fff',
-                      border: '1px solid #ddd',
-                      borderRadius: '6px',
-                      transition: 'all 0.2s'
-                    }}
-                    onMouseEnter={(e) => {
-                      if (selectedReportReason !== reason) {
-                        e.currentTarget.style.background = '#f9f9f9';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (selectedReportReason !== reason) {
-                        e.currentTarget.style.background = '#fff';
-                      }
-                    }}
-                  >
-                    <input
-                      type="radio"
-                      name="reportReason"
-                      value={reason}
-                      checked={selectedReportReason === reason}
-                      onChange={(e) => setSelectedReportReason(e.target.value)}
-                      style={{
-                        marginRight: '12px',
-                        width: '18px',
-                        height: '18px',
-                        cursor: 'pointer',
-                        accentColor: '#000'
-                      }}
-                    />
-                    {reason}
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            {/* 모달 푸터 */}
-            <div className="modal-footer" style={{
-              padding: '16px 24px',
-              background: '#fff',
-              borderTop: '1px solid #eee'
-            }}>
-              <button
-                className="btn-cancel"
-                onClick={() => setShowReportModal(false)}
-                style={{
-                  padding: '12px',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  fontWeight: 600,
-                  fontFamily: "'Share Tech Mono', monospace"
-                }}
-              >
-                취소
-              </button>
-              <button
-                className="btn-save"
-                onClick={handleReportSubmit}
-                style={{
-                  padding: '12px',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  fontWeight: 600,
-                  fontFamily: "'Share Tech Mono', monospace",
-                  marginTop: 0
-                }}
-              >
-                신고하기
-              </button>
             </div>
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 }
 
