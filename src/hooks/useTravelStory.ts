@@ -5,6 +5,7 @@ interface Story {
   title: string;
   description: string;
   image: string;
+  images?: string[];
   author: string;
   authorAvatar: string;
   destination: string;
@@ -14,175 +15,36 @@ interface Story {
   date: string;
   likes: number;
   comments: number;
-  bookmarks: number;
   follows: number;
   views: string;
   tags: string[];
 }
 
-// 전체 여행기 데이터 (메인 페이지용 - 다양한 작성자)
-const allStoriesData = [
-  {
-    id: 1,
-    title: "강릉 바다 힐링 3박4일",
-    description: "동해의 푸른 바다와 함께한 힐링 여행",
-    image: "https://images.unsplash.com/photo-1506929562872-bb421503ef21?w=800",
-    author: "여행러버",
-    authorAvatar: "여",
-    destination: "강릉",
-    duration: "3박4일",
-    budget: "500000",
-    departureDate: "2024-03-15",
-    date: "2023.1.28",
-    likes: 128,
-    comments: 45,
-    bookmarks: 89,
-    follows: 34,
-    views: "120",
-    tags: ["힐링여행", "바다", "맛집투어"]
-  },
-  {
-    id: 2,
-    title: "경주 역사 탐방 2박3일",
-    description: "천년 고도 경주의 역사와 문화를 체험하다",
-    image: "https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=800",
-    author: "역사덕후",
-    authorAvatar: "역",
-    destination: "경주",
-    duration: "2박3일",
-    budget: "328000",
-    departureDate: "2024-02-10",
-    date: "2023.2.15",
-    likes: 95,
-    comments: 23,
-    bookmarks: 67,
-    follows: 28,
-    views: "85",
-    tags: ["문화탐방", "역사", "사진명소"]
-  },
-  {
-    id: 3,
-    title: "제주도 완전정복 4박5일",
-    description: "제주의 숨은 명소와 맛집을 찾아서",
-    image: "https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=800",
-    author: "제주매니아",
-    authorAvatar: "제",
-    destination: "제주",
-    duration: "4박5일",
-    budget: "850000",
-    departureDate: "2024-03-01",
-    date: "2023.3.10",
-    likes: 203,
-    comments: 67,
-    bookmarks: 145,
-    follows: 56,
-    views: "156",
-    tags: ["자연", "맛집투어", "렌터카"]
-  },
-  {
-    id: 4,
-    title: "부산 해운대 맛집투어",
-    description: "부산의 숨은 맛집들을 찾아다닌 여행",
-    image: "https://images.unsplash.com/photo-1583470790878-4f89a7bf9b7f?w=800",
-    author: "맛집헌터",
-    authorAvatar: "맛",
-    destination: "부산",
-    duration: "2박3일",
-    budget: "420000",
-    departureDate: "2024-02-20",
-    date: "2023.2.25",
-    likes: 167,
-    comments: 52,
-    bookmarks: 98,
-    follows: 41,
-    views: "134",
-    tags: ["맛집투어", "해변", "도시여행"]
-  },
-  {
-    id: 5,
-    title: "전주 한옥마을 당일치기",
-    description: "전주 비빔밥과 한옥마을의 매력",
-    image: "https://images.unsplash.com/photo-1583474679704-34e8e3a6c180?w=800",
-    author: "한식러버",
-    authorAvatar: "한",
-    destination: "전주",
-    duration: "당일치기",
-    budget: "150000",
-    departureDate: "2024-03-05",
-    date: "2023.3.08",
-    likes: 82,
-    comments: 19,
-    bookmarks: 45,
-    follows: 22,
-    views: "67",
-    tags: ["문화탐방", "맛집투어", "가성비"]
-  }
-];
-
-// 내 여행기 데이터 (마이 스토리 페이지용 - 모두 같은 작성자)
-const myStoriesData = [
-  {
-    id: 101,
-    title: "강릉 바다 힐링 3박4일",
-    description: "동해의 푸른 바다와 함께한 힐링 여행. 정동진 해돋이부터 주문진 수산시장까지, 강릉의 모든 것을 경험했습니다.",
-    image: "https://images.unsplash.com/photo-1506929562872-bb421503ef21?w=800",
-    author: "채원",
-    authorAvatar: "채",
-    destination: "강릉",
-    duration: "3박4일",
-    budget: "500000",
-    departureDate: "2024-03-15",
-    date: "2023.1.28",
-    likes: 128,
-    comments: 45,
-    bookmarks: 89,
-    follows: 34,
-    views: "120",
-    tags: ["힐링여행", "바다", "맛집투어"]
-  },
-  {
-    id: 102,
-    title: "경주 역사 탐방 2박3일",
-    description: "천년 고도 경주의 역사와 문화를 체험하다. 불국사, 석굴암, 첨성대 등 역사적인 장소들을 둘러보았습니다.",
-    image: "https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=800",
-    author: "채원",
-    authorAvatar: "채",
-    destination: "경주",
-    duration: "2박3일",
-    budget: "328000",
-    departureDate: "2024-02-10",
-    date: "2023.2.15",
-    likes: 95,
-    comments: 23,
-    bookmarks: 67,
-    follows: 28,
-    views: "85",
-    tags: ["문화탐방", "역사", "사진명소"]
-  },
-  {
-    id: 103,
-    title: "제주도 완전정복 4박5일",
-    description: "제주의 숨은 명소와 맛집을 찾아서. 한라산 등반부터 우도 여행까지 알찬 일정이었습니다.",
-    image: "https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=800",
-    author: "채원",
-    authorAvatar: "채",
-    destination: "제주",
-    duration: "4박5일",
-    budget: "850000",
-    departureDate: "2024-03-01",
-    date: "2023.3.10",
-    likes: 203,
-    comments: 67,
-    bookmarks: 145,
-    follows: 56,
-    views: "156",
-    tags: ["자연", "맛집투어", "렌터카"]
-  }
-];
+interface Draft {
+  id: number;
+  title: string;
+  content: string;
+  date: string;
+}
 
 function useTravelStory() {
-  const [currentPage, setCurrentPage] = useState('main');
-  const [selectedStory, setSelectedStory] = useState<any>(null);
+  const [currentPage, setCurrentPageState] = useState(() => {
+    // URL 해시를 먼저 체크 (#main, #detail 등)
+    const hash = window.location.hash.slice(1);
+    if (hash) return hash;
+    
+    // 없으면 localStorage에서
+    const saved = localStorage.getItem('currentPage');
+    return saved || 'main';
+  });
+  const [previousPage, setPreviousPage] = useState('main');
+  
+  // selectedStoryId만 저장 (story 전체는 너무 큼)
+  const [selectedStoryId, setSelectedStoryId] = useState<number | null>(() => {
+    const saved = localStorage.getItem('selectedStoryId');
+    return saved ? parseInt(saved) : null;
+  });
+  
   const [filters, setFilters] = useState({
     searchTerm: '',
     destination: '',
@@ -191,99 +53,255 @@ function useTravelStory() {
     maxBudget: '',
     tags: [] as string[]
   });
-  const [bookmarkedIds, setBookmarkedIds] = useState<number[]>([]);
-  const [likedStories, setLikedStories] = useState<number[]>([]);
-  const [followedStories, setFollowedStories] = useState<number[]>([]);
+  
+  const [likedStories, setLikedStories] = useState<number[]>(() => {
+    const saved = localStorage.getItem('likedStories');
+    return saved ? JSON.parse(saved) : [];
+  });
+  
+  const [followedStories, setFollowedStories] = useState<number[]>(() => {
+    const saved = localStorage.getItem('followedStories');
+    return saved ? JSON.parse(saved) : [];
+  });
+  
   const [showAlert, setShowAlert] = useState(false);
   const [alertMessage, setAlertMessage] = useState('');
-  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  
   const [showDraftModal, setShowDraftModal] = useState(false);
   const [showLikesModal, setShowLikesModal] = useState(false);
-  const [drafts, setDrafts] = useState<any[]>([]);
+  
+  const [drafts, setDraftsState] = useState<Draft[]>(() => {
+    const saved = localStorage.getItem('drafts');
+    return saved ? JSON.parse(saved) : [];
+  });
+  
   const [editingStory, setEditingStory] = useState<any>(null);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [currentDraft, setCurrentDraft] = useState<any>(null);
+  const [currentDraftId, setCurrentDraftId] = useState<number | null>(null);
+  
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deletingStoryId, setDeletingStoryId] = useState<number | null>(null);
-  const [newStories, setNewStories] = useState<any[]>([]);
+  
+  const [myStories, setMyStoriesState] = useState<Story[]>(() => {
+    const saved = localStorage.getItem('myStories');
+    return saved ? JSON.parse(saved) : [];
+  });
 
-  // 브라우저 히스토리 관리
-  useEffect(() => {
-    // 초기 상태 설정
-    const initialState = { page: 'main' };
-    window.history.replaceState(initialState, '', window.location.href);
-
-    // 브라우저 뒤로가기/앞으로가기 이벤트 리스너
-    const handlePopState = (event: PopStateEvent) => {
-      if (event.state && event.state.page) {
-        setCurrentPage(event.state.page);
-        if (event.state.story) {
-          setSelectedStory(event.state.story);
-        }
+  // setMyStories wrapper - 이미지 최대 3개까지 저장 시도
+  const setMyStories = (newStories: Story[] | ((prev: Story[]) => Story[])) => {
+    try {
+      if (typeof newStories === 'function') {
+        setMyStoriesState(prev => {
+          const updated = newStories(prev);
+          
+          try {
+            // 이미지 3개까지만 저장 시도
+            const limitedImages = updated.map(s => ({
+              ...s,
+              images: s.images?.slice(0, 3) || []
+            }));
+            localStorage.setItem('myStories', JSON.stringify(limitedImages));
+          } catch (e) {
+            console.warn('이미지 포함 저장 실패, 기본 이미지로 대체');
+            try {
+              // 실패하면 기본 이미지로 대체
+              const withoutImages = updated.map(s => ({
+                ...s,
+                image: 'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=800',
+                images: []
+              }));
+              localStorage.setItem('myStories', JSON.stringify(withoutImages));
+            } catch (e2) {
+              console.error('localStorage 저장 완전 실패:', e2);
+            }
+          }
+          
+          return updated;
+        });
       } else {
-        // 상태가 없으면 메인으로
-        setCurrentPage('main');
+        setMyStoriesState(newStories);
+        
+        try {
+          // 이미지 3개까지만 저장 시도
+          const limitedImages = newStories.map(s => ({
+            ...s,
+            images: s.images?.slice(0, 3) || []
+          }));
+          localStorage.setItem('myStories', JSON.stringify(limitedImages));
+        } catch (e) {
+          console.warn('이미지 포함 저장 실패, 기본 이미지로 대체');
+          try {
+            // 실패하면 기본 이미지로 대체
+            const withoutImages = newStories.map(s => ({
+              ...s,
+              image: 'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=800',
+              images: []
+            }));
+            localStorage.setItem('myStories', JSON.stringify(withoutImages));
+          } catch (e2) {
+            console.error('localStorage 저장 완전 실패:', e2);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error in setMyStories:', error);
+      if (typeof newStories === 'function') {
+        setMyStoriesState(prev => newStories(prev));
+      } else {
+        setMyStoriesState(newStories);
+      }
+    }
+  };
+
+  // myStories에서 실제 story 찾기 (id만 저장해서 용량 절약)
+  const selectedStory = selectedStoryId 
+    ? myStories.find(s => s.id === selectedStoryId) || null
+    : null;
+  
+  const setSelectedStory = (story: any) => {
+    if (story) {
+      setSelectedStoryId(story.id);
+      localStorage.setItem('selectedStoryId', story.id.toString());
+    } else {
+      setSelectedStoryId(null);
+      localStorage.removeItem('selectedStoryId');
+    }
+  };
+
+  // setDrafts wrapper
+  const setDrafts = (newDrafts: Draft[] | ((prev: Draft[]) => Draft[])) => {
+    if (typeof newDrafts === 'function') {
+      setDraftsState(prev => {
+        const updated = newDrafts(prev);
+        localStorage.setItem('drafts', JSON.stringify(updated));
+        return updated;
+      });
+    } else {
+      setDraftsState(newDrafts);
+      localStorage.setItem('drafts', JSON.stringify(newDrafts));
+    }
+  };
+
+  // localStorage 동기화
+  useEffect(() => {
+    localStorage.setItem('likedStories', JSON.stringify(likedStories));
+  }, [likedStories]);
+
+  useEffect(() => {
+    localStorage.setItem('followedStories', JSON.stringify(followedStories));
+  }, [followedStories]);
+
+  // 브라우저 뒤로가기/앞으로가기 버튼 지원
+  useEffect(() => {
+    // 초기 로드 시 history state 설정
+    if (!window.history.state?.page) {
+      window.history.replaceState({ page: currentPage }, '', `#${currentPage}`);
+    }
+
+    const handlePopState = (event: PopStateEvent) => {
+      const page = event.state?.page || 'main';
+      setCurrentPageState(page);
+      localStorage.setItem('currentPage', page);
+      
+      // write 페이지에서 벗어나면 상태 초기화
+      if (page !== 'write') {
+        setCurrentDraftId(null);
+        setCurrentDraft(null);
+        setEditingStory(null);
+      }
+      
+      // detail 페이지가 아니면 selectedStory 초기화
+      if (page !== 'detail') {
+        setSelectedStory(null);
       }
     };
 
     window.addEventListener('popstate', handlePopState);
-
+    
     return () => {
       window.removeEventListener('popstate', handlePopState);
     };
   }, []);
 
+  // Alert 함수들
   const showCustomAlert = (message: string) => {
     setAlertMessage(message);
     setShowAlert(true);
-    setTimeout(() => {
-      setShowAlert(false);
-    }, 2000);
   };
 
-  // 페이지 이동 시 브라우저 히스토리에 추가
-  const navigateToPage = (newPage: string, story?: any) => {
-    const state = { page: newPage, story: story || null };
-    window.history.pushState(state, '', window.location.href);
-    setCurrentPage(newPage);
-    if (story) {
-      setSelectedStory(story);
+  const closeAlert = () => {
+    setShowAlert(false);
+    setAlertMessage('');
+  };
+
+  // 페이지 네비게이션
+  const setCurrentPage = (page: string) => {
+    setCurrentPageState(page);
+    localStorage.setItem('currentPage', page);
+    window.history.pushState({ page }, '', `#${page}`);
+  };
+
+  const navigateToPage = (newPage: string) => {
+    if (currentPage === 'write' && newPage !== 'write') {
+      setCurrentDraftId(null);
+      setCurrentDraft(null);
+      setEditingStory(null);
     }
+
+    if (currentPage !== newPage) {
+      setPreviousPage(currentPage);
+    }
+
+    setCurrentPageState(newPage);
+    localStorage.setItem('currentPage', newPage);
+    window.history.pushState({ page: newPage }, '', `#${newPage}`);
   };
 
-  // 뒤로가기 - 브라우저 히스토리 사용
   const goBack = () => {
-    window.history.back();
-  };
-
-  // 네비게이션 바에서 직접 페이지 설정 (히스토리 추가)
-  const setPageDirectly = (page: string) => {
-    const state = { page: page };
-    window.history.pushState(state, '', window.location.href);
-    setCurrentPage(page);
+    const targetPage = previousPage || 'main';
+    setCurrentPage(targetPage);
+    setCurrentDraftId(null);
+    setCurrentDraft(null);
+    setEditingStory(null);
     setSelectedStory(null);
+    setPreviousPage('main');
   };
 
+  // 필터링
   const getFilteredStories = () => {
-    let stories = currentPage === 'myStories' 
-      ? [...myStoriesData, ...newStories]
-      : [...allStoriesData, ...newStories];
-    
-    return stories.filter((story) => {
-      const matchesSearch = story.title.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
-                          story.description.toLowerCase().includes(filters.searchTerm.toLowerCase());
-      const matchesDestination = !filters.destination || story.destination === filters.destination;
-      const matchesDuration = !filters.duration || story.duration === filters.duration;
-      const matchesBudget = (!filters.minBudget || parseInt(story.budget) >= parseInt(filters.minBudget)) &&
-                           (!filters.maxBudget || parseInt(story.budget) <= parseInt(filters.maxBudget));
-      const matchesTags = filters.tags.length === 0 || 
-                         filters.tags.some(tag => story.tags.includes(tag));
+    return myStories.filter(story => {
+      const matchesSearch =
+        story.title.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
+        story.description.toLowerCase().includes(filters.searchTerm.toLowerCase());
 
-      return matchesSearch && matchesDestination && matchesDuration && matchesBudget && matchesTags;
+      const matchesDestination =
+        !filters.destination || story.destination === filters.destination;
+
+      const matchesDuration =
+        !filters.duration || story.duration === filters.duration;
+
+      const matchesBudget =
+        (!filters.minBudget || parseInt(story.budget) >= parseInt(filters.minBudget)) &&
+        (!filters.maxBudget || parseInt(story.budget) <= parseInt(filters.maxBudget));
+
+      const matchesTags =
+        filters.tags.length === 0 ||
+        filters.tags.some(tag => story.tags.includes(tag));
+
+      return (
+        matchesSearch &&
+        matchesDestination &&
+        matchesDuration &&
+        matchesBudget &&
+        matchesTags
+      );
     });
   };
 
+  // 스토리 관련 함수들
   const handleStoryClick = (story: any) => {
-    navigateToPage('detail', story);
+    setSelectedStory(story);
+    navigateToPage('detail');
   };
 
   const handleEdit = (story: any) => {
@@ -298,18 +316,20 @@ function useTravelStory() {
 
   const confirmDelete = () => {
     if (deletingStoryId) {
-      setNewStories(newStories.filter(story => story.id !== deletingStoryId));
+      setMyStories(myStories.filter(story => story.id !== deletingStoryId));
       showCustomAlert('여행기가 삭제되었습니다.');
     }
     setShowDeleteModal(false);
     setDeletingStoryId(null);
   };
 
+  // 발행 함수
   const handlePublish = () => {
     const titleInput = document.querySelector('.title-input') as HTMLInputElement;
     const destinationInput = document.querySelector('.form-input') as HTMLInputElement;
     const durationSelect = document.querySelector('.form-select') as HTMLSelectElement;
     const budgetInput = document.querySelectorAll('.form-input')[2] as HTMLInputElement;
+    const departureDateInput = document.querySelectorAll('.form-input')[1] as HTMLInputElement;
     const editor = document.querySelector('.blog-editor-wysiwyg') as HTMLDivElement;
     
     const selectedTags: string[] = [];
@@ -320,65 +340,145 @@ function useTravelStory() {
       }
     });
 
-    const coverImageElement = document.querySelector('.story-image') as HTMLImageElement;
-    const coverImage = coverImageElement?.src || 'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=800';
-
-    const newStory = {
-      id: Date.now(),
-      title: titleInput?.value || '제목 없음',
-      description: editor?.innerText || '내용 없음',
-      image: coverImage,
-      author: "채원",
-      authorAvatar: "채",
-      destination: destinationInput?.value || '미정',
-      duration: durationSelect?.value || '선택하세요',
-      budget: budgetInput?.value || '0',
-      departureDate: '',
-      date: new Date().toLocaleDateString('ko-KR').replace(/\. /g, '.').slice(0, -1),
-      likes: 0,
-      comments: 0,
-      bookmarks: 0,
-      follows: 0,
-      views: "0",
-      tags: selectedTags
-    };
-
-    setNewStories([newStory, ...newStories]);
-    showCustomAlert('여행기가 발행되었습니다!');
-    setEditingStory(null);
+    // 커버 이미지 가져오기
+    const coverImage = (window as any).selectedCoverImageForPublish || 'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=800';
     
-    // 발행 후 myStories로 이동
-    setPageDirectly('myStories');
+    // 업로드된 이미지들 가져오기 (최대 5개로 제한)
+    const uploadedImages = (window as any).uploadedImagesForPublish || [];
+    const limitedImages = uploadedImages.slice(0, 5);
+    const finalImages = limitedImages.length > 0 ? limitedImages : [coverImage];
+
+    if (editingStory) {
+      const updatedStory: Story = {
+        ...editingStory,
+        title: titleInput?.value || '제목 없음',
+        description: editor?.innerHTML || '내용 없음',
+        image: coverImage,
+        images: finalImages,
+        destination: destinationInput?.value || '미정',
+        duration: durationSelect?.value || '선택하세요',
+        budget: budgetInput?.value || '0',
+        departureDate: departureDateInput?.value || '',
+        tags: selectedTags
+      };
+
+      setMyStories(myStories.map(story => 
+        story.id === editingStory.id ? updatedStory : story
+      ));
+      
+      showCustomAlert('여행기가 수정되었습니다!');
+    } else {
+      const newStory: Story = {
+        id: Date.now(),
+        title: titleInput?.value || '제목 없음',
+        description: editor?.innerHTML || '내용 없음',
+        image: coverImage,
+        images: finalImages,
+        author: "나",
+        authorAvatar: "나",
+        destination: destinationInput?.value || '미정',
+        duration: durationSelect?.value || '선택하세요',
+        budget: budgetInput?.value || '0',
+        departureDate: departureDateInput?.value || '',
+        date: new Date().toLocaleDateString('ko-KR').replace(/\. /g, '.').slice(0, -1),
+        likes: 0,
+        comments: 0,
+        follows: 0,
+        views: "0",
+        tags: selectedTags
+      };
+
+      setMyStories([newStory, ...myStories]);
+      showCustomAlert('여행기가 발행되었습니다!');
+      
+      if (uploadedImages.length > 5) {
+        setTimeout(() => {
+          showCustomAlert('이미지가 너무 많아 최신 5개만 저장되었습니다.');
+        }, 2000);
+      }
+    }
+
+    setEditingStory(null);
+    setCurrentDraftId(null);
+    
+    if (previousPage === 'myStories') {
+      navigateToPage('myStories');
+    } else {
+      navigateToPage('main');
+    }
   };
 
+  // 임시저장 함수
   const handleSaveDraft = () => {
     const titleInput = document.querySelector('.title-input') as HTMLInputElement;
-    
-    const newDraft = {
-      id: Date.now(),
-      title: titleInput?.value || '제목 없음',
-      date: new Date().toLocaleDateString()
-    };
-    setDrafts([...drafts, newDraft]);
+    const editor = document.querySelector('.blog-editor-wysiwyg') as HTMLDivElement;
+
+    const title = titleInput?.value?.trim() || '';
+    const content = editor?.innerHTML?.trim() || '';
+
+    if (!title && !content) {
+      showCustomAlert('제목과 본문을 작성해주세요.');
+      return;
+    }
+
+    const now = new Date().toLocaleDateString('ko-KR').replace(/\. /g, '.').slice(0, -1);
+
+    if (currentDraftId) {
+      setDrafts(
+        drafts.map(d =>
+          d.id === currentDraftId ? { ...d, title, content, date: now } : d
+        )
+      );
+    } else {
+      const newDraftId = Date.now();
+      setDrafts([
+        { id: newDraftId, title, content, date: now },
+        ...drafts
+      ]);
+      setCurrentDraftId(newDraftId);
+    }
+
     showCustomAlert('임시저장되었습니다.');
   };
 
-  const handleShare = () => {
-    showCustomAlert('링크가 복사되었습니다!');
+  // 좋아요 토글
+  const toggleLike = (storyId: number) => {
+    setMyStories(prev =>
+      prev.map(story =>
+        story.id === storyId
+          ? { ...story, likes: likedStories.includes(storyId) ? story.likes - 1 : story.likes + 1 }
+          : story
+      )
+    );
+
+    setLikedStories(prev =>
+      prev.includes(storyId)
+        ? prev.filter(id => id !== storyId)
+        : [...prev, storyId]
+    );
+  };
+
+  // 조회수 증가
+  const incrementViews = (storyId: number) => {
+    setMyStories(prev =>
+      prev.map(story =>
+        story.id === storyId
+          ? { ...story, views: String(parseInt(story.views || '0') + 1) }
+          : story
+      )
+    );
   };
 
   return {
     currentPage,
-    setCurrentPage: setPageDirectly,
+    setCurrentPage,
     navigateToPage,
     goBack,
-    previousPage: 'main', // 더 이상 사용하지 않지만 호환성을 위해 유지
+    previousPage,
     selectedStory,
     setSelectedStory,
     filters,
     setFilters,
-    bookmarkedIds,
-    setBookmarkedIds,
     likedStories,
     setLikedStories,
     followedStories,
@@ -386,8 +486,7 @@ function useTravelStory() {
     showAlert,
     alertMessage,
     showCustomAlert,
-    openDropdown,
-    setOpenDropdown,
+    closeAlert,
     showDraftModal,
     setShowDraftModal,
     showLikesModal,
@@ -400,6 +499,8 @@ function useTravelStory() {
     setShowDeleteModal,
     currentDraft,
     setCurrentDraft,
+    currentDraftId,
+    setCurrentDraftId,
     getFilteredStories,
     handleStoryClick,
     handleEdit,
@@ -407,7 +508,10 @@ function useTravelStory() {
     confirmDelete,
     handlePublish,
     handleSaveDraft,
-    handleShare
+    toggleLike,
+    incrementViews,
+    myStories,
+    setMyStories
   };
 }
 

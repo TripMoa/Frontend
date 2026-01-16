@@ -2,8 +2,9 @@ interface FilterSectionProps {
   filters: {
     destination: string;
     duration: string;
-    budget: string;
-    style: string;
+    minBudget: string;    
+    maxBudget: string;    
+    tags: string[]; 
   };
   setFilters: (filters: any) => void;
 }
@@ -136,7 +137,7 @@ function FilterSection({ filters, setFilters }: FilterSectionProps) {
             예산대
           </label>
           <select 
-            value={filters.budget}
+            value={filters.minBudget}
             onChange={(e) => setFilters({...filters, budget: e.target.value})}
             style={{
               width: '100%',
@@ -174,8 +175,8 @@ function FilterSection({ filters, setFilters }: FilterSectionProps) {
             여행 스타일
           </label>
           <select 
-            value={filters.style}
-            onChange={(e) => setFilters({...filters, style: e.target.value})}
+            value={filters.tags[0] || '전체'}
+            onChange={(e) => setFilters({...filters, tags: e.target.value === '전체' ? [] : [e.target.value]})}
             style={{
               width: '100%',
               padding: '10px 12px',
@@ -224,11 +225,11 @@ function FilterSection({ filters, setFilters }: FilterSectionProps) {
             TAGS
           </span>
           {['힐링여행', '액티비티', '맛집투어', '문화탐방', '쇼핑', '사진명소', '가성비', '럭셔리'].map((tag) => {
-            const isSelected = filters.style === tag;
+            const isSelected = filters.tags.includes(tag);
             return (
               <button 
                 key={tag} 
-                onClick={() => setFilters({...filters, style: isSelected ? '전체' : tag})}
+                onClick={() => setFilters({...filters, tags: isSelected ? [] : [tag]})}
                 style={{
                   padding: '6px 12px',
                   border: '2px solid #000',
