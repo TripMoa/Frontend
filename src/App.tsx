@@ -1,15 +1,15 @@
 import { Navigate, Route, Routes } from "react-router-dom";
-import Layout from "./components/Layout";
+import Layout from "./shared/components/Layout";
 
 import Home from "./pages/Home";
 import MyTrips from "./pages/MyTrips";
 import Community from "./pages/Community";
-import Mate from "./pages/Mate";
-import Workspace from "./pages/Workspace";
-import TravelStory from './pages/TravelStory';
-import Login from "./pages/Login";
-import UserSettings from "./pages/UserSetting";
-import MateDetail from "./pages/MateDetail";
+import Mate from "./features/mate/pages/Mate";
+import MateDetail from "./features/mate/pages/MateDetail"
+import { Workspace } from "./features/workspace/pages";
+import TravelStory from './features/travelStory/pages/TravelStory';
+import Login from "./features/user/pages/Login";
+import UserSettings from "./features/user/pages/UserSetting";
 
 export default function App() {
   return (
