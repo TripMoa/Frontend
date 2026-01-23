@@ -23,7 +23,7 @@ export const MBTI_TYPES = [
   "ISFP",
   "ESTP",
   "ESFP",
-] as const;
+];
 
 export const TRAVEL_STYLES = [
   "맛집탐방",
@@ -139,7 +139,7 @@ export const MODAL_MESSAGES = {
   DELETE: {
     TITLE: "계정을 탈퇴하시겠습니까?",
     DESCRIPTION:
-      "모든 여행 기록, 채팅 내역이 영구적으로 삭제됩니다.\n이 작업은 되돌릴 수 없습니다.",
+      "프로필 정보가 영구적으로 삭제됩니다.\n모든 데이터 삭제를 원하시면 문의바랍니다.\n이 작업은 되돌릴 수 없습니다.",
     BUTTON: "탈퇴하기",
     SUCCESS: "계정이 탈퇴되었습니다. 그동안 이용해주셔서 감사합니다.",
   },

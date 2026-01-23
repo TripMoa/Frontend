@@ -71,8 +71,16 @@
 
 /* Kakao 전용 */
 .kakao {
-  background: #FEE500 !important;
+  background: #fee500 !important;
   color: #000000 !important;
+  border: none !important;
+}
+
+/* naver 전용 */
+.naver {
+  background-color: #03c75a !important;
+  color: #ffffff !important;
+  border: none !important;
 }
 
 /* 최근 로그인 말풍선 */
@@ -88,19 +96,36 @@
   border-radius: 999px;
   white-space: nowrap;
   font-family: var(--font-mono);
-  box-shadow: var(--shadow-hard);
   z-index: 2;
 }
 
 /* 말풍선 꼬리 */
 .recentBadge::after {
-  content: '';
+  content: "";
   position: absolute;
   bottom: -4px;
   left: 14px;
   border-width: 4px 4px 0 4px;
   border-style: solid;
   border-color: var(--primary) transparent transparent transparent;
+}
+
+/* 홈 */
+.homeLink {
+  display: block;
+  margin: 20px auto 0;
+  background: none;
+  border: none;
+  color: #888888;
+  font-size: 0.85rem;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  transition: color 0.2s;
+}
+
+.homeLink:hover {
+  color: #555555;
 }
 
 /* 모바일 대응 */

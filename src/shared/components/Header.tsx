@@ -1,23 +1,40 @@
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useUserProfile } from "../../features/user/hooks/useUserSetting";
+import { logout } from "../../api/auth.api";
 
 export default function Header() {
   const navigate = useNavigate();
+  const { profile } = useUserProfile();
 
-  // 로그인 상태 관리 (임시)
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  // 로그인 상태 확인
+  const isLoggedIn = !!localStorage.getItem("accessToken");
 
   const handleLogoClick = () => navigate("/");
-  const handlePlanClick = () => navigate("/mytrips");
 
-  // 로그인/로그아웃 핸들러
-  const handleLogin = () => setIsLoggedIn(true);
-  const handleLogout = () => {
-    setIsLoggedIn(false);
-    navigate("/");
+  // MY PLAN 클릭 핸들러
+  const handlePlanClick = () => {
+    if (!isLoggedIn) {
+      // 비로그인 시 알림창을 띄우고 로그인 페이지로 이동
+      alert("로그인 이후 이용 가능합니다.");
+      navigate("/login");
+    } else {
+      // 로그인 상태면 마이트립 페이지로 이동
+      navigate("/mytrips");
+    }
   };
 
-  // 설정 버튼 클릭 시 알림창
+  // 로그인 핸들러
+  const handleLogin = () => {
+    navigate("/login");
+  };
+
+  // 로그아웃 핸들러
+  const handleLogout = async () => {
+    await logout();
+    window.location.href = "/";
+  };
+
+  // 설정 버튼 클릭 핸들러
   const handleSettingsClick = () => {
     navigate("/setting");
   };
@@ -30,7 +47,7 @@ export default function Header() {
 
       <nav>
         <ul>
-          {/* 1. MY PLAN (순서 변경 & 단일 버튼) */}
+          {/* MY PLAN */}
           <li className="nav-group">
             <button
               className="nav-item"
@@ -41,7 +58,7 @@ export default function Header() {
             </button>
           </li>
 
-          {/* 2. COMMUNITY (드롭다운) */}
+          {/* COMMUNITY */}
           <li className="nav-group">
             <button className="nav-item" type="button">
               COMMUNITY ▼
@@ -52,31 +69,62 @@ export default function Header() {
             </div>
           </li>
 
-          {/* 3. LOGIN / PROFILE SECTION */}
+          {/* LOGIN / PROFILE */}
           <li className="nav-group">
             {!isLoggedIn ? (
               <button className="btn-login" type="button" onClick={handleLogin}>
                 LOGIN
               </button>
             ) : (
-              <>
-                <button className="nav-item btn-profile" type="button">
-                  <div className="profile-circle"></div>
-                </button>
-                {/* 오른쪽 정렬 클래스 적용 */}
-                <div className="dropdown-menu dropdown-right">
-                  {/* 페이지 이동 대신 함수 호출 */}
-                  <button
-                    onClick={handleSettingsClick}
-                    className="dropdown-item-btn"
-                  >
-                    {">>"} SETTINGS
+              isLoggedIn &&
+              profile && (
+                <>
+                  <button className="nav-item btn-profile" type="button">
+                    <div
+                      className="profile-circle"
+                      style={{
+                        background: profile.profileImage
+                          ? "transparent"
+                          : profile.avatarColor,
+                        overflow: "hidden",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      {profile.profileImage ? (
+                        <img
+                          src={profile.profileImage}
+                          alt="Profile"
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "cover",
+                          }}
+                        />
+                      ) : (
+                        <span style={{ fontSize: "1.2rem" }}>
+                          {profile.avatarEmoji}
+                        </span>
+                      )}
+                    </div>
                   </button>
-                  <button onClick={handleLogout} className="dropdown-item-btn">
-                    {">>"} LOGOUT
-                  </button>
-                </div>
-              </>
+                  <div className="dropdown-menu dropdown-right">
+                    <button
+                      onClick={handleSettingsClick}
+                      className="dropdown-item-btn"
+                    >
+                      {">>"} SETTINGS
+                    </button>
+                    <button
+                      onClick={handleLogout}
+                      className="dropdown-item-btn"
+                    >
+                      {">>"} LOGOUT
+                    </button>
+                  </div>
+                </>
+              )
             )}
           </li>
         </ul>
