@@ -1,7 +1,7 @@
-import React from 'react';
-import { TicketLayout } from '../components/common/TicketLayout';
-import { TicketInfo } from '../components/common/TicketInfo';
-import { LoginForm } from '../components/LoginForm';
+import React from "react";
+import { TicketLayout } from "../components/common/TicketLayout";
+import { TicketInfo } from "../components/common/TicketInfo";
+import { LoginForm } from "../components/LoginForm";
 
 const Login: React.FC = () => {
   return (
@@ -15,7 +15,7 @@ const Login: React.FC = () => {
           tagline="Social login only"
         />
       }
-      rightContent={<LoginForm />}
+      rightContent={<LoginForm socialOnly />}
     />
   );
 };

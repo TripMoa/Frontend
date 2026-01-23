@@ -11,10 +11,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { useUserProfile } from "../hooks/useUserSetting";
 import type { UserProfile } from "../hooks/useUserSetting";
-import {
-  TRAVEL_STYLES,
-  MODAL_MESSAGES,
-} from "../components/User.constant";
+import { TRAVEL_STYLES, MODAL_MESSAGES } from "../components/User.constant";
 import styles from "../styles/UserSetting.module.css";
 
 export default function UserSettings() {
@@ -27,7 +24,9 @@ export default function UserSettings() {
     hasChanges, // 변경 사항 여부
     isSaving, // 저장 중 상태
     isFormValid, // 유효성 검사
-    VALID_MBTI, // 추천 리스트
+    isEmailValid, // 이메일 유효성 검사
+    isBirthValid, // 생년월일 유효성 검사
+    MBTI_TYPES, // 추천 리스트
     saveProfile, // 저장 함수
     regenerateAvatar,
     triggerPhotoUpload,
@@ -48,9 +47,9 @@ export default function UserSettings() {
     setShowSuggestions(true);
   };
 
-  const filteredMBTI = VALID_MBTI.filter(
-    (type) => profile.mbti && type.startsWith(profile.mbti)
-  );
+  const filteredMBTI = profile
+    ? MBTI_TYPES.filter((type) => type.startsWith(profile.mbti))
+    : [];
 
   // 새로고침 경고문
   useEffect(() => {
@@ -85,8 +84,25 @@ export default function UserSettings() {
 
   // 저장 핸들러
   const handleSave = async () => {
-    await saveProfile();
-    alert(MODAL_MESSAGES.SAVE.SUCCESS);
+    if (!profile) return;
+
+    const willBeLocked: string[] = [];
+    if (!profile.nameLocked && profile.name) willBeLocked.push("이름");
+    if (!profile.genderLocked && profile.gender) willBeLocked.push("성별");
+    if (!profile.birthLocked && profile.birthDate)
+      willBeLocked.push("생년월일");
+
+    if (willBeLocked.length > 0) {
+      const confirmMessage = `${willBeLocked.join(
+        ", ",
+      )} 정보는 저장 후 수정이 불가능합니다.\n정말 저장하시겠습니까?`;
+      if (!window.confirm(confirmMessage)) return;
+    }
+
+    const success = await saveProfile();
+    if (success) {
+      alert(MODAL_MESSAGES.SAVE.SUCCESS);
+    }
   };
 
   // 본인 인증 핸들러
@@ -97,23 +113,46 @@ export default function UserSettings() {
   };
 
   // 계정 탈퇴 핸들러
-  const handleDeleteAccount = () => {
-    deleteAccount();
-    alert(MODAL_MESSAGES.DELETE.SUCCESS);
-    setShowDeleteModal(false);
+  const handleDeleteAccount = async () => {
+    const success = await deleteAccount(); // 비동기 호출 대기
+
+    if (success) {
+      alert(MODAL_MESSAGES.DELETE.SUCCESS);
+      setShowDeleteModal(false);
+    }
   };
 
   // X 버튼 경고문
   const handleClose = () => {
     if (hasChanges) {
       const confirmLeave = window.confirm(
-        "수정 중인 변경사항이 있습니다. 저장하지 않고 나가시겠습니까?"
+        "수정 중인 변경사항이 있습니다. 저장하지 않고 나가시겠습니까?",
       );
       if (!confirmLeave) return;
     }
 
     navigate(-1);
   };
+  if (!profile) {
+    return (
+      <div className={styles.page}>
+        <div className={styles.ticket}>
+          <p style={{ textAlign: "center", padding: "40px" }}>
+            프로필 불러오는 중...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const SOCIAL_MAP = {
+    KAKAO: { class: styles.kakao, label: "K", name: "카카오 계정" },
+    GOOGLE: { class: styles.google, label: "G", name: "구글 계정" },
+    NAVER: { class: styles.naver, label: "N", name: "네이버 계정" },
+  };
+
+  const providerKey = (profile.provider as keyof typeof SOCIAL_MAP) || "KAKAO";
+  const currentSocial = SOCIAL_MAP[providerKey];
 
   return (
     <div className={styles.page}>
@@ -169,13 +208,13 @@ export default function UserSettings() {
                   onClick={regenerateAvatar}
                   title="클릭 시 랜덤 아바타 변경"
                   style={{
-                    background: profile.photo
+                    background: profile.profileImage
                       ? "transparent"
                       : profile.avatarColor,
                   }}
                 >
-                  {profile.photo ? (
-                    <img src={profile.photo} alt="Profile" />
+                  {profile.profileImage ? (
+                    <img src={profile.profileImage} alt="Profile" />
                   ) : (
                     <span className={styles.avatarEmoji}>
                       {profile.avatarEmoji}
@@ -234,9 +273,12 @@ export default function UserSettings() {
                 <div className={styles.field}>
                   <label className={styles.label}>이름</label>
                   <input
-                    className={`${styles.input} ${styles.inputLocked}`}
-                    value={profile.name}
-                    readOnly
+                    className={`${styles.input} ${
+                      profile.nameLocked ? styles.inputLocked : ""
+                    }`}
+                    value={profile.name || ""}
+                    readOnly={profile.nameLocked}
+                    onChange={(e) => updateProfile({ name: e.target.value })}
                   />
                 </div>
 
@@ -244,34 +286,63 @@ export default function UserSettings() {
                 <div className={styles.field}>
                   <label className={styles.label}>알림 수신 이메일</label>
                   <input
-                    className={styles.input}
+                    className={`${styles.input} ${
+                      profile.notificationEmail && !isEmailValid
+                        ? styles.inputError
+                        : ""
+                    }`}
                     placeholder="example@email.com"
-                    value={profile.notificationEmail}
+                    value={profile.notificationEmail || ""}
                     onChange={(e) =>
                       updateProfile({ notificationEmail: e.target.value })
                     }
                   />
+                  {/* 이메일 형식이 틀렸을 때만 표시 */}
+                  {profile.notificationEmail && !isEmailValid && (
+                    <span className={styles.errorText}>
+                      올바른 이메일 형식을 입력해주세요.
+                    </span>
+                  )}
                 </div>
 
                 {/* 성별: 잠금 */}
                 <div className={styles.field}>
                   <label className={styles.label}>성별</label>
                   <input
-                    className={`${styles.input} ${styles.inputLocked}`}
-                    value={profile.gender}
-                    readOnly
+                    className={`${styles.input} ${
+                      profile.genderLocked ? styles.inputLocked : ""
+                    }`}
+                    value={profile.gender || ""}
+                    readOnly={profile.genderLocked}
+                    placeholder="예 : 남 / 여"
+                    onChange={(e) => updateProfile({ gender: e.target.value })}
                   />
                 </div>
 
                 {/* 생년월일: 잠금 */}
                 <div className={styles.field}>
-                  <label className={styles.label}>생년월일</label>
+                  <label className={styles.label}>
+                    생년월일<span className={styles.required}>*</span>
+                  </label>
                   <input
-                    className={`${styles.input} ${styles.inputLocked}`}
                     type="date"
-                    value={profile.birthDate}
-                    readOnly
+                    className={`${styles.input} ${
+                      profile.birthLocked ? styles.inputLocked : ""
+                    } ${!isBirthValid ? styles.inputError : ""}`} // 형식이 안 맞거나 비어있으면 에러 스타일
+                    value={profile.birthDate || ""}
+                    readOnly={profile.birthLocked}
+                    onChange={(e) =>
+                      updateProfile({ birthDate: e.target.value })
+                    }
                   />
+                  {/* 날짜가 비어있거나 불완전할 때만 표시 */}
+                  {!isBirthValid && (
+                    <span className={styles.errorText}>
+                      {profile.birthDate
+                        ? "날짜를 끝까지 선택해주세요."
+                        : "생년월일은 필수 입력 사항입니다."}
+                    </span>
+                  )}
                 </div>
 
                 {/* MBTI: 수정 가능 */}
@@ -281,7 +352,7 @@ export default function UserSettings() {
                     <input
                       className={`${styles.input} ${
                         profile.mbti &&
-                        !VALID_MBTI.includes(profile.mbti) &&
+                        !MBTI_TYPES.includes(profile.mbti) &&
                         profile.mbti.length === 4
                           ? styles.inputError
                           : ""
@@ -317,7 +388,7 @@ export default function UserSettings() {
 
                   {/* 잘못된 MBTI 입력 시 경고 */}
                   {profile.mbti &&
-                    !VALID_MBTI.includes(profile.mbti) &&
+                    !MBTI_TYPES.includes(profile.mbti) &&
                     profile.mbti.length === 4 && (
                       <span className={styles.errorText}>
                         유효하지 않은 MBTI 유형입니다.
@@ -373,19 +444,20 @@ export default function UserSettings() {
               {openSections.social && (
                 <div className={styles.accordionContent}>
                   <div className={styles.socialStatusCard}>
+                    {/* 계정 관리 내부 소셜 정보 부분 */}
                     <div className={styles.socialItem}>
                       <div className={styles.socialInfo}>
                         <span
-                          className={`${styles.socialIcon} ${styles.kakao}`}
+                          className={`${styles.socialIcon} ${currentSocial.class}`}
                         >
-                          K
+                          {currentSocial.label}
                         </span>
                         <div className={styles.socialText}>
-                          <p className={styles.socialName}>카카오 계정</p>
+                          <p className={styles.socialName}>
+                            {currentSocial.name}
+                          </p>
                           <p className={styles.socialDetail}>
-                            {profile.email
-                              ? profile.email
-                              : "연결된 이메일 정보가 없습니다."}
+                            {profile.email || "연결된 이메일 정보가 없습니다."}
                           </p>
                         </div>
                       </div>
@@ -397,6 +469,7 @@ export default function UserSettings() {
                         {profile.email ? "연결됨" : "연결 안 됨"}
                       </span>
                     </div>
+
                     {/* 개인정보 설정 부분 */}
                     <div className={styles.privacyToggleArea}>
                       {[
@@ -557,7 +630,7 @@ export default function UserSettings() {
             <section className={`${styles.section} ${styles.danger}`}>
               <h2 className={styles.sectionTitle}>회원 탈퇴</h2>
               <p className={styles.desc}>
-                탈퇴 시 모든 여행 데이터와 프로필 정보가 영구적으로 파기됩니다.
+                탈퇴 시 프로필 정보만 삭제되며 여행 데이터는 삭제되지 않습니다.
               </p>
               <button
                 className={styles.dangerButton}

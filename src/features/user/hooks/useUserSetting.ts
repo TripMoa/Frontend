@@ -1,33 +1,12 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  STORAGE_KEYS,
-  DEFAULT_PROFILE,
-  generateRandomAvatar,
-} from "../components/User.constant";
-
-// 유효한 MBTI 목록 정의
-const VALID_MBTI = [
-  "INTJ",
-  "INTP",
-  "ENTJ",
-  "ENTP",
-  "INFJ",
-  "INFP",
-  "ENFJ",
-  "ENFP",
-  "ISTJ",
-  "ISFJ",
-  "ESTJ",
-  "ESFJ",
-  "ISTP",
-  "ISFP",
-  "ESTP",
-  "ESFP",
-];
+import { generateRandomAvatar } from "../components/User.constant";
+import { MBTI_TYPES } from "../components/User.constant";
+import { getMyInfo, updateMyInfo, withdraw } from "../../../api/auth.api";
 
 export interface UserProfile {
-  photo: string;
+  // 기본 필드
+  profileImage: string;
   nickname: string;
   name: string;
   notificationEmail: string;
@@ -35,15 +14,23 @@ export interface UserProfile {
   gender: string;
   mbti: string;
   travelStyles: string[];
+  email?: string;
+  provider?: "KAKAO" | "GOOGLE" | "NAVER";
+
+  // 상태 필드
   isVerified: boolean;
   avatarEmoji?: string;
   avatarColor?: string;
 
-  // 입력 필드
-  email?: string; // 소셜 로그인 이메일
-  isPrivateName: boolean; // 이름 비공개 여부 추가
-  isPrivateAge: boolean; // 나이 비공개 여부 추가
-  isPrivateGender: boolean; // 성별 비공개 여부 추가
+  // 잠금 필드
+  nameLocked: boolean;
+  genderLocked: boolean;
+  birthLocked: boolean;
+
+  // 개인정보 공개 설정 필드
+  isPrivateName: boolean; // 이름 비공개 여부
+  isPrivateAge: boolean; // 나이 비공개 여부
+  isPrivateGender: boolean; // 성별 비공개 여부
   isAdultConfirmed: boolean; // 성인 인증 확인 여부
 
   // 알림 설정 필드
@@ -56,141 +43,36 @@ export interface UserProfile {
 }
 
 export function useUserProfile() {
-  const [profile, setProfile] = useState<UserProfile>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.USER_PROFILE);
-    if (saved) return JSON.parse(saved);
-
-    // 데이터가 없을 때만 생성하고 즉시 저장
-    const { emoji, color } = generateRandomAvatar();
-    const initialProfile = {
-      ...DEFAULT_PROFILE,
-      avatarEmoji: emoji,
-      avatarColor: color,
-      notificationEmail: "",
-      isPrivateName: false,
-      isPrivateAge: false,
-      isPrivateGender: false,
-      isAdultConfirmed: false,
-      tripAlert: true,
-      marketingAgreed: false,
-      emailAgreed: false,
-    };
-
-    // 즉시 저장하여 새로고침 시 고정
-    localStorage.setItem(
-      STORAGE_KEYS.USER_PROFILE,
-      JSON.stringify(initialProfile)
-    );
-    return initialProfile;
-  });
-
   const navigate = useNavigate();
-  const [hasChanges, setHasChanges] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // 변경사항 감지
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [hasChanges, setHasChanges] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // 로컬 저장소에서 로그인 여부 확인
+  const isLoggedIn = !!localStorage.getItem("accessToken");
+
   useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.USER_PROFILE);
-    const current = JSON.stringify(profile);
-    setHasChanges(saved !== current);
-  }, [profile]);
-
-  // 프로필 업데이트
-  const updateProfile = (updates: Partial<UserProfile>) => {
-    setProfile((prev) => ({ ...prev, ...updates }));
-  };
-
-  // 프로필 저장
-  const saveProfile = async (): Promise<void> => {
-    setIsSaving(true);
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        localStorage.setItem(
-          STORAGE_KEYS.USER_PROFILE,
-          JSON.stringify(profile)
-        );
-        setHasChanges(false);
-        setIsSaving(false);
-        resolve();
-      }, 500);
-    });
-  };
-
-  // 사진 변경
-  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        updateProfile({ photo: event.target?.result as string });
-      };
-      reader.readAsDataURL(file);
+    if (!isLoggedIn) {
+      setProfile(null);
+      return;
     }
-  };
 
-  // 사진 업로드 트리거
-  const triggerPhotoUpload = () => {
-    fileInputRef.current?.click();
-  };
+    getMyInfo()
+      .then((res) => {
+        const data = res.data;
 
-  // 여행 스타일 토글
-  const toggleTravelStyle = (style: string) => {
-    const styles = profile.travelStyles || [];
-    if (styles.includes(style)) {
-      updateProfile({ travelStyles: styles.filter((s) => s !== style) });
-    } else {
-      updateProfile({ travelStyles: [...styles, style] });
-    }
-  };
+        if (data.gender === "MALE") data.gender = "남성";
+        else if (data.gender === "FEMALE") data.gender = "여성";
 
-  // 본인 인증
-  const verify = async (): Promise<void> => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        updateProfile({ isVerified: true });
-        resolve();
-      }, 1000);
-    });
-  };
-
-  // 아바타 랜덤 변경
-  const regenerateAvatar = () => {
-    const { emoji, color } = generateRandomAvatar();
-    updateProfile({
-      avatarEmoji: emoji,
-      avatarColor: color,
-      photo: "",
-    });
-  };
-
-  // 계정 탈퇴
-  const deleteAccount = () => {
-    localStorage.removeItem(STORAGE_KEYS.USER_PROFILE);
-
-    const { emoji, color } = generateRandomAvatar();
-
-    // 모든 상태 초기화
-    setProfile({
-      ...DEFAULT_PROFILE,
-      travelStyles: [],
-      avatarEmoji: emoji,
-      avatarColor: color,
-
-      email: "",
-      notificationEmail: "",
-      isPrivateName: false,
-      isPrivateAge: false,
-      isPrivateGender: false,
-      isAdultConfirmed: false,
-      tripAlert: true,
-      marketingAgreed: false,
-      emailAgreed: false,
-    });
-
-    // 홈화면 이동
-    navigate("/");
-  };
+        setProfile(data);
+      })
+      .catch(() => {
+        localStorage.removeItem("accessToken");
+        navigate("/login");
+      });
+  }, [isLoggedIn]);
 
   // 나이 계산
   const calculateAge = (birthDate: string): number => {
@@ -208,15 +90,162 @@ export function useUserProfile() {
     return age;
   };
 
+  // 프로필 저장
+  const saveProfile = async () => {
+    if (!profile) return;
+    setIsSaving(true);
+
+    try {
+      const genderForServer = ["남성", "남자", "남", "MALE", "M"].includes(
+        profile.gender?.toUpperCase(),
+      )
+        ? "MALE"
+        : ["여성", "여자", "여", "FEMALE", "F"].includes(
+              profile.gender?.toUpperCase(),
+            )
+          ? "FEMALE"
+          : null;
+
+      const payload = {
+        nickname: profile.nickname,
+        name: profile.name || null,
+        notificationEmail: profile.notificationEmail || null,
+        gender: genderForServer,
+        birthDate: profile.birthDate || null,
+        mbti: profile.mbti || null,
+        travelStyles: profile.travelStyles || [],
+        profileImage: profile.profileImage,
+        avatarEmoji: profile.avatarEmoji,
+        avatarColor: profile.avatarColor,
+      };
+
+      await updateMyInfo(payload);
+
+      const displayGender =
+        genderForServer === "MALE"
+          ? "남성"
+          : genderForServer === "FEMALE"
+            ? "여성"
+            : "";
+
+      setProfile((prev) => {
+        if (!prev) return null;
+
+        // 빈 문자열("")은 false로 처리되어 값이 없을 땐 잠기지 않음
+        return {
+          ...prev,
+          gender: displayGender,
+          nameLocked: !!prev.name,
+          genderLocked: !!displayGender,
+          birthLocked: !!prev.birthDate,
+        };
+      });
+      setHasChanges(false);
+
+      return true;
+    } catch (error) {
+      alert("저장에 실패했습니다. 다시 시도해주세요.");
+      return false;
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // 프로필 수정
+  const updateProfile = (updates: Partial<UserProfile>) => {
+    setProfile((prev) => (prev ? { ...prev, ...updates } : prev));
+    setHasChanges(true);
+  };
+
+  // 사진 업로드 트리거
+  const triggerPhotoUpload = () => {
+    fileInputRef.current?.click();
+  };
+
+  // 아바타 랜덤 변경
+  const regenerateAvatar = () => {
+    const { emoji, color } = generateRandomAvatar();
+    updateProfile({
+      avatarEmoji: emoji,
+      avatarColor: color,
+      profileImage: "",
+    });
+  };
+
+  // 랜덤 사진 변경
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        updateProfile({ profileImage: event.target?.result as string });
+        e.target.value = "";
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // 여행 스타일 토글
+  const toggleTravelStyle = (style: string) => {
+    if (!profile) return;
+
+    const styles = profile.travelStyles || [];
+
+    if (styles.includes(style)) {
+      updateProfile({ travelStyles: styles.filter((s) => s !== style) });
+    } else {
+      updateProfile({ travelStyles: [...styles, style] });
+    }
+  };
+
   // MBTI 유효성 검사: 비어있거나, 4글자이면서 유효 목록에 포함되어야 함
   const isMBTIValid =
-    !profile.mbti ||
-    (profile.mbti.length === 4 && VALID_MBTI.includes(profile.mbti));
+    !profile?.mbti ||
+    (profile.mbti.length === 4 && MBTI_TYPES.includes(profile.mbti));
 
-  // 닉네임 필수, MBTI 입력할 경우에만 유효성 체크
-  const isFormValid = !!profile.nickname && isMBTIValid;
+  // 이메일 검증: 값이 있을 때만 형식 확인
+  const isEmailValid =
+    !profile?.notificationEmail ||
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profile.notificationEmail);
 
-  const age = calculateAge(profile.birthDate);
+  // 생년월일 검증: 입력값이 아예 없거나, 있다면 10자(YYYY-MM-DD)여야 함
+  const isBirthValid = !!profile?.birthDate && profile.birthDate.length === 10;
+
+  // 나이 계산
+  const age = profile ? calculateAge(profile.birthDate) : 0;
+
+  // 통합 유효성 검사: 모든 조건이 만족되어야만 버튼이 활성화됨
+  // 닉네임(필수), MBTI(형식 준수), 이메일(형식 준수), 생년월일(필수 및 완성)
+  const isFormValid =
+    !!profile?.nickname && isMBTIValid && isEmailValid && isBirthValid;
+
+  // 본인 인증
+  const verify = async (): Promise<void> => {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        updateProfile({ isVerified: true });
+        resolve();
+      }, 1000);
+    });
+  };
+
+  // 계정 탈퇴
+  const deleteAccount = async () => {
+    // async 추가
+    try {
+      await withdraw(); // 백엔드 API 호출 추가
+
+      // API 호출 성공 후 로컬 데이터 정리
+      localStorage.clear();
+      setProfile(null);
+      navigate("/");
+      return true;
+    } catch (error) {
+      console.error("탈퇴 처리 중 오류 발생:", error);
+      alert("회원 탈퇴에 실패했습니다. 다시 시도해주세요.");
+      return false;
+    }
+  };
 
   return {
     // State
@@ -224,7 +253,9 @@ export function useUserProfile() {
     hasChanges,
     isSaving,
     isFormValid,
-    VALID_MBTI,
+    isEmailValid,
+    isBirthValid,
+    MBTI_TYPES,
     fileInputRef,
     age,
 
