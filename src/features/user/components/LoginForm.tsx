@@ -30,7 +30,7 @@ export const LoginForm: React.FC = () => {
               type="button"
               onClick={() => {
                 window.location.href =
-                  "http://localhost:8088/oauth2/authorization/google";
+                  "http://localhost:8080/oauth2/authorization/google";
               }}
               className={styles.socialButton}
             >
@@ -67,7 +67,7 @@ export const LoginForm: React.FC = () => {
               type="button"
               onClick={() => {
                 window.location.href =
-                  "http://localhost:8088/oauth2/authorization/kakao";
+                  "http://localhost:8080/oauth2/authorization/kakao";
               }}
               className={`${styles.socialButton} ${styles.kakao}`}
             >
@@ -89,7 +89,7 @@ export const LoginForm: React.FC = () => {
               type="button"
               onClick={() => {
                 window.location.href =
-                  "http://localhost:8088/oauth2/authorization/naver";
+                  "http://localhost:8080/oauth2/authorization/naver";
               }}
               className={`${styles.socialButton} ${styles.naver}`}
             >
