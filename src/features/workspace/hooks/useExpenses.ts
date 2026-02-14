@@ -2,33 +2,46 @@
 import { useEffect, useMemo, useState } from "react";
 
 /* ==========================================
-   part2.js constants (동일 유지)
+   constants
 ========================================== */
 export const EXPENSE_MEMS = ["ME", "J", "K", "M"] as const;
 export type ExpenseMember = (typeof EXPENSE_MEMS)[number];
 
-export const TOTAL_BUDGET = 1000000; // 100만원 예산 (part2.js 동일)
-
-/* localStorage key (절대 변경 ❌) */
+export const TOTAL_BUDGET = 1000000; // 기본 공통 예산(초기값)
 const LS_EXPENSES = "tripmoa_expenses";
+const LS_SETTINGS = "tripmoa_expense_settings";
 
 /* ==========================================
    Types
 ========================================== */
-export type ExpenseCategory = string; // part2.js는 문자열(cat)로만 처리
-export type ExpenseMethod = string; // part2.js는 문자열(method)로만 처리
+export type ExpenseCategory = string;
+export type ExpenseMethod = string;
+
+export type SplitMode = "EQUAL" | "AMOUNT";
+export type SplitMap = Partial<Record<ExpenseMember, number>>;
 
 export interface ExpenseItem {
   id: number;
   date: string; // "YYYY-MM-DD"
+  storeName: string;
   title: string;
-  cost: number; // Number(cost)
+  cost: number;
   cat: ExpenseCategory;
   payer: ExpenseMember;
   method: ExpenseMethod;
-  involved: ExpenseMember[]; // 최소 1명
-  receipt: string | null; // base64 or null
-  fileName: string | null; // file.name or null
+
+  /** 참여자. 비어있으면 전체(공동)로 취급 */
+  involved: ExpenseMember[];
+
+  /** 분할 방식 */
+  splitMode: SplitMode;
+
+  /** splitMode === "AMOUNT" 일 때만 사용 (멤버별 금액) */
+  split: SplitMap;
+
+  /** 영수증 이미지(base64) */
+  receipt: string | null;
+  fileName: string | null;
 }
 
 export interface ExpenseSummary {
@@ -39,15 +52,15 @@ export interface ExpenseSummary {
 
 export interface MemberStatsRow {
   mem: ExpenseMember;
-  paid: number; // 총 결제금액
-  share: number; // 실제 부담금(1/N)
+  share: number; // 부담
+  paid: number; // 결제
   diff: number; // paid - share
 }
 
 export interface CategoryStatsRow {
-  cat: ExpenseCategory;
+  cat: string;
   amount: number;
-  percent: number; // 0~100
+  percent: number;
 }
 
 export interface SettlementTx {
@@ -62,11 +75,71 @@ export interface SettlementDetailRow {
   amount: number;
 }
 
+/** 정산 방식 설정 */
+export type PaymentMode = "INDIVIDUAL" | "POOL" | "HYBRID";
+
+/** 1원 처리(나머지 분배) */
+export type RoundingRule = "PAYER" | "SEQUENTIAL" | "RANDOM";
+
+/** 남은 금액 처리(POOL/HYBRID 전용) */
+export type RemainingRule = "AUTO" | "EQUAL" | "CARRY";
+
+export interface ExpenseSettings {
+  paymentMode: PaymentMode;
+  roundingRule: RoundingRule;
+
+  /** 남은 금액 처리(POOL/HYBRID 전용) */
+  remainingRule: RemainingRule;
+
+  /** 공통 예산/모임통장 금액 */
+  sharedBudget: number;
+}
+
 /* ==========================================
-   Safe parse helpers
+   Helpers
 ========================================== */
 const isMember = (v: unknown): v is ExpenseMember =>
   typeof v === "string" && (EXPENSE_MEMS as readonly string[]).includes(v);
+
+const isSplitMode = (v: unknown): v is SplitMode =>
+  v === "EQUAL" || v === "AMOUNT";
+
+const normalizeInvolved = (v: unknown): ExpenseMember[] => {
+  if (!Array.isArray(v)) return [...EXPENSE_MEMS];
+  const list = v.filter(isMember);
+  return list.length > 0
+    ? (Array.from(new Set(list)) as ExpenseMember[])
+    : [...EXPENSE_MEMS];
+};
+
+const normalizeSplit = (v: unknown): SplitMap => {
+  if (typeof v !== "object" || v === null) return {};
+  const obj = v as Record<string, unknown>;
+  const out: SplitMap = {};
+  for (const m of EXPENSE_MEMS) {
+    const val = obj[m];
+    const num =
+      typeof val === "number" ? val : typeof val === "string" ? Number(val) : 0;
+    if (Number.isFinite(num) && num !== 0) out[m] = num;
+  }
+  return out;
+};
+
+const uniqMembers = (arr: ExpenseMember[]) => Array.from(new Set(arr));
+
+/** ✅ 참여자가 전체 멤버(ALL)이면 공동지출 */
+const isSharedItem = (
+  item: Pick<ExpenseItem, "involved">,
+  memberCount: number,
+) => uniqMembers(item.involved ?? []).length === memberCount;
+
+/** ✅ 1원 처리에서 순서 분배: 결제자부터 시작 */
+const orderFromPayer = (involved: ExpenseMember[], payer: ExpenseMember) => {
+  const uniq = uniqMembers(involved);
+  const idx = uniq.indexOf(payer);
+  if (idx === -1) return uniq;
+  return [...uniq.slice(idx), ...uniq.slice(0, idx)];
+};
 
 const safeParseExpenses = (raw: string | null): ExpenseItem[] => {
   if (!raw) return [];
@@ -75,42 +148,46 @@ const safeParseExpenses = (raw: string | null): ExpenseItem[] => {
     if (!Array.isArray(parsed)) return [];
 
     const normalized: ExpenseItem[] = [];
+
     for (const it of parsed) {
       if (typeof it !== "object" || it === null) continue;
-
       const obj = it as Record<string, unknown>;
+
       const id = typeof obj.id === "number" ? obj.id : null;
       const date = typeof obj.date === "string" ? obj.date : null;
+
       const title = typeof obj.title === "string" ? obj.title : null;
+      const storeName = typeof obj.storeName === "string" ? obj.storeName : "";
+
       const cost =
         typeof obj.cost === "number"
           ? obj.cost
           : typeof obj.cost === "string"
-          ? Number(obj.cost)
-          : null;
+            ? Number(obj.cost)
+            : null;
 
       const cat = typeof obj.cat === "string" ? obj.cat : "";
       const method = typeof obj.method === "string" ? obj.method : "";
 
       const payer = isMember(obj.payer) ? obj.payer : null;
+      const involved = normalizeInvolved(obj.involved);
 
-      const involvedRaw = obj.involved;
-      const involved: ExpenseMember[] = Array.isArray(involvedRaw)
-        ? involvedRaw.filter(isMember)
-        : ([] as ExpenseMember[]);
+      const splitMode = isSplitMode(obj.splitMode) ? obj.splitMode : "EQUAL";
+      const split = normalizeSplit(obj.split);
 
       const receipt =
         typeof obj.receipt === "string"
           ? obj.receipt
           : obj.receipt === null
-          ? null
-          : null;
+            ? null
+            : null;
+
       const fileName =
         typeof obj.fileName === "string"
           ? obj.fileName
           : obj.fileName === null
-          ? null
-          : null;
+            ? null
+            : null;
 
       if (
         id === null ||
@@ -123,19 +200,18 @@ const safeParseExpenses = (raw: string | null): ExpenseItem[] => {
         continue;
       }
 
-      // part2.js: involved가 없으면 MEMS 전체로 처리
-      const finalInvolved: ExpenseMember[] =
-        involved.length > 0 ? involved : [...EXPENSE_MEMS];
-
       normalized.push({
         id,
         date,
+        storeName,
         title,
         cost: Number(cost),
         cat,
         payer,
         method,
-        involved: finalInvolved,
+        involved,
+        splitMode,
+        split,
         receipt,
         fileName,
       });
@@ -151,49 +227,162 @@ const writeExpenses = (items: ExpenseItem[]) => {
   localStorage.setItem(LS_EXPENSES, JSON.stringify(items));
 };
 
-/* ==========================================
-   Core calculations (part2.js 1:1)
-========================================== */
-const calcSummary = (items: ExpenseItem[]): ExpenseSummary => {
-  const totalSpent = items.reduce((sum, item) => sum + Number(item.cost), 0);
-  const remaining = TOTAL_BUDGET - totalSpent;
-  return {
-    totalBudget: TOTAL_BUDGET,
-    totalSpent,
-    remaining,
-  };
+const defaultSettings: ExpenseSettings = {
+  paymentMode: "INDIVIDUAL",
+  roundingRule: "PAYER",
+  remainingRule: "AUTO",
+  sharedBudget: TOTAL_BUDGET,
 };
 
-const calcMemberStats = (items: ExpenseItem[]): MemberStatsRow[] => {
+const safeParseSettings = (raw: string | null): ExpenseSettings => {
+  if (!raw) return defaultSettings;
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (typeof parsed !== "object" || parsed === null) return defaultSettings;
+    const obj = parsed as Record<string, unknown>;
+
+    const paymentMode: PaymentMode =
+      obj.paymentMode === "POOL"
+        ? "POOL"
+        : obj.paymentMode === "HYBRID"
+          ? "HYBRID"
+          : "INDIVIDUAL";
+
+    const roundingRule: RoundingRule =
+      obj.roundingRule === "SEQUENTIAL"
+        ? "SEQUENTIAL"
+        : obj.roundingRule === "RANDOM"
+          ? "RANDOM"
+          : "PAYER";
+
+    const remainingRule: RemainingRule =
+      obj.remainingRule === "EQUAL"
+        ? "EQUAL"
+        : obj.remainingRule === "CARRY"
+          ? "CARRY"
+          : "AUTO";
+
+    const sharedBudgetRaw =
+      typeof obj.sharedBudget === "number"
+        ? obj.sharedBudget
+        : typeof obj.sharedBudget === "string"
+          ? Number(obj.sharedBudget)
+          : TOTAL_BUDGET;
+
+    const sharedBudget =
+      Number.isFinite(sharedBudgetRaw) && sharedBudgetRaw >= 0
+        ? Math.floor(sharedBudgetRaw)
+        : TOTAL_BUDGET;
+
+    return { paymentMode, roundingRule, remainingRule, sharedBudget };
+  } catch {
+    return defaultSettings;
+  }
+};
+
+const writeSettings = (settings: ExpenseSettings) => {
+  localStorage.setItem(LS_SETTINGS, JSON.stringify(settings));
+};
+
+/* ==========================================
+   Core calculations
+========================================== */
+
+/**
+ * ✅ splitMode별 멤버별 부담액 계산
+ * - EQUAL: cost를 참여자 수로 나눔
+ * - AMOUNT: split 사용 (UI에서 합 검증)
+ * ✅ roundingRule: 1원 처리 방식
+ */
+export const calcSharesForItem = (
+  item: Pick<
+    ExpenseItem,
+    "cost" | "payer" | "involved" | "splitMode" | "split"
+  >,
+  roundingRule: RoundingRule = "PAYER",
+): Record<ExpenseMember, number> => {
+  const cost = Number(item.cost) || 0;
+  const involved = item.involved?.length ? item.involved : [...EXPENSE_MEMS];
+
+  const result: Record<ExpenseMember, number> = { ME: 0, J: 0, K: 0, M: 0 };
+
+  if (item.splitMode === "AMOUNT") {
+    for (const m of involved) result[m] = Number(item.split?.[m] ?? 0) || 0;
+    return result;
+  }
+
+  const n = involved.length || 1;
+  const base = Math.floor(cost / n);
+  const remainder = cost - base * n;
+
+  for (const m of involved) result[m] = base;
+
+  // ✅ remainder 만큼 +1씩 분배
+  if (remainder > 0) {
+    if (roundingRule === "PAYER") {
+      const receiver = involved.includes(item.payer) ? item.payer : involved[0];
+      result[receiver] += remainder;
+    } else if (roundingRule === "SEQUENTIAL") {
+      for (let i = 0; i < remainder; i++) {
+        const target = involved[i % n]; // 참여자 순서대로
+        result[target] += 1;
+      }
+    } else {
+      for (let i = 0; i < remainder; i++) {
+        const target = involved[Math.floor(Math.random() * n)];
+        result[target] += 1;
+      }
+    }
+  }
+
+  return result;
+};
+
+/** ✅ 상단 요약은 '공동(SHARED)'만 반영 */
+const calcSummary = (
+  items: ExpenseItem[],
+  sharedBudget: number,
+  memberCount: number,
+): ExpenseSummary => {
+  const sharedSpent = items
+    .filter((it) => isSharedItem(it, memberCount))
+    .reduce((sum, item) => sum + Number(item.cost), 0);
+
+  const totalBudget = Math.max(0, Math.floor(sharedBudget || 0));
+  const totalSpent = sharedSpent;
+  const remaining = totalBudget - totalSpent;
+
+  return { totalBudget, totalSpent, remaining };
+};
+
+const calcMemberStats = (
+  items: ExpenseItem[],
+  roundingRule: RoundingRule,
+): MemberStatsRow[] => {
   const totalPaid: Record<ExpenseMember, number> = { ME: 0, J: 0, K: 0, M: 0 };
   const totalShare: Record<ExpenseMember, number> = { ME: 0, J: 0, K: 0, M: 0 };
 
   for (const item of items) {
     const cost = Number(item.cost);
-    const payer = item.payer;
-    const involved =
-      item.involved && item.involved.length > 0
-        ? item.involved
-        : [...EXPENSE_MEMS];
+    if (!Number.isFinite(cost)) continue;
 
-    const share = Math.floor(cost / involved.length); // part2.js 동일
+    totalPaid[item.payer] += cost;
 
-    totalPaid[payer] += cost;
-    for (const p of involved) totalShare[p] += share;
+    const shares = calcSharesForItem(item, roundingRule);
+    for (const m of EXPENSE_MEMS) totalShare[m] += shares[m] || 0;
   }
 
   return EXPENSE_MEMS.map((m) => {
     const paid = totalPaid[m];
     const share = totalShare[m];
-    const diff = paid - share;
-    return { mem: m, paid, share, diff };
+    return { mem: m, paid, share, diff: paid - share };
   });
 };
 
 const calcCategoryStats = (items: ExpenseItem[]): CategoryStatsRow[] => {
   const catSum: Record<string, number> = {};
   for (const item of items) {
-    const key = item.cat;
+    const key = item.cat || "기타";
     catSum[key] = (catSum[key] || 0) + Number(item.cost);
   }
 
@@ -208,20 +397,20 @@ const calcCategoryStats = (items: ExpenseItem[]): CategoryStatsRow[] => {
   });
 };
 
-const calculateSettlements = (items: ExpenseItem[]): SettlementTx[] => {
+const calculateSettlements = (
+  items: ExpenseItem[],
+  roundingRule: RoundingRule,
+): SettlementTx[] => {
   const balances: Record<ExpenseMember, number> = { ME: 0, J: 0, K: 0, M: 0 };
 
   for (const item of items) {
     const cost = Number(item.cost);
-    const payer = item.payer;
-    const involved =
-      item.involved && item.involved.length > 0
-        ? item.involved
-        : [...EXPENSE_MEMS];
-    const share = Math.floor(cost / involved.length);
+    if (!Number.isFinite(cost)) continue;
 
-    balances[payer] += cost;
-    for (const p of involved) balances[p] -= share;
+    balances[item.payer] += cost;
+
+    const shares = calcSharesForItem(item, roundingRule);
+    for (const m of EXPENSE_MEMS) balances[m] -= shares[m] || 0;
   }
 
   const debtors: Array<{ id: ExpenseMember; amount: number }> = [];
@@ -231,7 +420,7 @@ const calculateSettlements = (items: ExpenseItem[]): SettlementTx[] => {
     ([mem, bal]) => {
       if (bal < -10) debtors.push({ id: mem, amount: Math.abs(bal) });
       else if (bal > 10) creditors.push({ id: mem, amount: bal });
-    }
+    },
   );
 
   const transactions: SettlementTx[] = [];
@@ -261,7 +450,7 @@ const calculateSettlements = (items: ExpenseItem[]): SettlementTx[] => {
 
 const settlementDetailForMember = (
   txs: SettlementTx[],
-  target: ExpenseMember
+  target: ExpenseMember,
 ): SettlementDetailRow[] => {
   const myTrans = txs.filter((t) => t.from === target || t.to === target);
   if (myTrans.length === 0) return [];
@@ -284,7 +473,6 @@ export const useExpenses = () => {
   const [expenses, setExpenses] = useState<ExpenseItem[]>([]);
   const [filterDate, setFilterDate] = useState<string>("ALL");
 
-  // 모달/편집 상태
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState<boolean>(false);
   const [editingId, setEditingId] = useState<number | null>(null);
 
@@ -293,45 +481,79 @@ export const useExpenses = () => {
     string | null
   >(null);
 
-  /* 초기 로드 */
+  // ✅ 정산 설정(결제 방식/1원 처리/공동 예산)
+  const [settings, setSettings] = useState<ExpenseSettings>(() =>
+    safeParseSettings(localStorage.getItem(LS_SETTINGS)),
+  );
+
   useEffect(() => {
     const stored = safeParseExpenses(localStorage.getItem(LS_EXPENSES));
     setExpenses(stored);
   }, []);
 
-  /* 저장 */
   useEffect(() => {
     writeExpenses(expenses);
   }, [expenses]);
 
-  /* derived */
-  const summary = useMemo(() => calcSummary(expenses), [expenses]);
-  const memberStats = useMemo(() => calcMemberStats(expenses), [expenses]);
+  useEffect(() => {
+    writeSettings(settings);
+  }, [settings]);
+
+  const summary = useMemo(
+    () => calcSummary(expenses, settings.sharedBudget, EXPENSE_MEMS.length),
+    [expenses, settings.sharedBudget],
+  );
+
+  const memberStats = useMemo(
+    () => calcMemberStats(expenses, settings.roundingRule),
+    [expenses, settings.roundingRule],
+  );
+
   const categoryStats = useMemo(() => calcCategoryStats(expenses), [expenses]);
-  const settlements = useMemo(() => calculateSettlements(expenses), [expenses]);
+
+  const settlements = useMemo(
+    () => calculateSettlements(expenses, settings.roundingRule),
+    [expenses, settings.roundingRule],
+  );
 
   const filteredList = useMemo<ExpenseItem[]>(() => {
-    const list =
-      filterDate === "ALL"
-        ? expenses
-        : expenses.filter((item) => item.date === filterDate);
+    let list = expenses;
+
+    if (filterDate !== "ALL") {
+      const date = filterDate.startsWith("DAY:")
+        ? filterDate.split(":")[1]
+        : filterDate;
+      list = expenses.filter((item) => item.date === date);
+    }
 
     return [...list].sort((a, b) => b.id - a.id);
   }, [expenses, filterDate]);
 
-  /* actions */
   const setFilter = (date: string) => setFilterDate(date);
+
+  const setPaymentMode = (paymentMode: PaymentMode) =>
+    setSettings((prev) => ({ ...prev, paymentMode }));
+
+  const setRoundingRule = (roundingRule: RoundingRule) =>
+    setSettings((prev) => ({ ...prev, roundingRule }));
+
+  const setSharedBudget = (sharedBudget: number) =>
+    setSettings((prev) => ({
+      ...prev,
+      sharedBudget: Math.max(0, Math.floor(sharedBudget || 0)),
+    }));
+
+  const setRemainingRule = (remainingRule: RemainingRule) =>
+    setSettings((prev) => ({ ...prev, remainingRule }));
 
   const resetReceiptUI = () => {
     setCurrentReceiptBase64(null);
     setCurrentFileName(null);
   };
 
-  // ✅ part2.js openExpModal()의 "active" 역할을 React state로 복원
   const openAddModal = () => {
     setEditingId(null);
-    setCurrentFileName(null);
-    setCurrentReceiptBase64(null);
+    resetReceiptUI();
     setIsExpenseModalOpen(true);
   };
 
@@ -345,11 +567,9 @@ export const useExpenses = () => {
     setIsExpenseModalOpen(true);
   };
 
-  // ✅ part2.js closeExpModal() 복원
   const closeExpenseModal = () => {
     setIsExpenseModalOpen(false);
     setEditingId(null);
-    // 닫을 때 영수증 UI는 원본처럼 reset하는게 안전(편집 중 잔상 방지)
     resetReceiptUI();
   };
 
@@ -367,27 +587,25 @@ export const useExpenses = () => {
         next[idx] = { ...next[idx], ...payload, id: editingId };
         return next;
       });
-      closeExpenseModal(); // ✅ 원본처럼 저장 후 닫기
+      closeExpenseModal();
       return;
     }
 
     const newId = Date.now();
     setExpenses((prev) => [...prev, { id: newId, ...payload }]);
-    closeExpenseModal(); // ✅ 원본처럼 저장 후 닫기
+    closeExpenseModal();
   };
 
   const deleteCurrentExpense = () => {
     if (!editingId) return;
     setExpenses((prev) => prev.filter((d) => d.id !== editingId));
-    closeExpenseModal(); // ✅ 원본처럼 삭제 후 닫기
+    closeExpenseModal();
   };
 
-  const getSettlementDetail = (target: ExpenseMember) => {
-    return settlementDetailForMember(settlements, target);
-  };
+  const getSettlementDetail = (target: ExpenseMember) =>
+    settlementDetailForMember(settlements, target);
 
   return {
-    /* state */
     expenses,
     filterDate,
     isExpenseModalOpen,
@@ -395,19 +613,22 @@ export const useExpenses = () => {
     currentFileName,
     currentReceiptBase64,
 
-    /* derived */
+    settings,
+    setPaymentMode,
+    setRoundingRule,
+    setRemainingRule,
+    setSharedBudget,
+
     summary,
     memberStats,
     categoryStats,
     settlements,
     filteredList,
 
-    /* actions */
     setFilter,
     openAddModal,
     openEditModal,
     closeExpenseModal,
-    resetReceiptUI,
 
     setCurrentFileName,
     setCurrentReceiptBase64,
