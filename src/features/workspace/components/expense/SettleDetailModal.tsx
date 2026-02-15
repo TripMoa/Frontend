@@ -1,9 +1,9 @@
 //src\features\workspace\components\modals\SettleDetailModal.tsx
-import "../../styles/modals.css";
+import "../../styles/detailModal.css";
 import type { ExpenseMember, UseExpensesStore } from "../../hooks/useExpenses";
 
 interface Props {
-  store: UseExpensesStore; // ✅ store 받음
+  store: UseExpensesStore;
   target: ExpenseMember;
   onClose: () => void;
 }
@@ -12,7 +12,7 @@ interface Props {
  * SettleDetailModal
  * - Expense 정산 상세 모달
  * - 상태는 WorkspaceCenter에서 받은 store 사용
- * - 내부에서 useExpenses() ❌ 금지
+ * - 내부에서 useExpenses() 금지
  */
 const SettleDetailModal: React.FC<Props> = ({ store, target, onClose }) => {
   const { memberStats, getSettlementDetail } = store;
