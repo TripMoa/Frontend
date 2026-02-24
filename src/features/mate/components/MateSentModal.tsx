@@ -38,7 +38,7 @@ export function MateSentModal({
                       <div className="flex items-center justify-between flex-wrap gap-2">
                         <div>
                           <div className="text-lg font-bold text-black">{app.postDestination}</div>
-                          <div className="text-sm text-black/60 font-mono">{app.postDates.start} ~ {app.postDates.end}</div>
+                          <div className="text-sm text-black/60 font-mono">{app.startDate} ~ {app.endDate}</div>
                           <div className="text-xs text-black/40 mt-1">by {app.postAuthor.name}</div>
                         </div>
                         <span className={`px-3 py-1 text-sm font-bold ${status === "approved" ? "bgGreen" : status === "rejected" ? "bgRed" : "bgBlack"}`}>

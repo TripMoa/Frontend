@@ -1,7 +1,13 @@
 import type { MouseEvent } from "react";
 import { Heart, X, Eye, RotateCcw, Trash2 } from "lucide-react";
 import type { Post } from "../hooks/mate.types";
-import { getAirportDisplay, CURRENT_USER } from "../hooks/mate.constants";
+import { 
+  getAirportDisplay, 
+  getCurrentUserId,
+  TRANSPORT_REVERSE_MAP,
+  GENDER_PREFERENCE_REVERSE_MAP,
+  AGE_GROUP_REVERSE_MAP
+} from "../hooks/mate.constants";
 import "../styles/MatePostCard.css";
 
 interface MatePostCardProps {
@@ -10,10 +16,10 @@ interface MatePostCardProps {
   isRemoved: boolean;
   isRemovedMode?: boolean;
   onCardClick: (post: Post) => void;
-  onLike: (postId: string, e: MouseEvent<HTMLButtonElement>) => void;
-  onRemove: (postId: string, e: MouseEvent<HTMLButtonElement>) => void;
-  onRestore: (postId: string, e: MouseEvent<HTMLButtonElement>) => void;
-  onDelete: (postId: string, e: MouseEvent<HTMLButtonElement>) => void;
+  onLike: (postId: number, e: MouseEvent<HTMLButtonElement>) => void;
+  onRemove: (postId: number, e: MouseEvent<HTMLButtonElement>) => void;
+  onRestore: (postId: number, e: MouseEvent<HTMLButtonElement>) => void;
+  onDelete: (postId: number, e: MouseEvent<HTMLButtonElement>) => void;
 }
 
 export function MatePostCard({
@@ -27,7 +33,18 @@ export function MatePostCard({
   onRestore,
   onDelete,
 }: MatePostCardProps){
-  const isAuthor = post.author.email === CURRENT_USER.email;
+  const currentUserId = getCurrentUserId();
+  const isAuthor = post.author.id === currentUserId;
+
+  // 날짜 포맷팅 (YYYY-MM-DD -> MM-DD)
+  const formatDate = (dateString: string) => {
+    return dateString.slice(5);
+  };
+
+  // 한글 표시용 변환
+  const transportDisplay = post.transport ? TRANSPORT_REVERSE_MAP[post.transport] || post.transport : "";
+  const genderDisplay = post.genderPreference ? GENDER_PREFERENCE_REVERSE_MAP[post.genderPreference] || post.genderPreference : "";
+  const ageGroupDisplay = post.ageGroup ? AGE_GROUP_REVERSE_MAP[post.ageGroup] || post.ageGroup : "";
 
   return (
     <div className="bg-white flex overflow-hidden relative group transition-all mate-card">
@@ -39,20 +56,13 @@ export function MatePostCard({
         </div>
       )}
 
-      {/* 메인 콘텐츠 */}
+      {/* 메인 컨텐츠 */}
       <div
         onClick={() => onCardClick(post)}
         className="flex-1 p-6 cursor-pointer flex flex-col"
       >
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-4">
-            <div className="text-left">
-              <div className="text-xs text-black/50 uppercase font-bold mb-1">From</div>
-              <div className="text-2xl font-bold text-black">
-                {getAirportDisplay(post.from)}
-              </div>
-            </div>
-
             <div className="text-2xl text-black/60 mx-2">✈</div>
 
             <div className="text-left">
@@ -67,19 +77,19 @@ export function MatePostCard({
           <div>
             <div className="text-[10px] text-black/50 uppercase font-bold">Departure</div>
             <div className="text-sm font-bold text-black">
-              {post.dates.start.slice(5)}
+              {formatDate(post.startDate)}
             </div>
           </div>
 
           <div>
             <div className="text-[10px] text-black/50 uppercase font-bold">Arrival</div>
-            <div className="text-sm font-bold text-black">{post.dates.end.slice(5)}</div>
+            <div className="text-sm font-bold text-black">{formatDate(post.endDate)}</div>
           </div>
 
           <div>
             <div className="text-[10px] text-black/50 uppercase font-bold">Seat</div>
             <div className="text-sm font-bold text-black">
-              {post.participants.current}/{post.participants.max}
+              {post.currentParticipant}/{post.maxParticipant}
             </div>
           </div>
 
@@ -89,25 +99,35 @@ export function MatePostCard({
               {post.id.toString().padStart(6, "0")}
             </div>
           </div>
+
+          {transportDisplay && (
+            <div>
+              <div className="text-[10px] text-black/50 uppercase font-bold">Transport</div>
+              <div className="text-sm font-bold text-black">
+                {transportDisplay}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* 태그 */}
         <div className="flex flex-wrap gap-1.5 mt-4">
-          {post.ageGroup && (
+          {ageGroupDisplay && (
             <span className="text-xs px-2 py-1 font-bold mate-badge">
-              {post.ageGroup}
+              {ageGroupDisplay}
             </span>
           )}
 
-          {post.gender && (
+          {genderDisplay && (
             <span className="text-xs px-2 py-1 font-bold mate-badge">
-              {post.gender}
+              {genderDisplay}
             </span>
           )}
 
-          {post.tags.slice(0, 2).map((tag) => (
-            <span key={tag} className="text-xs px-2 py-1 font-bold mate-badge">
-              #{tag}
+          {/* 작성자의 여행 스타일 표시 */}
+          {post.author.travelStyles?.slice(0, 3).map((style) => (
+            <span key={style} className="text-xs px-2 py-1 font-bold mate-badge">
+              #{style}
             </span>
           ))}
         </div>
@@ -136,7 +156,7 @@ export function MatePostCard({
               Budget
             </div>
             <div className="text-xl font-bold text-black font-mono">
-              {post.budget}
+              {post.budget.toLocaleString()}
             </div>
           </div>
 
@@ -148,7 +168,7 @@ export function MatePostCard({
               Views
             </div>
           </div>
-          <div className="text-sm font-bold text-black font-mono">{post.views}</div>
+          <div className="text-sm font-bold text-black font-mono">{post.viewsCount}</div>
 
           <div className="flex items-center gap-1">
             <Heart className="w-3 h-3 text-black/50" />
@@ -158,7 +178,7 @@ export function MatePostCard({
           </div>
 
           <div className="text-sm font-bold text-black font-mono flex items-center gap-1">
-            {post.likes}
+            {post.likesCount}
             {isLiked && (
               <Heart className="w-3 h-3 text-red-500 fill-red-500" />
             )}
