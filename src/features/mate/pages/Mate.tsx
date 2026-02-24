@@ -1,113 +1,178 @@
-// pages/Mate.tsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowUpDown, User, ChevronDown } from "lucide-react";
 
-// Hooks
-import { useMate } from "../hooks";
-import { SORT_OPTIONS, getSortLabel } from "../hooks/mate.constants";
+import { useMate } from "../hooks/useMate";
+import { useMateFilters } from "../hooks/useMateFilters";
+import { usePagination } from "../hooks/usePagination";
+import { SORT_OPTIONS, getSortLabel, POSTS_PER_PAGE, TRANSPORT_MAP, GENDER_PREFERENCE_MAP, AGE_GROUP_MAP } from "../hooks/mate.constants";
 
-// Components
 import {
   MateHeader,
   MateFilters,
   MatePostCard,
   MatePagination,
   MateWriteModal,
-  MateSentModal,
-  MateReceivedModal,
 } from "../components";
 
-// Chat Components
-import { ChatFAB, ChatSlide } from "../components/chat";
-
-// Styles
 import "../styles/Mate.css";
 
-export default function Mate(){
+export default function Mate() {
   const navigate = useNavigate();
-  const [showChatModal, setShowChatModal] = useState<boolean>(false);
+
+  const [writeError, setWriteError] = useState<string | null>(null);
+  const [showWriteModal, setShowWriteModal] = useState(false);
+  const [showApplicantsModal, setShowApplicantsModal] = useState(false);
+  const [showReceivedModal, setShowReceivedModal] = useState(false);
+  const [showSortDropdown, setShowSortDropdown] = useState(false);
+
+  const [startDate, setStartDate] = useState<Date | null>(null);
+  const [endDate, setEndDate] = useState<Date | null>(null);
+  const [selectedTransport, setSelectedTransport] = useState("");
+  const [selectedGender, setSelectedGender] = useState("");
+  const [selectedAgeGroup, setSelectedAgeGroup] = useState("");
+
+  const { posts, loading, error, fetchPosts, createPost, deletePost, toggleLike } = useMate();
 
   const {
-    locationFilter, setLocationFilter,
-    dateFilter, setDateFilter,
-    genderFilter, setGenderFilter,
-    ageFilter, setAgeFilter,
-    selectedTags, toggleTag,
-    sortBy, setSortBy,
-    currentPage, setCurrentPage,
-
-    visiblePosts,
+    locationFilter,
+    setLocationFilter,
+    dateFilter,
+    setDateFilter,
+    genderFilter,
+    setGenderFilter,
+    ageFilter,
+    setAgeFilter,
+    selectedTags,
+    toggleTag,
+    sortBy,
+    setSortBy,
     filteredPosts,
-    totalPages,
-    likedPostIds,
     removedPosts,
     isLikedOnlyMode,
     isRemovedOnlyMode,
     isAppliedOnlyMode,
     hasActiveFilters,
-    allPosts,
-
-    showWriteModal, setShowWriteModal,
-    showApplicantsModal, setShowApplicantsModal,
-    showReceivedModal, setShowReceivedModal,
-    selectedApplicant, setSelectedApplicant,
-    showSortDropdown, setShowSortDropdown,
-
-    startDate, setStartDate,
-    endDate, setEndDate,
-    selectedTransport, setSelectedTransport,
-    selectedTravelTypes, setSelectedTravelTypes,
-    selectedAgeGroups, setSelectedAgeGroups,
-    selectedGender, setSelectedGender,
-
-    myApplications,
-    receivedApplications,
-    allReceivedApplications,
-    getApplicantStatus,
-    approvedApplicants,
-
-    oneOnOneChats,
-
-    handleLike,
+    handleResetAll,
     handleRemove,
     handleRestore,
-    handleResetAll,
-    handlePostSubmit,
-    handleApprove,
-    handleReject,
-    handleDeletePost,
+  } = useMateFilters(posts);
 
-    sendOneOnOneMessage,
-    leaveOneOnOneChat,
-    createOneOnOneChat,
-  } = useMate();
+  const { currentPage, setCurrentPage, totalPages, visiblePosts } = usePagination(
+    filteredPosts,
+    POSTS_PER_PAGE
+  );
+
+  useEffect(() => {
+    fetchPosts();
+  }, [fetchPosts]);
 
   const handleCardClick = (post: any) => {
     navigate(`/mate/${post.id}`);
   };
 
-  const unreadCount = 0;
+  const handlePostSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setWriteError(null);
+    const formElement = e.currentTarget;
+    const formData = new FormData(formElement);
+
+    const budgetString = formData.get("budget") as string;
+    const budget = parseInt(budgetString.replace(/,/g, ""));
+
+    if (!startDate || !endDate) {
+      alert("날짜를 선택해주세요.");
+      return;
+    }
+
+    if (!selectedTransport) {
+      alert("이동수단을 선택해주세요.");
+      return;
+    }
+
+    const postData = {
+      destination: formData.get("destination") as string,
+      startDate,
+      endDate,
+      currentParticipant: parseInt(formData.get("currentParticipant") as string),
+      maxParticipant: parseInt(formData.get("maxParticipant") as string),
+      budget,
+      transport: TRANSPORT_MAP[selectedTransport], 
+      genderPreference: selectedGender ? GENDER_PREFERENCE_MAP[selectedGender] : "any",
+      ageGroup: selectedAgeGroup ? AGE_GROUP_MAP[selectedAgeGroup] : "all",
+      content: formData.get("content") as string,
+    };
+
+    const result = await createPost(postData);
+    if (result) {
+      setShowWriteModal(false);
+      setStartDate(null);
+      setEndDate(null);
+      setSelectedTransport("");
+      setSelectedGender("");
+      setSelectedAgeGroup("");
+      formElement.reset();
+    } else {
+
+    }
+  };
+
+  useEffect(() => {
+    if (error && showWriteModal) {
+      setWriteError(error);
+    }
+  }, [error, showWriteModal]);
+
+  const handleDeletePost = async (postId: number, e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    if (window.confirm("정말 삭제하시겠습니까?")) {
+      await deletePost(postId);
+    }
+  };
+
+  // if (loading) {
+  //   return (
+  //     <section className="page-section">
+  //       <div className="container" style={{ paddingTop: "100px", textAlign: "center" }}>
+  //         <div className="text-xl font-bold">메이트 목록을 불러오는 중...</div>
+  //       </div>
+  //     </section>
+  //   );
+  // }
+
+  // if (error) {
+  //   return (
+  //     <section className="page-section">
+  //       <div className="container" style={{ paddingTop: "100px", textAlign: "center" }}>
+  //         <div className="text-xl font-bold text-red-600 mb-4">오류가 발생했습니다</div>
+  //         <p className="text-black/60 mb-6">{error}</p>
+  //         <button
+  //           onClick={() => window.location.reload()}
+  //           className="px-6 py-3 bg-black text-white font-bold border-2 border-black hover:bg-white hover:text-black transition-all"
+  //         >
+  //           새로고침
+  //         </button>
+  //       </div>
+  //     </section>
+  //   );
+  // }
 
   return (
     <section className="page-section">
-      <div className="container" style={{ paddingTop: '40px', paddingBottom: '40px' }}>
-
-        {/* Header */}
-        <div style={{ marginBottom: '35px' }}>
+      <div className="container" style={{ paddingTop: "40px", paddingBottom: "40px" }}>
+        <div style={{ marginBottom: "35px" }}>
           <MateHeader
             onWriteClick={() => setShowWriteModal(true)}
             onMySentClick={() => setShowApplicantsModal(true)}
             onReceivedClick={() => setShowReceivedModal(true)}
-            onChatListClick={() => setShowChatModal(true)}
-            mySentCount={myApplications.length}
-            receivedPendingCount={receivedApplications.filter(app => getApplicantStatus(app.id) === "pending").length}
-            unreadChatCount={unreadCount}
+            onChatListClick={() => {}}
+            mySentCount={0}
+            receivedPendingCount={0}
+            unreadChatCount={0}
           />
         </div>
 
-        {/* Filters */}
-        <div style={{ marginBottom: '30px' }}>
+        <div style={{ marginBottom: "30px" }}>
           <MateFilters
             locationFilter={locationFilter}
             setLocationFilter={setLocationFilter}
@@ -123,8 +188,10 @@ export default function Mate(){
           />
         </div>
 
-        {/* Sort / Filter */}
-        <div style={{ marginBottom: '30px' }} className="flex items-center justify-between flex-wrap gap-4">
+        <div
+          style={{ marginBottom: "30px" }}
+          className="flex items-center justify-between flex-wrap gap-4"
+        >
           <div className="flex items-center gap-3">
             <ArrowUpDown className="w-5 h-5 text-black/60" />
             <span className="text-sm text-black/60">SORT BY:</span>
@@ -138,7 +205,11 @@ export default function Mate(){
                 }`}
               >
                 <span>{getSortLabel(sortBy)}</span>
-                <ChevronDown className={`w-4 h-4 ml-2 transition-transform ${showSortDropdown ? "rotate-180" : ""}`} />
+                <ChevronDown
+                  className={`w-4 h-4 ml-2 transition-transform ${
+                    showSortDropdown ? "rotate-180" : ""
+                  }`}
+                />
               </button>
 
               {showSortDropdown && (
@@ -159,10 +230,14 @@ export default function Mate(){
                             setShowSortDropdown(false);
                           }}
                           className={`w-full px-4 py-2.5 text-left text-sm font-bold transition-colors ${
-                            optIdx !== group.options.length - 1 || groupIdx !== SORT_OPTIONS.length - 1
-                              ? "border-b border-black/10" : ""
+                            optIdx !== group.options.length - 1 ||
+                            groupIdx !== SORT_OPTIONS.length - 1
+                              ? "border-b border-black/10"
+                              : ""
                           } ${
-                            sortBy === option.value ? "bgActive" : "bg-white text-black hover:bg-[#eee]"
+                            sortBy === option.value
+                              ? "bgActive"
+                              : "bg-white text-black hover:bg-[#eee]"
                           }`}
                         >
                           {option.label}
@@ -176,33 +251,44 @@ export default function Mate(){
           </div>
 
           <div className="flex items-center gap-4">
-            <span className="text-sm text-black/70">{filteredPosts.length} posts found</span>
+            <span className="text-sm text-black/70">{filteredPosts?.length ?? 0} posts found</span>
             {hasActiveFilters && (
-              <button onClick={handleResetAll} className="text-sm text-black/70 hover:text-black font-bold font-mono underline">
+              <button
+                onClick={handleResetAll}
+                className="text-sm text-black/70 hover:text-black font-bold font-mono underline"
+              >
                 [ RESET ALL ]
               </button>
             )}
           </div>
         </div>
 
-        {/* Posts */}
-        {visiblePosts.length === 0 ? (
+        {loading && posts.length === 0 ? (
+          <div className="bg-white p-20 text-center font-mono font-bold animate-pulse border-2 border-black">
+            {">> SCANNING FOR NEW MATES..."}
+          </div>
+        ) : !visiblePosts || visiblePosts.length === 0 ? (
           <div className="bg-white p-12 text-center emptyState">
             <User className="w-16 h-16 mx-auto mb-4 text-black/30" />
             <p className="text-black/60 text-lg font-bold uppercase">NO POSTS FOUND</p>
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '25px', marginBottom: '40px' }}>
+          <div
+            style={{ display: "flex", flexDirection: "column", gap: "25px", marginBottom: "40px" }}
+          >
             {visiblePosts.map((post) => (
               <MatePostCard
                 key={post.id}
                 post={post}
-                isLiked={likedPostIds.includes(post.id)}
-                isRemoved={removedPosts.includes(post.id)}
+                isLiked={post.isLiked ?? false}
+                isRemoved={removedPosts?.includes(post.id) ?? false}
                 isRemovedMode={isRemovedOnlyMode}
                 onDelete={handleDeletePost}
                 onCardClick={handleCardClick}
-                onLike={handleLike}
+                onLike={(postId, e) => {
+                  e.stopPropagation();
+                  toggleLike(postId);
+                }}
                 onRemove={handleRemove}
                 onRestore={handleRestore}
               />
@@ -210,16 +296,18 @@ export default function Mate(){
           </div>
         )}
 
-        <MatePagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={setCurrentPage}
-        />
+        <MatePagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
       </div>
 
       {showWriteModal && (
         <MateWriteModal
-          onClose={() => setShowWriteModal(false)}
+          onClose={() => {
+            setShowWriteModal(false);
+            setWriteError(null);
+          }}
+          // 전역 error보다는 관리 중인 writeError를 넘겨주는 게 더 정확할 수 있습니다.
+          writeError={writeError} 
+          loading={loading}
           onSubmit={handlePostSubmit}
           startDate={startDate}
           endDate={endDate}
@@ -227,46 +315,12 @@ export default function Mate(){
           setEndDate={setEndDate}
           selectedTransport={selectedTransport}
           setSelectedTransport={setSelectedTransport}
-          selectedTravelTypes={selectedTravelTypes}
-          setSelectedTravelTypes={setSelectedTravelTypes}
-          selectedAgeGroups={selectedAgeGroups}
-          setSelectedAgeGroups={setSelectedAgeGroups}
+          selectedAgeGroup={selectedAgeGroup}
+          setSelectedAgeGroup={setSelectedAgeGroup}
           selectedGender={selectedGender}
           setSelectedGender={setSelectedGender}
         />
       )}
-
-      {showApplicantsModal && (
-        <MateSentModal
-          applications={myApplications}
-          getApplicantStatus={getApplicantStatus}
-          onClose={() => setShowApplicantsModal(false)}
-        />
-      )}
-
-      {showReceivedModal && (
-        <MateReceivedModal
-          applications={receivedApplications}
-          getApplicantStatus={getApplicantStatus}
-          onApprove={handleApprove}
-          onReject={handleReject}
-          onClose={() => setShowReceivedModal(false)}
-        />
-      )}
-
-      <ChatFAB onClick={() => setShowChatModal(true)} unreadCount={unreadCount} />
-
-      <ChatSlide
-        isOpen={showChatModal}
-        onClose={() => setShowChatModal(false)}
-        oneOnOneChats={oneOnOneChats}
-        allPosts={allPosts}
-        myApplications={myApplications}
-        receivedApplications={allReceivedApplications}
-        onSendOneOnOneMessage={sendOneOnOneMessage}
-        onCreateOneOnOneChat={createOneOnOneChat}
-        onLeaveOneOnOneChat={leaveOneOnOneChat}
-      />
     </section>
   );
 }

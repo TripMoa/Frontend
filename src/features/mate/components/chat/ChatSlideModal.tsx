@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { X, MessageSquare, Send, Plus, LogOut, MapPin, Calendar, User } from "lucide-react";
 import type { OneOnOneChat } from "../../hooks/chat.types";
 import type { Post, MyApplication, ReceivedApplication } from "../../hooks/mate.types";
-import { CURRENT_USER } from "../../hooks/mate.constants";
+// import { CURRENT_USER } from "../../hooks/mate.constants";
 import "../../styles/ChatSlide.css";
 
 interface ChatSlideModalProps {

@@ -17,10 +17,8 @@ export interface OneOnOneChat {
   postAuthorId: string;
   applicantId: string;   
   destination: string;     
-  dates: {
-    start: string;         
-    end: string;           
-  };
+  startDate: string;         
+  endDate: string;           
   postAuthor: {            
     name: string;
     email: string;
@@ -34,17 +32,6 @@ export interface OneOnOneChat {
   messages: ChatMessage[];
   lastMessageAt: string;
   createdAt: string;
-}
-
-export interface GroupChat {
-  id: string;
-  postId: string;
-  postDestination: string;
-  postDates: { start: string; end: string };
-  members: Author[];
-  messages: ChatMessage[];
-  createdAt: string;
-  lastMessageAt: string;
 }
 
 export interface ChatBadge {

@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import { X, MessageSquare, Users, Send, Search } from "lucide-react";
 import type { OneOnOneChat, GroupChat } from "../../hooks/chat.types";
 import type { Post } from "../../hooks/mate.types";
-import { CURRENT_USER } from "../../hooks/mate.constants";
+// import { CURRENT_USER } from "../../hooks/mate.constants";
 
 interface ChatModalProps {
   isOpen: boolean;

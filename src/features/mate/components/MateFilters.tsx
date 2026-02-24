@@ -177,7 +177,7 @@ export function MateFilters({
             key={tag}
             onClick={() => toggleTag(tag)}
             className={`px-3 py-1.5 border-2 border-black text-xs transition-all font-bold ${
-              selectedTags.includes(tag)
+              selectedTags?.includes(tag)
                 ? "bgActive tagActive"
                 : "bg-white text-black hover:bg-[#f5f5f5]"
             }`}

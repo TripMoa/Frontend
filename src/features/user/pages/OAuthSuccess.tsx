@@ -33,7 +33,8 @@ export default function OAuthSuccess() {
     }
 
     getMyInfo()
-      .then(() => {
+      .then((response) => {
+        localStorage.setItem("userId", response.data.id.toString());
         navigate("/", { replace: true });
       })
       .catch(() => {
@@ -42,6 +43,7 @@ export default function OAuthSuccess() {
         // 실패 시 모든 토큰 삭제하여 세션 초기화
         localStorage.removeItem("accessToken");
         localStorage.removeItem("refreshToken");
+        localStorage.removeItem("userId");
         navigate("/login", { replace: true });
       });
   }, [navigate]);

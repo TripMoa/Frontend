@@ -1,97 +1,151 @@
-// pages/MateDetail.tsx
-
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft, Heart, Calendar, Users, Wallet, MapPin
 } from "lucide-react";
-import type { Post } from "../hooks/mate.types";
-import { getAirportDisplay } from "../hooks/mate.constants";
+import type { Post, ApplicationRequest, ApplicationResponse } from "../hooks/mate.types";
+import { getCurrentUserId, calculateDuration } from "../hooks/mate.constants";
 import { useMate } from "../hooks/useMate";
 import "../styles/MateDetail.css";
 
-export default function MateDetail(){
+export default function MateDetail() {
   const { postId } = useParams<{ postId: string }>();
   const navigate = useNavigate();
-  const { allPosts, likedPostIds, handleLike: mateLike, handleSendApplication, incrementViews } = useMate();
+  
+  const { toggleLike, fetchPostDetail } = useMate();
 
   const [post, setPost] = useState<Post | null>(null);
   const [showApplyForm, setShowApplyForm] = useState(false);
   const [applyMessage, setApplyMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
-  const [hasApplied, setHasApplied] = useState(false);
 
-  /** -------------------------------
-   *   POST LOAD
-   *  ------------------------------ */
-  const hasCountedRef = useRef(false);
+  const hasLoadedRef = useRef(false);
+
+  const currentUserId = getCurrentUserId();
+  const isAuthor = post?.author.id === currentUserId;
 
   useEffect(() => {
-    if (!postId) return;
+    const loadPost = async () => {
+      if (!postId || hasLoadedRef.current) {
+        return;
+      }
 
-    const found = allPosts.find((p) => p.id === postId);
-    if (!found) return;
-    setPost(found);
+      try {
+        hasLoadedRef.current = true;
+        setIsLoading(true);
 
-    if (!hasCountedRef.current) {
-      incrementViews(postId);
-      hasCountedRef.current = true;
-    }
+        const postDetail = await fetchPostDetail(Number(postId));
+        if (postDetail) {
+          setPost(postDetail);
+        } else {
+          hasLoadedRef.current = false;
+        }
+      } catch (err) {
+        hasLoadedRef.current = false;
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-    const apps = JSON.parse(localStorage.getItem("myApplications") || "[]");
-    setHasApplied(apps.some((app: any) => app.postId === postId));
+    loadPost();
+  }, [postId, fetchPostDetail]);
 
-    setIsLoading(false);
+  useEffect(() => {
+    return () => {
+      hasLoadedRef.current = false;
+    };
   }, [postId]);
 
-
-  /** allPosts 변경 시 post 상태만 업데이트 (좋아요 반영) */
-  useEffect(() => {
+  const onLikeClick = async (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
     if (!postId || !post) return;
-    
-    const updated = allPosts.find((p) => p.id === postId);
-    if (updated && (updated.likes !== post.likes || updated.views !== post.views)) 
-      {
-      setPost(updated);
-      }
-  }, [allPosts, postId, post]);
 
-  /** 좋아요 클릭 */
-  const onLikeClick = (e: React.MouseEvent<HTMLButtonElement>) => {
-    if (!postId) return;
-    mateLike(postId, e);
+    const prevLiked = post.isLiked;
+    const prevCount = post.likesCount;
+
+    setPost(prev => prev ? {
+      ...prev,
+      isLiked: !prev.isLiked,
+      likesCount: prev.isLiked ? prev.likesCount - 1 : prev.likesCount + 1
+    } : null);
+
+    const result = await toggleLike(post.id);
+
+    if (result) {
+      setPost(prev => prev ? {
+        ...prev,
+        isLiked: result.liked,
+        likesCount: result.count
+      } : null);
+    } else {
+      setPost(prev => prev ? {
+        ...prev,
+        isLiked: prevLiked,
+        likesCount: prevCount
+      } : null);
+    }
   };
 
-  const handleApplySubmit = () => {
+  const handleApplySubmit = async () => {
     if (!postId || !applyMessage.trim() || !post) return;
-    handleSendApplication(post, applyMessage);
 
-    setHasApplied(true);
-    setShowApplyForm(false);
-    setApplyMessage("");
-    navigate("/mate", { replace: true });
+    try {
+      const requestBody: ApplicationRequest = {
+        content: applyMessage,
+      };
+
+      const response = await fetch(`http://localhost:8080/api/mate/${postId}/apply`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || '신청에 실패했습니다.');
+      }
+
+      const applicationResponse: ApplicationResponse = await response.json();
+      console.log('신청 완료:', applicationResponse);
+
+      setShowApplyForm(false);
+      setApplyMessage("");
+      alert("신청이 완료되었습니다!");
+      
+      navigate("/mate", { replace: true });
+    } catch (error) {
+      console.error('신청 오류:', error);
+      alert(error instanceof Error ? error.message : "신청 중 오류가 발생했습니다.");
+    }
   };
 
-  /** Loading UI */
-  if (isLoading || !post) {
+  if (isLoading) {
     return (
-      <div className="mate-detail flex items-center justify-center h-[60vh]">
-        <div className="loading-spinner" />
+      <div className="mate-detail flex flex-col items-center justify-center h-[60vh]">
+        <div className="text-xl font-bold">게시글을 불러오는 중...</div>
       </div>
     );
   }
 
-  const isLiked = likedPostIds.includes(post.id);
+  if (!post) {
+    return (
+      <div className="mate-detail flex flex-col items-center justify-center h-[60vh]">
+        <p className="text-xl font-bold text-black/70 mb-4">게시글을 찾을 수 없습니다</p>
+        <button onClick={() => navigate("/mate")} className="btn-outline">
+          <ArrowLeft size={18} />
+          목록으로 돌아가기
+        </button>
+      </div>
+    );
+  }
+
+  const isLiked = post.isLiked || false;
+  const hasApplied = post.hasApplied || false;
 
   return (
     <div className="mate-detail max-w-6xl mx-auto px-4 py-8">
-
-      {/* Back + Like */}
       <div className="flex justify-between items-center mb-6">
-        <button
-          onClick={() => navigate(-1)}
-          className="btn-outline"
-        >
+        <button onClick={() => navigate(-1)} className="btn-outline">
           <ArrowLeft size={18} />
           뒤로가기
         </button>
@@ -101,120 +155,103 @@ export default function MateDetail(){
           className={`btn-outline ${isLiked ? "btn-like" : ""}`}
         >
           <Heart size={18} fill={isLiked ? "currentColor" : "none"} />
-          {post.likes}
+          {post.likesCount}
         </button>
       </div>
 
-      {/* WRAPPER */}
       <div className="global-wrap">
-
-        {/* LEFT */}
         <div className="left-col">
-
-          {/* ROUTE CARD */}
           <div className="route-card">
             <div className="flex items-center justify-between">
               <div className="route-point">
-                <p className="route-code">{getAirportDisplay(post.from)}</p>
-                <p className="route-date">{post.dates.start}</p>
+                <p className="route-date">{post.startDate}</p>
               </div>
-
               <div className="route-arrow">✈</div>
-
               <div className="route-point">
                 <p className="route-code">{post.destination}</p>
-                <p className="route-date">{post.dates.end}</p>
+                <p className="route-date">{post.endDate}</p>
               </div>
             </div>
           </div>
 
-          {/* INFO GRID */}
           <div className="info-grid">
             <div className="info-card">
               <Calendar size={20} />
-              <p className="info-value">{post.duration}</p>
+              <p className="info-value">{calculateDuration(post.startDate, post.endDate)}</p>
               <p className="info-label">여행 기간</p>
             </div>
 
             <div className="info-card">
               <Wallet size={20} />
-              <p className="info-value">{post.budget}</p>
+              <p className="info-value">{post.budget.toLocaleString()}원</p>
               <p className="info-label">예산</p>
             </div>
 
             <div className="info-card">
               <Users size={20} />
-              <p className="info-value">
-                {post.participants.current}/{post.participants.max}
-              </p>
+              <p className="info-value">{post.currentParticipant}/{post.maxParticipant}</p>
               <p className="info-label">참여 인원</p>
             </div>
 
             <div className="info-card">
               <MapPin size={20} />
-              <p className="info-value">{post.views}</p>
+              <p className="info-value">{post.viewsCount}</p>
               <p className="info-label">조회수</p>
             </div>
           </div>
 
-          {/* DESCRIPTION */}
           <div className="desc-box">
             <p className="desc-title">여행 소개</p>
-            <p className="desc-text">{post.description}</p>
+            <p className="desc-text">{post.content}</p>
 
-            <div className="tag-wrap">
-              {post.tags.map((tag) => (
-                <span className="tag" key={tag}>
-                  #{tag}
-                </span>
-              ))}
-            </div>
+            {post.author?.travelStyles && post.author.travelStyles.length > 0 && (
+              <div className="tag-wrap">
+                {post.author.travelStyles.map((tag) => (
+                  <span className="tag" key={tag}>#{tag}</span>
+                ))}
+              </div>
+            )}
           </div>
-
         </div>
 
-        {/* RIGHT */}
         <div className="right-col">
-
-          {/* AUTHOR */}
           <div className="author-card">
             <p className="author-label">작성자</p>
 
             <div className="flex gap-3">
-              <div className="author-avatar">{post.author.avatar}</div>
+              <div className="author-avatar">
+                {post.author.profileImage || post.author.avatarEmoji || "👤"}
+              </div>
 
               <div>
-                <p className="author-name">{post.author.name}</p>
+                <p className="author-name">{post.author.nickname}</p>
                 <p className="author-email">{post.author.email}</p>
                 <p className="author-meta">
-                  {post.author.age}세 · {post.author.gender}
+                  {post.author.age ? `${post.author.age}세` : ""}
+                  {post.author.age && post.author.gender ? " · " : ""}
+                  {post.author.gender || ""}
                 </p>
               </div>
             </div>
           </div>
 
-          {/* APPLY */}
           <div className="apply-card">
-
-            {!showApplyForm ? (
+            {isAuthor ? (
+              <div className="text-center py-4 text-black/60">내가 작성한 게시글입니다</div>
+            ) : !showApplyForm ? (
               <button
-                disabled={
-                  hasApplied || post.participants.current >= post.participants.max
-                }
+                disabled={hasApplied || post.currentParticipant >= post.maxParticipant}
                 onClick={() => setShowApplyForm(true)}
                 className={`apply-btn w-full ${
-                  hasApplied || post.participants.current >= post.participants.max
-                    ? "disabled"
-                    : ""
+                  hasApplied || post.currentParticipant >= post.maxParticipant ? "disabled" : ""
                 }`}
               >
                 {hasApplied
                   ? "이미 신청함"
-                  : post.participants.current >= post.participants.max
+                  : post.currentParticipant >= post.maxParticipant
                   ? "모집 완료"
                   : "신청하기"}
               </button>
-
             ) : (
               <div className="apply-form">
                 <textarea
@@ -245,7 +282,6 @@ export default function MateDetail(){
                 </div>
               </div>
             )}
-
           </div>
         </div>
       </div>

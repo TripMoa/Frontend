@@ -17,6 +17,7 @@ export const logout = async () => {
   } finally {
     localStorage.removeItem("accessToken");
     localStorage.removeItem("refreshToken");
+    localStorage.removeItem("userId");
   }
 };
 

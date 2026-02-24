@@ -5,7 +5,7 @@ import type { Post } from "../../hooks/mate.types";
 import type { ChatMessage } from "../../hooks/chat.types";  // 경로 수정
 import ChatBubble from "./ChatBubble";
 import ChatInput from "./ChatInput";    
-import { CURRENT_USER } from "../../hooks/mate.constants";
+// import { CURRENT_USER } from "../../hooks/mate.constants";
 
 interface OneOnOneChatModalProps {
   post: Post;

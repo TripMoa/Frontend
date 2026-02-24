@@ -24,13 +24,14 @@ export function MateReceivedModal({
     if (!acc[app.postId]) {
       acc[app.postId] = { 
         destination: app.postDestination, 
-        dates: app.postDates, 
+        startDate: app.startDate,
+        endDate: app.endDate, 
         applicants: [] 
       };
     }
     acc[app.postId].applicants.push(app);
     return acc;
-  }, {} as Record<string, { destination: string; dates: { start: string; end: string }; applicants: ReceivedApplication[] }>);
+  }, {} as Record<string, { destination: string; startDate: string; endDate: string; applicants: ReceivedApplication[] }>);
 
   // 신청자 상세 보기
   if (selectedApplicant) {
@@ -155,7 +156,7 @@ export function MateReceivedModal({
                       <div className="flex items-center justify-between flex-wrap gap-3">
                         <div className="flex-1">
                           <div className="text-lg font-bold text-black">{data.destination}</div>
-                          <div className="text-sm text-black/60 font-mono mt-1">{data.dates.start} ~ {data.dates.end}</div>
+                          <div className="text-sm text-black/60 font-mono mt-1">{data.startDate} ~ {data.endDate}</div>
                         </div>
                         <div className="flex items-center gap-2">
                           <span className="px-3 py-1 text-sm font-bold badge">{data.applicants.length} applicants</span>
