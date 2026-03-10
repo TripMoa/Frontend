@@ -23,6 +23,7 @@ export default function MateDetail() {
 
   const currentUserId = getCurrentUserId();
   const isAuthor = post?.author.id === currentUserId;
+  const token = localStorage.getItem("accessToken");
 
   useEffect(() => {
     const loadPost = async () => {
@@ -94,9 +95,12 @@ export default function MateDetail() {
         content: applyMessage,
       };
 
-      const response = await fetch(`http://localhost:8080/api/mate/${postId}/apply`, {
+      const response = await fetch(`http://localhost:8080/api/mate/${postId}/apply/applicant`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
         body: JSON.stringify(requestBody),
       });
 
@@ -112,7 +116,7 @@ export default function MateDetail() {
       setApplyMessage("");
       alert("신청이 완료되었습니다!");
       
-      navigate("/mate", { replace: true });
+      navigate(`/mate/${postId}`, { replace: true });
     } catch (error) {
       console.error('신청 오류:', error);
       alert(error instanceof Error ? error.message : "신청 중 오류가 발생했습니다.");

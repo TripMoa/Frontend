@@ -13,6 +13,7 @@ import {
   MatePostCard,
   MatePagination,
   MateWriteModal,
+  MateReceivedModal,
 } from "../components";
 
 import "../styles/Mate.css";
@@ -32,7 +33,9 @@ export default function Mate() {
   const [selectedGender, setSelectedGender] = useState("");
   const [selectedAgeGroup, setSelectedAgeGroup] = useState("");
 
-  const { posts, loading, error, fetchPosts, createPost, deletePost, toggleLike } = useMate();
+  const { posts, loading, error, fetchPosts, createPost, deletePost, toggleLike,
+    applications, receivedApplications, fetchReceivedApplications, handleApplicationStatus, getApplicantStatus
+   } = useMate();
 
   const {
     locationFilter,
@@ -66,6 +69,12 @@ export default function Mate() {
   useEffect(() => {
     fetchPosts();
   }, [fetchPosts]);
+
+  useEffect(() => {
+    if (showReceivedModal) {
+      fetchReceivedApplications();
+    }
+  }, [showReceivedModal]);
 
   const handleCardClick = (post: any) => {
     navigate(`/mate/${post.id}`);
@@ -321,6 +330,21 @@ export default function Mate() {
           setSelectedGender={setSelectedGender}
         />
       )}
+
+      {showReceivedModal && (
+        <MateReceivedModal
+          applications={receivedApplications}
+          getApplicantStatus={(id) => {
+              const app = receivedApplications.find(a => a.id === id);
+              return app?.status || "pending";
+          }}
+          onApprove={(id) => handleApplicationStatus(id, 'approve')}
+          onReject={(id) => handleApplicationStatus(id, 'reject')}
+          onClose={() => setShowReceivedModal(false)}
+        />
+      )}
+
+
     </section>
   );
 }
