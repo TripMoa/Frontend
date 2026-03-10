@@ -12,13 +12,15 @@ interface ReceivedModalProps {
 }
 
 export function MateReceivedModal({ 
-  applications, 
+  applications = [], 
   getApplicantStatus, 
   onApprove, 
-  onReject, 
+  onReject,
   onClose,
 }: ReceivedModalProps){
   const [selectedApplicant, setSelectedApplicant] = useState<SelectedApplicant | null>(null);
+
+  const safeApplications = applications || [];
 
   const groupedByPost = applications.reduce((acc, app) => {
     if (!acc[app.postId]) {
@@ -31,11 +33,12 @@ export function MateReceivedModal({
     }
     acc[app.postId].applicants.push(app);
     return acc;
-  }, {} as Record<string, { destination: string; startDate: string; endDate: string; applicants: ReceivedApplication[] }>);
+  }, {} as Record<string, any>);
 
   // 신청자 상세 보기
   if (selectedApplicant) {
-    const status = getApplicantStatus(selectedApplicant.id);
+    const rawStatus = getApplicantStatus(selectedApplicant.id);
+    const status = String(rawStatus);
     
     return (
       <div className="modal-overlay active" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
@@ -114,15 +117,38 @@ export function MateReceivedModal({
 
             {/* Actions */}
             <div className="flex gap-4">
-              <button onClick={() => onReject(selectedApplicant.id)}
-                className={`flex-1 py-3 font-bold uppercase tracking-wide transition-colors button ${status === "rejected" ? "bgRed" : "bg-white text-black hover:bg-[#eee]"}`}>
-                {status === "rejected" ? "REJECTED" : "REJECT"}
-              </button>
-              <button onClick={() => onApprove(selectedApplicant.id)}
-                className={`flex-1 py-3 font-bold uppercase tracking-wide transition-colors flex items-center justify-center gap-2 button ${status === "approved" ? "bgGreen" : "bgBlack"}`}>
-                {status === "approved" ? "APPROVED" : <><Check className="w-4 h-4" />APPROVE</>}
-              </button>
+              {status === "pending" ? (
+                <>
+                  <button onClick={() => onReject(selectedApplicant.id)}
+                    className="flex-1 py-3 font-bold uppercase transition-colors button bg-white text-black hover:bg-[#eee]">
+                    REJECT
+                  </button>
+                  <button onClick={() => onApprove(selectedApplicant.id)}
+                    className="flex-1 py-3 font-bold uppercase transition-colors flex items-center justify-center gap-2 button bgBlack text-white">
+                    <Check className="w-4 h-4" /> APPROVE
+                  </button>
+                </>
+              ):(
+                <div className={`flex-1 py-4 text-center font-black border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] ${status === "approved" ? "bgGreen" : "bgRed"}`}>
+                  {status.toUpperCase()}
+                </div>
+              )}
             </div>
+
+            {/* {status === "approved" && (
+              <div className="mt-4 p-4 bg-green-50 border-2 border-dashed border-green-500 rounded-lg animate-fade-in">
+                <p className="text-sm text-green-700 font-bold text-center mb-3">
+                  매칭이 완료되었습니다! 이제 채팅으로 세부 일정을 조율해보세요.
+                </p>
+                <button 
+                  onClick={() => window.location.href = '/chat'} // 채팅 페이지 경로에 맞게 수정
+                  className="w-full py-3 bg-[#8B5CF6] text-white font-bold flex items-center justify-center gap-2 hover:bg-[#7C3AED] transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-1 active:translate-y-1"
+                >
+                  <Send className="w-4 h-4" />
+                  채팅하기
+                </button>
+              </div>
+            )} */}
           </div>
         </div>
       </div>
@@ -138,7 +164,10 @@ export function MateReceivedModal({
           <button className="mh-close" onClick={onClose}>CLOSE [X]</button>
         </div>
 
-        <div className="modal-body" style={{ background: "white", padding: "32px" }}>
+        <div className="modal-body" style={{ 
+          background: "white", 
+          padding: "32px", 
+         }}>
           {Object.keys(groupedByPost).length === 0 ? (
             <div className="text-center py-12">
               <Send className="w-16 h-16 mx-auto mb-4 text-black/30" />
@@ -148,7 +177,7 @@ export function MateReceivedModal({
           ) : (
             <div className="space-y-10">
               {Object.entries(groupedByPost).map(([postId, data]) => {
-                const hasApprovedApplicants = data.applicants.some(app => getApplicantStatus(app.id) === "approved");
+                const hasApprovedApplicants = data.applicants.some(app => getApplicantStatus(app.id)?.toLowerCase() === "approved");
                 
                 return (
                   <div key={postId} className="card">
@@ -171,7 +200,7 @@ export function MateReceivedModal({
                     </div>
                     <div className="p-5 space-y-4">
                       {data.applicants.map((app) => {
-                        const status = getApplicantStatus(app.id);
+                        const status = getApplicantStatus(app.id)?.toLowerCase();
                         return (
                           <div key={app.id}
                             onClick={() => setSelectedApplicant({ 

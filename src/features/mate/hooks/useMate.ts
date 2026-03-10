@@ -11,6 +11,8 @@ const API_BASE_URL = "http://localhost:8080/api";
 export function useMate() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(false);
+  const [applications, setApplications] = useState<any[]>([]);
+  const [receivedApplications, setReceivedApplications] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
   const token = localStorage.getItem("accessToken");
 
@@ -158,7 +160,7 @@ export function useMate() {
     }
   }, []);
 
-  const toggleLike = useCallback(async (postId: number): Promise<boolean> => {
+  const toggleLike = useCallback(async (postId: number): Promise<LikeResponse | null> => {
     try {
       const response = await fetch(`${API_BASE_URL}/mate/${postId}/like`, {
         method: "POST",
@@ -186,12 +188,62 @@ export function useMate() {
         )
       );
 
-      return true;
+      return likeResponse;
     } catch (err) {
       setError(err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다.");
       return false;
     }
   }, []);
+
+  // 1. 받은 신청 목록 불러오기
+  const fetchReceivedApplications = useCallback(async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/mate/applications/received`, {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      if (!response.ok) throw new Error("데이터 로딩 실패");
+      const data = await response.json();
+      
+      const mappedData = data.map((app: any) => ({
+        id: app.id,
+        postId: app.matePostId,
+        postDestination: app.postDestination,
+        status: app.status,
+        applicant: {
+          name: app.applicantName,
+          email: app.applicantEmail,
+          message: app.content,
+          avatar: app.avatar || "👤",
+          age: app.age,
+          gender: app.gender,
+        }
+      }));
+      setReceivedApplications(mappedData);
+    } catch (err) {
+      console.error("신청 목록 로딩 실패", err);
+    }
+  }, [token]);
+
+  // 2. 승인/거절 처리 (상태 업데이트 로직 포함)
+  const handleApplicationStatus = async (applyId: string, type: 'approve' | 'reject') => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/mate/applications/${applyId}/${type}`, {
+        method: "PUT",
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+
+      const errorData = await response.json();
+      
+      if (response.ok) {
+        alert(type === 'approve' ? "승인되었습니다." : "거절되었습니다.");
+        fetchReceivedApplications(); // 목록 새로고침
+      } else {
+        alert(errorData.message || "이미 처리가 완료된 신청서입니다.");
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   return {
     posts,
@@ -202,5 +254,13 @@ export function useMate() {
     fetchPostDetail,
     deletePost,
     toggleLike,
+    applications,
+    fetchReceivedApplications,
+    receivedApplications,
+    handleApplicationStatus,
+    getApplicantStatus: (id: string) => {
+      const app = receivedApplications.find(a => String(a.id) === String(id));
+      return app?.status || "pending"; 
+    }
   };
 }
