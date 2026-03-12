@@ -1,0 +1,101 @@
+/* 상단 헤더 - 페이지 제목 + 글쓰기/내 스토리 버튼 */
+.main-header {
+  background: var(--secondary-color);
+  padding: 32px 40px;
+  margin-bottom: 24px;
+  border: 3px solid var(--border-color);
+  box-shadow: 8px 8px 0px rgba(0, 0, 0, 1);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+}
+
+.main-header-left {
+  flex: 1;
+}
+
+/* 페이지 메인 타이틀 */
+.main-header-title {
+  font-family: var(--font-mono);
+  font-size: 32px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin-bottom: 8px;
+}
+
+/* 페이지 서브타이틀 */
+.main-header-subtitle {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-gray);
+}
+
+/* 헤더 우측 버튼 그룹 */
+.main-header-actions {
+  display: flex;
+  gap: 12px;
+}
+
+/* 헤더 버튼 공통 스타일 */
+.main-action-btn {
+  padding: 12px 24px;
+  border: 3px solid var(--border-color);
+  background: var(--secondary-color);
+  color: var(--primary-color);
+  font-weight: 700;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: 4px 4px 0px rgba(0, 0, 0, 1);
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.main-action-btn:hover {
+  background: var(--bg-light);
+  transform: translate(-1px, -1px);
+}
+
+/* 글쓰기 버튼 - 검은 배경 강조 */
+.main-action-btn.primary {
+  background: var(--primary-color);
+  color: var(--secondary-color);
+}
+
+.main-action-btn.primary:hover {
+  background: #333;
+}
+
+/* 글쓰기 버튼 아이콘 - 흰색 */
+.main-action-btn.primary svg {
+  stroke: var(--secondary-color);
+  fill: var(--secondary-color);
+}
+
+/* 스토리가 없을 때 빈 상태 안내 */
+.main-empty {
+  text-align: center;
+  padding: 80px 20px;
+  background: var(--secondary-color);
+  border: 3px dashed var(--border-color);
+  margin-top: 40px;
+}
+
+.main-empty-text {
+  font-size: 18px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  margin-bottom: 8px;
+  color: var(--primary-color);
+}
+
+.main-empty-subtext {
+  font-size: 14px;
+  color: var(--text-gray);
+  font-family: var(--font-mono);
+}

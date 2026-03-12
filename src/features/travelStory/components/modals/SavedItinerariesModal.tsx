@@ -1,21 +1,18 @@
-interface LikesModalProps {
+interface SavedItinerariesModalProps {
   show: boolean;
   onClose: () => void;
   stories: any[];
   onStoryClick: (story: any) => void;
 }
 
-function LikesModal({ show, onClose, stories, onStoryClick }: LikesModalProps) {
+function SavedItinerariesModal({ show, onClose, stories, onStoryClick }: SavedItinerariesModalProps) {
   if (!show) return null;
 
   return (
     <div 
       style={{
         position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
+        top: 0, left: 0, right: 0, bottom: 0,
         background: 'rgba(0, 0, 0, 0.7)',
         display: 'flex',
         alignItems: 'center',
@@ -37,7 +34,6 @@ function LikesModal({ show, onClose, stories, onStoryClick }: LikesModalProps) {
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* 헤더 */}
         <div style={{
           background: '#000',
           color: '#fff',
@@ -56,19 +52,7 @@ function LikesModal({ show, onClose, stories, onStoryClick }: LikesModalProps) {
             alignItems: 'center',
             gap: '8px'
           }}>
-            {'>>'}
-            <svg 
-              xmlns="http://www.w3.org/2000/svg" 
-              viewBox="0 0 24 24" 
-              width="16"
-              height="16"
-              fill="none"
-              stroke="#fff"
-              strokeWidth="2"
-            >
-              <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-            </svg>
-            {'LIKES LIST'}
+            {'>> SAVED ITINERARIES'}
           </h2>
 
           <button 
@@ -98,17 +82,10 @@ function LikesModal({ show, onClose, stories, onStoryClick }: LikesModalProps) {
           </button>
         </div>
 
-        {/* 바디 */}
-        <div style={{ 
-          flex: 1, 
-          overflowY: 'auto',
-          padding: '30px',
-          background: '#fff'
-        }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '30px', background: '#fff' }}>
           {stories.map((story: any) => (
             <div 
               key={story.id}
-              onClick={() => onStoryClick(story)}
               style={{
                 display: 'flex',
                 gap: '15px',
@@ -116,10 +93,9 @@ function LikesModal({ show, onClose, stories, onStoryClick }: LikesModalProps) {
                 padding: '15px',
                 marginBottom: '15px',
                 border: '2px solid #000',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
                 background: '#fff',
-                boxShadow: '4px 4px 0px #000'
+                boxShadow: '4px 4px 0px #000',
+                transition: 'all 0.2s'
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.transform = 'translate(-2px, -2px)';
@@ -131,47 +107,74 @@ function LikesModal({ show, onClose, stories, onStoryClick }: LikesModalProps) {
               }}
             >
               <img 
-                src={story.image} 
+                src={story.image || story.imageUrl} 
                 alt={story.title}
-                style={{
-                  width: '80px',
-                  height: '80px',
-                  objectFit: 'cover',
-                  border: '2px solid #000'
-                }}
+                style={{ width: '80px', height: '80px', objectFit: 'cover', border: '2px solid #000' }}
               />
               <div style={{ flex: 1 }}>
                 <div style={{
-                  fontSize: '14px',
-                  fontWeight: 900,
-                  marginBottom: '6px',
-                  color: '#000',
-                  fontFamily: "'Share Tech Mono', monospace"
+                  fontSize: '14px', fontWeight: 900, marginBottom: '6px',
+                  color: '#000', fontFamily: "'Share Tech Mono', monospace"
                 }}>
                   {story.title}
                 </div>
                 <div style={{
-                  fontSize: '11px',
-                  color: '#666',
-                  fontFamily: "'Share Tech Mono', monospace",
-                  fontWeight: 600
+                  fontSize: '11px', color: '#666',
+                  fontFamily: "'Share Tech Mono', monospace", fontWeight: 600
                 }}>
-                  {story.destination} · {story.duration} · {parseInt(story.budget).toLocaleString()}원
+                  {story.destination} · {story.duration} · {parseInt(story.budget || '0').toLocaleString()}원
                 </div>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <button
+                  onClick={() => onStoryClick(story)}
+                  style={{
+                    padding: '8px 14px',
+                    border: '2px solid #000',
+                    background: '#000',
+                    color: '#fff',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    fontFamily: "'Share Tech Mono', monospace",
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = '#333'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = '#000'; }}
+                >
+                  여행기 보기
+                </button>
+                <button
+                  onClick={() => alert('준비 중입니다.')}
+                  style={{
+                    padding: '8px 14px',
+                    border: '2px solid #000',
+                    background: '#fff',
+                    color: '#000',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    fontFamily: "'Share Tech Mono', monospace",
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = '#f0f0f0'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = '#fff'; }}
+                >
+                  USE THIS ITINERARY
+                </button>
               </div>
             </div>
           ))}
 
           {stories.length === 0 && (
             <div style={{
-              textAlign: 'center',
-              padding: '60px 20px',
-              color: '#999',
-              fontSize: '13px',
-              fontFamily: "'Share Tech Mono', monospace",
-              fontWeight: 600
+              textAlign: 'center', padding: '60px 20px', color: '#999',
+              fontSize: '13px', fontFamily: "'Share Tech Mono', monospace", fontWeight: 600
             }}>
-              좋아요한 여행기가 없습니다.
+              저장한 일정이 없습니다.
             </div>
           )}
         </div>
@@ -180,4 +183,4 @@ function LikesModal({ show, onClose, stories, onStoryClick }: LikesModalProps) {
   );
 }
 
-export default LikesModal;
+export default SavedItinerariesModal;

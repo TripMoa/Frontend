@@ -1,364 +1,347 @@
+// src/features/travelStory/components/CommentSection.tsx
 import { useEffect, useState } from 'react';
-
-interface Comment {
-  id: number;
-  author: string;
-  authorAvatar: string;
-  content: string;
-  date: string;
-}
+import ReportModal from '../components/modals/ReportModal';
+import * as commentAPI from '../../../api/comments.api';
+import { getMyInfo } from '../../../api/auth.api';
+import '../styles/CommentSection.css';
+import Filter from 'badwords-ko';
+const filter = new Filter();
 
 interface CommentSectionProps {
   storyId: number;
+  storyAuthorId?: number;
+  onCommentCountChange?: (count: number) => void;
 }
 
-function CommentSection({ storyId }: CommentSectionProps) {
-  const STORAGE_KEY = `comments_${storyId}`;
-
-  const [comments, setComments] = useState<Comment[]>([]);
+function CommentSection({ storyId, storyAuthorId, onCommentCountChange }: CommentSectionProps) {
+  const [comments, setComments] = useState<any[]>([]);
   const [newComment, setNewComment] = useState('');
-
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editingContent, setEditingContent] = useState('');
-
   const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
-  const [loaded, setLoaded] = useState(false); // ✅ 로드 완료 플래그
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [reportTargetId, setReportTargetId] = useState<number | null>(null);
+  const [openMoreId, setOpenMoreId] = useState<number | null>(null);
 
-  /* ================= 로컬스토리지 로드 ================= */
   useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      setComments(JSON.parse(saved));
+    loadCurrentUser();
+  }, []);
+
+  useEffect(() => {
+    loadComments();
+  }, [storyId]);
+
+  // 댓글 수 변경 시 부모 컴포넌트에 전달
+  useEffect(() => {
+    if (onCommentCountChange) {
+      onCommentCountChange(comments.length);
     }
-    setLoaded(true); // ✅ 로드 끝
-  }, [STORAGE_KEY]);
+  }, [comments.length, onCommentCountChange]);
 
-  /* ================= 로컬스토리지 저장 ================= */
-  useEffect(() => {
-    if (!loaded) return; // ✅ 로드 전에는 저장 금지
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(comments));
-  }, [comments, STORAGE_KEY, loaded]);
+  // 현재 로그인한 유저 정보 로드
+  const loadCurrentUser = async () => {
+    try {
+      const response = await getMyInfo();
+      setCurrentUser(response.data);
+    } catch (err) {
+      console.error('Failed to load user info:', err);
+    }
+  };
 
-  const handleSubmit = () => {
+  // 특정 스토리의 댓글 목록 로드
+  const loadComments = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await commentAPI.getComments(storyId);
+      setComments(response.data);
+    } catch (err: any) {
+      setError(err.response?.data?.message || '댓글을 불러오는데 실패했습니다.');
+      console.error('Failed to load comments:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 댓글 작성 (금칙어 필터링 포함)
+  const handleSubmit = async () => {
     if (!newComment.trim()) return;
 
-    const comment: Comment = {
-      id: Date.now(),
-      author: '나',
-      authorAvatar: '나',
-      content: newComment,
-      date: new Date()
-        .toLocaleDateString('ko-KR')
-        .replace(/\. /g, '.')
-        .slice(0, -1)
-    };
+    if (filter.isProfane(newComment)) {
+      setError('부적절한 단어가 포함되어 있습니다.');
+      return;
+    }
 
-    // 처음 댓글이 위, 새 댓글은 아래
-    setComments([...comments, comment]);
-    setNewComment('');
+    try {
+      setLoading(true);
+      setError(null);
+      await commentAPI.createComment(storyId, {
+        content: newComment
+      });
+      setNewComment('');
+      await loadComments();
+    } catch (err: any) {
+      setError(err.response?.data?.message || '댓글 작성에 실패했습니다.');
+      console.error('Failed to create comment:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleEditSave = (id: number) => {
-    setComments(
-      comments.map((c) =>
-        c.id === id ? { ...c, content: editingContent } : c
-      )
-    );
-    setEditingId(null);
-    setEditingContent('');
+  // 댓글 수정 저장
+  const handleEditSave = async (id: number) => {
+    try {
+      setLoading(true);
+      setError(null);
+      await commentAPI.updateComment(id, {
+        content: editingContent
+      });
+      setEditingId(null);
+      setEditingContent('');
+      await loadComments();
+    } catch (err: any) {
+      setError(err.response?.data?.message || '댓글 수정에 실패했습니다.');
+      console.error('Failed to update comment:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleDeleteConfirm = () => {
+  // 댓글 삭제 확인 후 처리
+  const handleDeleteConfirm = async () => {
     if (deleteTarget === null) return;
-    setComments(comments.filter((c) => c.id !== deleteTarget));
-    setDeleteTarget(null);
+
+    try {
+      setLoading(true);
+      setError(null);
+      await commentAPI.deleteComment(deleteTarget);
+      setDeleteTarget(null);
+      await loadComments();
+    } catch (err: any) {
+      setError(err.response?.data?.message || '댓글 삭제에 실패했습니다.');
+      console.error('Failed to delete comment:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 댓글 작성자 정보 반환 (author 객체 없을 경우 authorId로 fallback)
+  const getAuthorInfo = (comment: any) => {
+    if (comment.author) {
+      return comment.author;
+    }
+    
+    if (comment.authorId) {
+      return {
+        id: comment.authorId,
+        // nickname 우선, 없으면 name
+        name: currentUser?.id === comment.authorId 
+          ? (currentUser.nickname || currentUser.name)
+          : '사용자',
+        // profileImage 또는 avatar 우선
+        avatar: currentUser?.id === comment.authorId 
+          ? (currentUser.profileImage || currentUser.avatar || (currentUser.nickname || currentUser.name)?.charAt(0) || '?')
+          : '?'
+      };
+    }
+    
+    return { id: 0, name: '알 수 없음', avatar: '?' };
+  };
+
+  // 현재 로그인한 유저의 댓글 여부 확인
+  const isMyComment = (comment: any) => {
+    if (comment.author?.id) {
+      return currentUser && comment.author.id === currentUser.id;
+    }
+    
+    if (comment.authorId) {
+      return currentUser && comment.authorId === currentUser.id;
+    }
+    
+    return false;
+  };
+
+  // 프로필 사진 URL인지 확인
+  const isImageUrl = (str: string) => {
+    if (!str) return false;
+    return str.startsWith('http://') || 
+           str.startsWith('https://') || 
+           str.startsWith('/uploads/') ||
+           str.startsWith('data:image/');
   };
 
   return (
-    <div
-      style={{
-        background: '#fff',
-        border: '3px solid #000',
-        padding: '30px',
-        marginTop: '40px',
-        boxShadow: '4px 4px 0px rgba(0, 0, 0, 1)'
-      }}
-    >
-      <h3
-        style={{
-          fontSize: '18px',
-          fontWeight: 700,
-          fontFamily: "'Share Tech Mono', monospace",
-          marginBottom: '20px',
-          paddingBottom: '15px',
-          borderBottom: '3px solid #000'
-        }}
-      >
+    <div className="comment-section">
+      <h3 className="comment-section-title">
         COMMENTS ({comments.length})
       </h3>
 
-      {/* 댓글 리스트 */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '30px' }}>
-        {comments.map((comment) => (
-          <div
-            key={comment.id}
-            style={{
-              padding: '20px',
-              border: '2px solid #000',
-              background: '#f9f9f9',
-              position: 'relative'
-            }}
-          >
-            {/* 수정 | 삭제 */}
-            {comment.author === '나' && (
-              <div
-                style={{
-                  position: 'absolute',
-                  top: '12px',
-                  right: '12px',
-                  fontSize: '11px',
-                  fontFamily: "'Share Tech Mono', monospace",
-                  color: '#999',
-                  display: 'flex',
-                  gap: '6px'
-                }}
-              >
-                <span
-                  style={{ cursor: 'pointer' }}
-                  onClick={() => {
-                    setEditingId(comment.id);
-                    setEditingContent(comment.content);
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.color = '#000')}
-                  onMouseLeave={(e) => (e.currentTarget.style.color = '#999')}
-                >
-                  EDIT
-                </span>
-                <span>|</span>
-                <span
-                  style={{ cursor: 'pointer' }}
-                  onClick={() => setDeleteTarget(comment.id)}
-                  onMouseEnter={(e) => (e.currentTarget.style.color = '#d00000')}
-                  onMouseLeave={(e) => (e.currentTarget.style.color = '#999')}
-                >
-                  DELETE
-                </span>
-              </div>
-            )}
+      {error && (
+        <div className="comment-error">
+          {error}
+        </div>
+      )}
 
-            {/* 작성자 */}
-            <div style={{ display: 'flex', gap: '12px', marginBottom: '12px' }}>
-              <div
-                style={{
-                  width: '36px',
-                  height: '36px',
-                  background: '#000',
-                  color: '#fff',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontWeight: 700
-                }}
-              >
-                {comment.authorAvatar}
-              </div>
-              <div>
-                <div style={{ fontWeight: 700 }}>{comment.author}</div>
-                <div style={{ fontSize: '11px', color: '#999' }}>{comment.date}</div>
-              </div>
-            </div>
+      {loading && (
+        <div className="comment-loading">
+          Loading...
+        </div>
+      )}
 
-            {/* 내용 / 수정 */}
-            {editingId === comment.id ? (
-              <>
-                <textarea
-                  value={editingContent}
-                  onChange={(e) => setEditingContent(e.target.value)}
-                  style={{
-                    width: '100%',
-                    minHeight: '80px',
-                    border: '2px solid #000',
-                    padding: '10px',
-                    fontFamily: "'Share Tech Mono', monospace",
-                    marginBottom: '10px'
-                  }}
-                />
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-                  <button
-                    onClick={() => handleEditSave(comment.id)}
-                    style={{
-                      border: '2px solid #000',
-                      background: '#000',
-                      color: '#fff',
-                      padding: '6px 12px',
-                      fontWeight: 700,
-                      fontSize: '11px',
-                      fontFamily: "'Share Tech Mono', monospace"
+      <div className="comments-list">
+        {comments.map((comment) => {
+          const author = getAuthorInfo(comment);
+          // nickname 우선, 없으면 name
+          const displayName = author.nickname || author.name || '알 수 없음';
+          const avatarContent = author.profileImage || author.avatar;
+          
+          return (
+            <div key={comment.id} className="comment-item">
+              {isMyComment(comment) && (
+                <div className="comment-actions">
+                  <span
+                    className="comment-action-btn"
+                    onClick={() => {
+                      setEditingId(comment.id);
+                      setEditingContent(comment.content);
                     }}
                   >
-                    SAVE
-                  </button>
-                  <button
-                    onClick={() => setEditingId(null)}
-                    style={{
-                      border: '2px solid #000',
-                      background: '#fff',
-                      padding: '6px 12px',
-                      fontWeight: 700,
-                      fontSize: '11px',
-                      fontFamily: "'Share Tech Mono', monospace"
-                    }}
+                    EDIT
+                  </span>
+                  <span>|</span>
+                  <span
+                    className="comment-action-btn delete"
+                    onClick={() => setDeleteTarget(comment.id)}
                   >
-                    CANCEL
-                  </button>
+                    DELETE
+                  </span>
                 </div>
-              </>
-            ) : (
-              <div
-                style={{
-                  fontSize: '14px',
-                  lineHeight: '1.6',
-                  fontFamily: "'Share Tech Mono', monospace",
-                  color: '#333',
-                  paddingLeft: '48px'
-                }}
-              >
-                {comment.content}
+              )}
+
+              {/* 남의 댓글일 때만 */}
+                {!isMyComment(comment) && (
+                  <button
+                    className="comment-report-btn"
+                    onClick={() => setReportTargetId(comment.id)}
+                  >
+                    {'신고하기'}
+                  </button>
+                )}
+
+              <div className="comment-author-info">
+                {/* 프로필 사진 - 이미지 또는 텍스트 */}
+                <div className="comment-avatar">
+                  {isImageUrl(avatarContent) ? (
+                    <img src={avatarContent} alt={displayName} />
+                  ) : (
+                    avatarContent || '?'
+                  )}
+                </div>
+                <div>
+                  <div className="comment-author-name">
+                    {displayName}
+                    {comment.author?.id === storyAuthorId && (
+                      <span className="comment-author-badge">작성자</span>
+                      )}
+                  </div>
+                  <div className="comment-date">
+                    {comment.date || new Date(comment.createdAt).toLocaleDateString()}
+                  </div>
+                </div>
               </div>
-            )}
-          </div>
-        ))}
+
+              {editingId === comment.id ? (
+                <>
+                  <textarea
+                    value={editingContent}
+                    onChange={(e) => setEditingContent(e.target.value)}
+                    disabled={loading}
+                    className="comment-edit-textarea"
+                  />
+                  <div className="comment-edit-actions">
+                    <button
+                      onClick={() => handleEditSave(comment.id)}
+                      disabled={loading}
+                      className="comment-btn save"
+                    >
+                      {loading ? 'SAVING...' : 'SAVE'}
+                    </button>
+                    <button
+                      onClick={() => setEditingId(null)}
+                      disabled={loading}
+                      className="comment-btn cancel"
+                    >
+                      CANCEL
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div className="comment-content">
+                  {comment.content}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
-      {/* 댓글 작성 */}
       <textarea
         value={newComment}
         onChange={(e) => setNewComment(e.target.value)}
         placeholder="댓글을 작성해주세요..."
-        style={{
-          width: '100%',
-          minHeight: '120px',
-          padding: '15px',
-          border: '2px solid #000',
-          fontFamily: "'Share Tech Mono', monospace",
-          marginBottom: '12px'
-        }}
+        disabled={loading}
+        className="comment-textarea"
       />
-      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+      <div className="comment-submit-wrapper">
         <button
           onClick={handleSubmit}
-          style={{
-            padding: '12px 24px',
-            border: '3px solid #000',
-            background: '#000',
-            color: '#fff',
-            fontWeight: 700,
-            fontSize: '12px',
-            fontFamily: "'Share Tech Mono', monospace"
-          }}
+          disabled={loading || !newComment.trim()}
+          className="comment-submit-btn"
         >
-          POST COMMENT
+          {loading ? 'POSTING...' : 'POST COMMENT'}
         </button>
       </div>
 
-      {/* ================= 삭제 확인 모달 (통일된 디자인) ================= */}
+      <ReportModal
+        show={reportTargetId !== null}
+        targetType="댓글"
+        targetAuthor={comments.find(c => c.id === reportTargetId)?.author?.nickname || comments.find(c => c.id === reportTargetId)?.author?.name}
+        targetContent={comments.find(c => c.id === reportTargetId)?.content}
+        onClose={() => setReportTargetId(null)}
+        onSubmit={(reason, detail) => {
+          console.log('댓글 신고:', { commentId: reportTargetId, reason, detail });
+        }}
+      />
+
       {deleteTarget !== null && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0, 0, 0, 0.7)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 100000
-          }}
-          onClick={() => setDeleteTarget(null)}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              background: '#fff',
-              border: '3px solid #000',
-              boxShadow: '15px 15px 0px #000',
-              width: '360px'
-            }}
-          >
-            {/* 헤더 */}
-            <div
-              style={{
-                background: '#000',
-                color: '#fff',
-                padding: '12px 20px'
-              }}
-            >
-              <span
-                style={{
-                  fontFamily: "'Share Tech Mono', monospace",
-                  fontSize: '16px',
-                  fontWeight: 900,
-                  letterSpacing: '1px'
-                }}
-              >
-                댓글 삭제
-              </span>
+        <div className="comment-delete-modal-overlay" onClick={() => setDeleteTarget(null)}>
+          <div className="comment-delete-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="comment-modal-header">
+              <span className="comment-modal-title">댓글 삭제</span>
             </div>
 
-            {/* 본문 */}
-            <div style={{ padding: '24px' }}>
-              <p
-                style={{
-                  fontFamily: "'Share Tech Mono', monospace",
-                  fontSize: '14px',
-                  lineHeight: '1.6',
-                  marginBottom: '24px'
-                }}
-              >
+            <div className="comment-modal-body">
+              <p className="comment-modal-message">
                 댓글을 삭제하시겠습니까?<br />
                 삭제된 댓글은 복구할 수 없습니다.
               </p>
 
-              {/* 버튼 */}
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <div className="comment-modal-actions">
                 <button
                   onClick={() => setDeleteTarget(null)}
-                  style={{
-                    border: '2px solid #000',
-                    background: '#fff',
-                    padding: '8px 16px',
-                    fontWeight: 900,
-                    fontSize: '12px',
-                    fontFamily: "'Share Tech Mono', monospace",
-                    cursor: 'pointer'
-                  }}
+                  disabled={loading}
+                  className="comment-modal-btn cancel"
                 >
                   취소
                 </button>
                 <button
                   onClick={handleDeleteConfirm}
-                  style={{
-                    border: '2px solid #d00000',
-                    background: '#fff',
-                    color: '#d00000',
-                    padding: '8px 16px',
-                    fontWeight: 900,
-                    fontSize: '12px',
-                    fontFamily: "'Share Tech Mono', monospace",
-                    cursor: 'pointer'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = '#d00000';
-                    e.currentTarget.style.color = '#fff';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = '#fff';
-                    e.currentTarget.style.color = '#d00000';
-                  }}
+                  disabled={loading}
+                  className="comment-modal-btn delete"
                 >
-                  삭제
+                  {loading ? '삭제 중...' : '삭제'}
                 </button>
               </div>
             </div>

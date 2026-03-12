@@ -1,0 +1,633 @@
+/* 상세/작성 페이지 컨테이너 - 최대 너비 및 중앙 정렬 */
+.detail-page-container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 80px;
+}
+
+/* 상세 페이지 전체 박스 */
+.detail-page-content {
+  width: 100%;
+  background: var(--secondary-color);
+  border: 3px solid var(--border-color);
+  box-shadow: 8px 8px 0px rgba(0, 0, 0, 1);
+}
+
+/* 작성 페이지 전체 박스 - 헤더와 폼 세로 배치 */
+.write-page-content {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+/* 작성 페이지 헤더 - 제목 + 임시저장/발행/닫기 버튼 */
+.write-header {
+  position: relative;
+  margin-bottom: 0;
+  padding: 20px;
+  background: var(--secondary-color);
+  border: 3px solid var(--border-color);
+  box-shadow: 8px 8px 0px rgba(0, 0, 0, 1);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+/* 작성 페이지 헤더 타이틀 */
+.write-header-title {
+  font-family: var(--font-mono);
+  font-size: 20px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin: 0;
+  flex: 1;
+}
+
+/* 헤더 우측 버튼 그룹 */
+.write-header-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-right: 20px;
+}
+
+/* 임시저장 버튼 + 뱃지 래퍼 */
+.write-draft-btn-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+/* 임시저장 버튼 */
+.write-draft-btn {
+  padding: 10px 20px;
+  border: 3px solid var(--border-color);
+  background: var(--secondary-color);
+  color: var(--primary-color);
+  font-weight: 700;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: var(--shadow-default);
+  transition: all 0.2s;
+}
+
+.write-draft-btn:hover {
+  background: var(--bg-light);
+  transform: translate(-1px, -1px);
+}
+
+/* 임시저장 개수 뱃지 - 버튼 우측 상단 원형 */
+.write-draft-badge {
+  position: absolute;
+  top: -12px;
+  right: -10px;
+  background: var(--primary-color);
+  color: var(--secondary-color);
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  cursor: pointer;
+  border: 2px solid var(--secondary-color);
+}
+
+/* 발행 버튼 */
+.write-publish-btn {
+  padding: 10px 20px;
+  border: 3px solid var(--border-color);
+  background: var(--primary-color);
+  color: var(--secondary-color);
+  font-weight: 700;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: var(--shadow-default);
+  transition: all 0.2s;
+}
+
+.write-publish-btn:hover {
+  background: #333;
+}
+
+/* 닫기 버튼 */
+.write-close-btn {
+  position: absolute;
+  top: -15px;
+  right: -15px;
+  width: 40px;
+  height: 40px;
+  border: 2px solid var(--border-color);
+  background: var(--secondary-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 50%;
+  box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+  z-index: 10;
+  transition: all 0.2s;
+}
+
+/* 호버 시 검은 배경 */
+.write-close-btn:hover {
+  background: var(--primary-color);
+}
+
+.write-close-btn svg {
+  transition: fill 0.2s;
+}
+
+.write-close-btn:hover svg {
+  fill: var(--secondary-color);
+}
+
+/* 작성 폼 전체 컨테이너 */
+.write-form-container {
+  background: var(--secondary-color);
+  border: 3px solid var(--border-color);
+  box-shadow: 8px 8px 0px rgba(0, 0, 0, 1);
+  padding: 32px;
+}
+
+/* 제목 입력 섹션 */
+.write-title-section {
+  margin-bottom: 24px;
+}
+
+/* 폼 필드 라벨 공통 */
+.write-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: rgba(0, 0, 0, 0.6);
+  text-transform: uppercase;
+  font-family: var(--font-mono);
+  letter-spacing: 0.5px;
+}
+
+/* 제목 입력창 */
+.title-input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid var(--border-color);
+  background: var(--secondary-color);
+  font-size: 16px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.title-input:focus {
+  border-color: var(--primary-color);
+}
+
+/* 목적지/기간/예산 3열 그리드 */
+.write-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+/* 일반 텍스트 입력 필드 */
+.form-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 2px solid var(--border-color);
+  background: var(--secondary-color);
+  font-size: 13px;
+  font-family: var(--font-mono);
+  outline: none;
+  box-sizing: border-box;
+}
+
+.form-input:focus {
+  border-color: var(--primary-color);
+}
+
+/* 드롭다운 select 필드 */
+.form-select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 2px solid var(--border-color);
+  background: var(--secondary-color);
+  font-size: 13px;
+  font-family: var(--font-mono);
+  outline: none;
+  box-sizing: border-box;
+  cursor: pointer;
+}
+
+.form-select:focus {
+  border-color: var(--primary-color);
+}
+
+/* 경비 입력 섹션 */
+.write-expenses-section {
+  margin-bottom: 24px;
+}
+
+/* 경비 입력 컨테이너 */
+.write-expenses-container {
+  border: 2px solid var(--border-color);
+  padding: 20px;
+  background: var(--bg-light);
+}
+
+/* 경비 항목 목록 */
+.write-expenses-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+/* 경비 항목 행 */
+.write-expense-row {
+  display: grid;
+  grid-template-columns: 120px 1fr 40px;
+  gap: 12px;
+  align-items: center;
+}
+
+/* 경비 항목 라벨 */
+.write-expense-label {
+  font-size: 12px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  color: rgba(0, 0, 0, 0.7);
+}
+
+/* 경비 금액 입력창 */
+.write-expense-input {
+  padding: 8px 12px;
+  border: 2px solid var(--border-color);
+  background: var(--secondary-color);
+  font-size: 13px;
+  font-family: var(--font-mono);
+  outline: none;
+  text-align: right;
+}
+
+.write-expense-input:focus {
+  border-color: var(--primary-color);
+}
+
+/* 경비 단위 텍스트 */
+.write-expense-unit {
+  font-size: 12px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+}
+
+/* 경비 합계 행 */
+.write-expenses-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 16px;
+  border-top: 2px solid var(--border-color);
+  font-size: 14px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+}
+
+/* 여행 스타일 태그 선택 섹션 */
+.write-tags-section {
+  margin-bottom: 24px;
+}
+
+/* 태그 목록 */
+.write-tags-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* 태그 칩 */
+.style-tag {
+  padding: 6px 14px;
+  border: 2px solid var(--border-color);
+  background: var(--secondary-color);
+  color: var(--primary-color);
+  font-size: 11px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.style-tag:hover {
+  background: var(--bg-light);
+}
+
+/* 선택된 태그 */
+.style-tag.selected {
+  background: var(--primary-color);
+  color: var(--secondary-color);
+  box-shadow: var(--shadow-small);
+  transform: translate(-1px, -1px);
+}
+
+/* 본문 에디터 섹션 */
+.write-editor-section {
+  margin-bottom: 24px;
+}
+
+/* 에디터 툴바 */
+.write-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 10px;
+  background: #f4f4f4;
+  border: 2px solid var(--border-color);
+  border-bottom: none;
+  flex-wrap: wrap;
+}
+
+/* 툴바 버튼 공통 */
+.toolbar-btn {
+  width: 36px;
+  height: 36px;
+  border: 2px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 14px;
+  color: #000;
+  transition: all 0.15s;
+  border-radius: 2px;
+}
+
+/* 호버 시 검은 배경 반전 */
+.toolbar-btn:hover {
+  background: var(--primary-color);
+  color: var(--secondary-color);
+  border-color: var(--border-color);
+}
+
+/* 호버 시 SVG 아이콘 흰색으로 */
+.toolbar-btn:hover svg,
+.toolbar-btn:hover svg path,
+.toolbar-btn:hover svg circle,
+.toolbar-btn:hover svg line,
+.toolbar-btn:hover svg text {
+  stroke: #fff;
+  fill: #fff;
+  color: #fff;
+}
+
+/* stroke none인 채운 도형은 fill만 변경 */
+.toolbar-btn:hover svg circle[stroke="none"],
+.toolbar-btn:hover svg text[stroke="none"] {
+  fill: #fff;
+  stroke: none;
+}
+
+/* 툴바 버튼 그룹 구분선 */
+.toolbar-divider {
+  width: 1px;
+  height: 24px;
+  background: rgba(0, 0, 0, 0.15);
+  margin: 0 4px;
+}
+
+/* WYSIWYG 에디터 본문 영역 */
+.blog-editor-wysiwyg {
+  min-height: 400px;
+  padding: 20px;
+  border: 2px solid var(--border-color);
+  background: var(--secondary-color);
+  font-size: 14px;
+  line-height: 1.8;
+  outline: none;
+  font-family: var(--font-mono);
+  overflow-y: auto;
+}
+
+.blog-editor-wysiwyg:focus {
+  border-color: var(--primary-color);
+}
+
+/* 에디터 비어있을 때 placeholder - 사진 업로드 가이드 포함 */
+.blog-editor-wysiwyg:empty:before {
+  content: '여행 이야기를 자유롭게 작성해주세요...\A\A 사진 업로드 TIP\A• 최대 10장까지 업로드 가능\A• 슬라이더 형식으로 자동 정렬\A• COVER 버튼으로 대표 이미지 설정';
+  color: var(--text-gray);
+  white-space: pre-wrap;
+  line-height: 1.8;
+}
+
+/* 에디터 내 이미지 슬라이더 래퍼 */
+.image-slider-wrapper {
+  position: relative;
+  width: 100%;
+  max-width: 693px;
+  margin: 20px auto;
+  background: #f5f5f5;
+  border: 3px solid var(--border-color);
+  box-shadow: var(--shadow-default);
+}
+
+/* 슬라이더 이미지 컨테이너 */
+.slider-images-container {
+  position: relative;
+  width: 100%;
+  height: 350px;
+  overflow: hidden;
+}
+
+/* 슬라이더 이전/다음 버튼 공통 */
+.slider-prev-btn,
+.slider-next-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 40px;
+  height: 40px;
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  border: 2px solid #fff;
+  font-size: 28px;
+  font-weight: 700;
+  cursor: pointer;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.slider-prev-btn {
+  left: 12px;
+}
+
+.slider-next-btn {
+  right: 12px;
+}
+
+/* 슬라이더 이미지 인덱스 표시 */
+.slider-indicator {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  z-index: 10;
+}
+
+/* 커버 이미지 지정 버튼 - 슬라이더 좌측 상단 */
+.slider-cover-btn {
+  padding: 6px 12px;
+  border: 2px solid var(--border-color);
+  background: var(--primary-color);
+  color: var(--secondary-color);
+  font-size: 10px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+/* 커버 버튼 래퍼 - 슬라이더 좌측 상단 고정 */
+.slider-button-container {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 10;
+}
+
+/* 삭제 버튼 래퍼 - 슬라이더 우측 상단 고정 */
+.slider-delete-container {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 10;
+}
+
+/* 이미지 업로드 드롭존 */
+.write-image-upload-area {
+  border: 2px dashed var(--border-color);
+  background: var(--bg-light);
+  margin-bottom: 12px;
+  min-height: 60px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 16px;
+}
+
+.custom-date-trigger {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-align: left;
+}
+
+.custom-calendar {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  background: #fff;
+  color: #000; 
+  z-index: 100;
+  border: 2px solid #000;
+  min-width: 280px;
+  box-shadow: 4px 4px 0 #000;
+}
+
+.custom-calendar-header {
+  background: #000;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.custom-calendar-header button {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0 8px;
+  line-height: 1;
+}
+
+.custom-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  grid-auto-rows: 36px;
+  padding: 0 12px 12px;
+  gap: 4px;
+}
+
+.custom-calendar-weekday {
+  background: transparent;
+  border: none;
+  color: #000;   
+  font-size: 13px;
+  cursor: pointer;
+  padding: 8px;
+  text-align: center;
+  border-radius: 0;
+}
+
+.custom-calendar-day {
+  display: flex;
+  align-items: center;       
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: #000;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.custom-calendar-day:hover {
+  background: #f2f2f2;
+}
+
+.custom-calendar-day.today {
+  border: 1px solid #fff;
+}
+
+.custom-calendar-day.selected {
+  background: #e5e5e5;
+  border: 2px solid #000;
+  font-weight: 700;
+}

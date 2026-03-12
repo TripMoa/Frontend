@@ -1,27 +1,9 @@
-import { useState, useEffect } from 'react';
-
-interface Story {
-  id: number;
-  title: string;
-  description: string;
-  image: string;
-  images?: string[];
-  author: string;
-  authorAvatar: string;
-  destination: string;
-  duration: string;
-  budget: string;
-  date: string;
-  likes: number;
-  comments: number;
-  follows: number;
-  views: string;
-  tags: string[];
-}
+import { useState } from 'react';
+import '../styles/StoryCard.css';
 
 interface StoryCardProps {
-  story: Story;
-  onCardClick: (story: Story) => void;
+  story: any;
+  onCardClick: (story: any) => void;
   likedStories: number[];
   setLikedStories: (ids: number[] | ((prev: number[]) => number[])) => void;
   followedStories: number[];
@@ -31,298 +13,200 @@ interface StoryCardProps {
   isMyStory?: boolean;
 }
 
-function StoryCard({ 
-  story, 
-  onCardClick, 
-  onEdit, 
-  onDelete, 
-  isMyStory 
+function StoryCard({
+  story,
+  onCardClick,
+  likedStories,
+  setLikedStories,
+  followedStories,
+  setFollowedStories,
+  onEdit,
+  onDelete,
+  isMyStory = false
 }: StoryCardProps) {
-  const images = story.images || [story.image];
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [actualCommentsCount, setActualCommentsCount] = useState(0);
+  // 카드 클릭 이벤트가 버블링되지 않도록 막고 수정 핸들러 호출
+  const handleEdit = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onEdit) onEdit(story);
+  };
 
-  // localStorage에서 실제 댓글 수 가져오기
-  useEffect(() => {
-    const updateCommentsCount = () => {
-      const STORAGE_KEY = `comments_${story.id}`;
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        try {
-          const comments = JSON.parse(saved);
-          setActualCommentsCount(comments.length);
-        } catch (e) {
-          setActualCommentsCount(0);
-        }
-      } else {
-        setActualCommentsCount(0);
-      }
-    };
+  // 카드 클릭 이벤트가 버블링되지 않도록 막고 삭제 핸들러 호출
+  const handleDelete = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onDelete) onDelete(story.id);
+  };
 
-    // 초기 로드
-    updateCommentsCount();
+  // 좋아요 토글 (이미 좋아요한 경우 제거, 아닌 경우 추가)
+  const toggleLike = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (likedStories.includes(story.id)) {
+      setLikedStories(prev => prev.filter(id => id !== story.id));
+    } else {
+      setLikedStories(prev => [...prev, story.id]);
+    }
+  };
 
-    // window focus 시 업데이트 (DetailPage에서 돌아올 때)
-    window.addEventListener('focus', updateCommentsCount);
+  // 일정 저장 토글 (이미 저장한 경우 제거, 아닌 경우 추가)
+  const toggleFollow = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (followedStories.includes(story.id)) {
+      setFollowedStories(prev => prev.filter(id => id !== story.id));
+    } else {
+      setFollowedStories(prev => [...prev, story.id]);
+    }
+  };
+
+  // tags가 문자열이면 쉼표로 분리, 배열이면 그대로 사용
+  const tags = typeof story.tags === 'string' 
+    ? story.tags.split(',').map((t: string) => t.trim()).filter(Boolean)
+    : Array.isArray(story.tags) 
+    ? story.tags 
+    : [];
+
+  // description에서 이미지 URL 추출 (src 속성 또는 직접 URL 패턴 순으로 탐색)
+  const getImageFromDescription = (desc: string) => {
+    if (!desc) return null;
     
-    return () => {
-      window.removeEventListener('focus', updateCommentsCount);
-    };
-  }, [story.id]);
-
-  const handlePrevImage = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setCurrentImageIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
+    // 1. src="..." 패턴
+    let match = desc.match(/src=["']([^"']+)["']/);
+    if (match) return match[1];
+    
+    // 2. src=... (따옴표 없음)
+    match = desc.match(/src=([^\s>]+)/);
+    if (match) return match[1];
+    
+    // 3. http로 시작하는 URL
+    match = desc.match(/(https?:\/\/[^\s<>"]+\.(jpg|jpeg|png|gif|webp))/i);
+    if (match) return match[1];
+    
+    return null;
   };
 
-  const handleNextImage = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setCurrentImageIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
+  // 상대경로 URL을 절대경로로 변환
+  const normalizeImageUrl = (url: string) => {
+    if (!url) return '';
+    if (url.startsWith('http')) return url;
+    return `http://localhost:8080${url.startsWith('/') ? '' : '/'}${url}`;
   };
+
+  // 커버 이미지 우선 사용, 없으면 description에서 추출, 그것도 없으면 기본 이미지
+  const imageUrl = 
+    (story.imageUrl && !story.imageUrl.includes('unsplash')) 
+      ? story.imageUrl  // 커버이미지 먼저
+      : getImageFromDescription(story.description) || 
+        story.imageUrl ||
+        'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=800';
 
   return (
-    <div className="story-card" style={{ position: 'relative' }}>
-      {/* 이미지 영역 */}
-      <div 
-        onClick={() => onCardClick(story)}
-        style={{ position: 'relative' }}
-      >
+    <div className="story-card" onClick={() => onCardClick(story)}>
+      <div className="story-card-image-wrapper">
         <img 
-          className="story-image" 
-          src={images[currentImageIndex]} 
-          alt={story.title} 
+          src={imageUrl}                   
+          alt={story.title}                 
+          className="story-card-image"      
         />
-        
-        {/* 이미지 슬라이드 컨트롤 */}
-        {images.length > 1 && (
-          <>
-            {/* 왼쪽 화살표 */}
-            <button
-              onClick={handlePrevImage}
-              style={{
-                position: 'absolute',
-                left: '10px',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                width: '32px',
-                height: '32px',
-                border: 'none',
-                background: 'rgba(255, 255, 255, 0.9)',
-                borderRadius: '50%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                zIndex: 2,
-                boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                transition: 'all 0.2s'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'rgba(255, 255, 255, 1)';
-                e.currentTarget.style.transform = 'translateY(-50%) scale(1.1)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.9)';
-                e.currentTarget.style.transform = 'translateY(-50%) scale(1)';
-              }}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                <path d="M15 18l-6-6 6-6" stroke="#000" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </button>
-
-            {/* 오른쪽 화살표 */}
-            <button
-              onClick={handleNextImage}
-              style={{
-                position: 'absolute',
-                right: '10px',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                width: '32px',
-                height: '32px',
-                border: 'none',
-                background: 'rgba(255, 255, 255, 0.9)',
-                borderRadius: '50%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                zIndex: 2,
-                boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                transition: 'all 0.2s'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'rgba(255, 255, 255, 1)';
-                e.currentTarget.style.transform = 'translateY(-50%) scale(1.1)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.9)';
-                e.currentTarget.style.transform = 'translateY(-50%) scale(1)';
-              }}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                <path d="M9 18l6-6-6-6" stroke="#000" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </button>
-
-            {/* 인디케이터 점 */}
-            <div style={{
-              position: 'absolute',
-              bottom: '10px',
-              left: '50%',
-              transform: 'translateX(-50%)',
-              display: 'flex',
-              gap: '6px',
-              zIndex: 2
-            }}>
-              {images.map((_, index) => (
-                <div
-                  key={index}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setCurrentImageIndex(index);
-                  }}
-                  style={{
-                    width: '6px',
-                    height: '6px',
-                    borderRadius: '50%',
-                    background: index === currentImageIndex 
-                      ? '#fff' 
-                      : 'rgba(255, 255, 255, 0.5)',
-                    transition: 'all 0.3s',
-                    boxShadow: '0 1px 2px rgba(0,0,0,0.3)',
-                    cursor: 'pointer'
-                  }}
-                />
-              ))}
-            </div>
-          </>
-        )}
-
-        <div className="story-stats-badge">
-          <span>{story.views}</span>
+        <div className="story-card-views">
+          {story.views || 0}
         </div>
       </div>
-      
-      <div className="story-content">
-        <div onClick={() => onCardClick(story)}>
-          <div className="story-header">
-            <div className="author-avatar">{story.authorAvatar}</div>
-            <div className="author-info">
-              <div className="author-name">{story.author}</div>
-            </div>
-          </div>
-          
-          <div className="story-title">{story.title}</div>
-          <div className="story-description">
-            {story.description
-              .replace(/<[^>]*>/g, '') // HTML 태그 제거
-              .replace(/\d+\/\d+COVER/gi, '') // "1/5COVER" 같은 텍스트 제거
-              .replace(/COVER/gi, '') // "COVER" 텍스트 제거
-              .replace(/<>/g, '') // "<>" 제거
-              .replace(/[<>]/g, '') // 남은 < > 제거
-              .trim()}
-          </div>
-          
-          <div className="story-tags">
-            {story.tags.map((tag, index) => (
-              <span key={index} className="story-tag">{tag}</span>
-            ))}
-          </div>
 
-          <div className="story-stats-simple">
-            <div className="stat-simple-item">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-              </svg>
-              <span>LIKES</span>
+      <div className="story-card-content">
+        <div className="story-card-author">
+          {story.author?.avatar ? (
+            <img 
+              src={normalizeImageUrl(story.author.avatar)}
+              alt={story.author?.name}
+              className="story-card-avatar"
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = 'none';
+              }}
+            />
+          ) : (
+            <div className="story-card-avatar-placeholder">
+              {(story.author?.nickname || story.author?.name)?.charAt(0) || '?'}
             </div>
-            <div className="stat-simple-item">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
-              </svg>
-              <span>FOLLOW THIS</span>
-            </div>
-            <div className="stat-simple-item">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                <path d="M12 2C6.48 2 2 6.48 2 12c0 1.54.36 3 .97 4.29L2 22l5.71-.97C9 21.64 10.46 22 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2zm0 18c-1.38 0-2.68-.3-3.86-.83l-.28-.15-2.86.49.49-2.86-.15-.28C4.3 14.68 4 13.38 4 12c0-4.41 3.59-8 8-8s8 3.59 8 8-3.59 8-8 8z"/>
-              </svg>
-              <span>{actualCommentsCount}</span>
-            </div>
-          </div>
-
-          <div className="story-meta">
-            <span>{story.date}</span>
-          </div>
+          )}
+          <span className="story-card-author-name">{story.author?.nickname || story.author?.name}</span>
         </div>
 
-        {isMyStory && (
-          <div style={{
-            display: 'flex',
-            gap: '8px',
-            marginTop: '15px',
-            paddingTop: '15px',
-            borderTop: '2px solid #f0f0f0'
-          }}>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onEdit?.(story);
-              }}
-              style={{
-                flex: 1,
-                padding: '8px 16px',
-                border: '2px solid #000',
-                background: '#fff',
-                color: '#000',
-                fontSize: '11px',
-                fontWeight: 700,
-                fontFamily: "'Share Tech Mono', monospace",
-                textTransform: 'uppercase',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-                letterSpacing: '0.5px'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = '#000';
-                e.currentTarget.style.color = '#fff';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = '#fff';
-                e.currentTarget.style.color = '#000';
-              }}
+        <div className="story-card-divider"></div>
+
+        <h3 className="story-card-title">{story.title}</h3>
+
+        {/* HTML 태그, 특수문자, 불필요한 문자열 제거 후 100자로 truncate */}
+        <p className="story-card-description">
+          {story.description
+            ?.replace(/<[^>]*>/g, '')
+            .replace(/&[^;]+;/g, ' ')
+            .replace(/[‹›]/g, '')       
+            .replace(/\d+\/\d+/g, '')
+            .replace(/cover/gi, '')
+            .replace(/COVER/g, '')       
+            .replace(/\s+/g, ' ')
+            .trim()
+            .substring(0, 100) || '내용 없음'}...
+        </p>
+
+        {/* 최대 3개의 태그만 표시 */}
+        {tags.length > 0 && (
+          <div className="story-card-tags">
+            {tags.slice(0, 3).map((tag: string, idx: number) => (
+              <span key={idx} className="story-card-tag">
+                {tag}
+              </span>
+            ))}
+          </div>
+        )}
+
+        <div className="story-card-footer">
+          <div className="story-card-stats">
+            {/* 좋아요 버튼 */}
+            <button 
+              onClick={toggleLike}
+              className={`story-card-stat-btn ${likedStories.includes(story.id) ? 'active' : ''}`}
             >
+              <svg viewBox="0 0 24 24" width="16" height="16">
+                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" 
+                      fill={likedStories.includes(story.id) ? 'currentColor' : 'none'}
+                      stroke="currentColor"
+                      strokeWidth="2"/>
+              </svg>
+              <span>LIKES</span>
+            </button>
+
+            {/* 일정 저장 버튼 */}
+            <button 
+              onClick={toggleFollow}
+              className={`story-card-stat-btn ${followedStories.includes(story.id) ? 'active' : ''}`}
+            >
+              <svg viewBox="0 0 24 24" width="16" height="16">
+                <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" fill="currentColor"/>
+              </svg>
+              <span>USE THIS ITINERARY</span>
+            </button>
+
+            {/* 댓글 수 */}
+            <button className="story-card-stat-btn">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+              </svg>
+              <span>{story.comments || 0}</span>
+            </button>
+          </div>
+
+          {/* 작성일 (ISO 형식을 YYYY.MM.DD로 변환) */}
+          <span className="story-card-date">
+            {story.createdAt ? new Date(story.createdAt).toISOString().split('T')[0].replace(/-/g, '.') : story.date}
+          </span>
+        </div>
+
+        {/* 내 스토리일 때만 수정/삭제 버튼 표시 */}
+        {isMyStory && (
+          <div className="story-card-actions">
+            <button onClick={handleEdit} className="story-card-action-btn edit">
               EDIT
             </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete?.(story.id);
-              }}
-              style={{
-                flex: 1,
-                padding: '8px 16px',
-                border: '2px solid #dc3545',
-                background: '#fff',
-                color: '#dc3545',
-                fontSize: '11px',
-                fontWeight: 700,
-                fontFamily: "'Share Tech Mono', monospace",
-                textTransform: 'uppercase',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-                letterSpacing: '0.5px'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = '#dc3545';
-                e.currentTarget.style.color = '#fff';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = '#fff';
-                e.currentTarget.style.color = '#dc3545';
-              }}
-            >
+            <button onClick={handleDelete} className="story-card-action-btn delete">
               DELETE
             </button>
           </div>

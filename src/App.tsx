@@ -1,5 +1,7 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import Layout from "./shared/components/Layout";
+import "./features/travelStory/styles/travelStory.css";
+
 
 import Home from "./pages/Home";
 import MyTrips from "./pages/MyTrips";

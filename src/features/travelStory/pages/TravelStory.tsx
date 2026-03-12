@@ -1,142 +1,260 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import FilterSection from '../components/FilterSection';
 import StoryCard from '../components/StoryCard';
 import WritePage from './WritePage';
 import DetailPage from './DetailPage';
 import MyStoriesPage from './MyStoriesPage';
 import DraftModal from '../components/modals/DraftModal';
-import LikesModal from '../components/modals/LikesModal';
+import SavedItinerariesModal from '../components/modals/SavedItinerariesModal';
 import CustomAlert from '../components/modals/CustomAlert';
 import DeleteModal from '../components/modals/DeleteModal';
 import { useTravelStory } from '../hooks';
 import '../styles/travelStory.css';
 
+const SORT_OPTIONS = ['기본 순서', '예산 높은 순', '예산 낮은 순', '조회수 높은 순', '좋아요 많은 순'];
+
+// 여행 스토리 기능 전체를 관리하는 루트 컴포넌트 (페이지 라우팅, 정렬, 페이지네이션 포함)
 function TravelStory() {
   const hook = useTravelStory();
-
   const [hoveredDraftId, setHoveredDraftId] = useState<number | null>(null);
   const [deleteHoverId, setDeleteHoverId] = useState<number | null>(null);
+  const [sortBy, setSortBy] = useState('기본 순서');
+  const [sortOpen, setSortOpen] = useState(false);
+  const [currentPageNum, setCurrentPageNum] = useState(1);
+  const ITEMS_PER_PAGE = 6;
+  const sortRef = useRef<HTMLDivElement>(null);
 
-  // LikesModal을 위한 좋아요한 스토리 필터링
+  // 정렬 드롭다운 외부 클릭 시 닫기
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (sortRef.current && !sortRef.current.contains(e.target as Node)) {
+        setSortOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // 정렬 기준 또는 필터 변경 시 첫 페이지로 초기화
+  useEffect(() => {
+    setCurrentPageNum(1);
+  }, [sortBy, hook.filters]);
+
+  // 저장한 일정 모달에 표시할 스토리 목록 (followedStories ID 기준으로 필터링)
   const getLikedStoriesList = () => {
-    return hook.myStories.filter(story => hook.likedStories.includes(story.id));
+    return hook.allStories.filter(story => hook.followedStories.includes(story.id));
   };
 
+  // 필터링된 스토리를 선택한 정렬 기준에 따라 정렬
+  const getSortedStories = () => {
+    const filtered = hook.getFilteredStories();
+    
+    switch (sortBy) {
+      case '예산 높은 순':
+        return [...filtered].sort((a: any, b: any) => {
+          const budgetA = a.expenses?.total || parseInt(a.budget || '0');
+          const budgetB = b.expenses?.total || parseInt(b.budget || '0');
+          return budgetB - budgetA;
+        });
+      case '예산 낮은 순':
+        return [...filtered].sort((a: any, b: any) => {
+          const budgetA = a.expenses?.total || parseInt(a.budget || '0');
+          const budgetB = b.expenses?.total || parseInt(b.budget || '0');
+          return budgetA - budgetB;
+        });
+      case '조회수 높은 순':
+        return [...filtered].sort((a: any, b: any) => (b.views || 0) - (a.views || 0));
+      case '좋아요 많은 순':
+        return [...filtered].sort((a: any, b: any) => (b.likes || 0) - (a.likes || 0));
+      default:
+        return filtered;
+    }
+  };
+
+  // 초기 데이터 로딩 중 스피너 표시
+  if (hook.loading && hook.myStories.length === 0) {
+    return (
+      <div className="travel-story-app">
+        <div className="ts-loading">
+          <div className="ts-spinner" />
+          <div>LOADING...</div>
+        </div>
+      </div>
+    );
+  }
+
+  // 페이지네이션 계산 - 정렬된 스토리를 ITEMS_PER_PAGE 단위로 분할
+  const sortedStories = getSortedStories();
+  const totalPages = Math.ceil(sortedStories.length / ITEMS_PER_PAGE);
+  const pagedStories = sortedStories.slice(
+    (currentPageNum - 1) * ITEMS_PER_PAGE,
+    currentPageNum * ITEMS_PER_PAGE
+  );
+
+  // API 오류 발생 시 에러 표시
+  if (hook.error) {
+    return (
+      <div className="travel-story-app">
+        <div className="ts-error">ERROR</div>
+      </div>
+    );
+  }
+
   return (
-    <>
-      {/* Main Page */}
+    <div className="travel-story-app">
+      {/* ================= MAIN PAGE ================= */}
       {hook.currentPage === 'main' && (
         <div className="container">
-          {/* 헤더 섹션 */}
-          <div style={{
-            background: '#fff',
-            padding: '24px 40px',
-            marginBottom: '24px',
-            border: '3px solid #000',
-            boxShadow: '8px 8px 0px rgba(0, 0, 0, 1)',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center'
-          }}>
-            <div>
-              <h1 style={{
-                fontFamily: "'Share Tech Mono', monospace",
-                fontSize: '28px',
-                fontWeight: 900,
-                letterSpacing: '2px',
-                marginBottom: '4px',
-                margin: 0
-              }}>
-                VERIFIED DATA
-              </h1>
-              <p style={{
-                fontFamily: "'Share Tech Mono', monospace",
-                fontSize: '12px',
-                color: '#666',
-                fontWeight: 600,
-                margin: 0
-              }}>
-                검증된 여행 작진 로그를 확인하십시오.
-              </p>
+
+          {/* 상단 헤더 - MY STORIES 및 WRITE 페이지 이동 버튼 포함 */}
+          <div className="ts-header">
+            <div className="ts-title">
+              <h1>VERIFIED DATA</h1>
+              <p>검증된 여행 작전 로그를 확인하십시오.</p>
             </div>
-            <div style={{ display: 'flex', gap: '12px' }}>
+
+            <div className="ts-actions">
               <button
+                className="ts-btn outline"
                 onClick={() => hook.navigateToPage('myStories')}
-                style={{
-                  background: '#fff',
-                  border: '3px solid #000',
-                  padding: '10px 20px',
-                  fontSize: '12px',
-                  fontWeight: 900,
-                  fontFamily: "'Share Tech Mono', monospace",
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  boxShadow: '4px 4px 0px rgba(0, 0, 0, 1)'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'translate(-2px, -2px)';
-                  e.currentTarget.style.boxShadow = '6px 6px 0px rgba(0, 0, 0, 1)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'none';
-                  e.currentTarget.style.boxShadow = '4px 4px 0px rgba(0, 0, 0, 1)';
-                }}
               >
+                <svg viewBox="0 0 24 24">
+                  <path d="M12 12c2.7 0 5-2.3 5-5s-2.3-5-5-5-5 2.3-5 5 2.3 5 5 5zm0 2c-3.3 0-10 1.7-10 5v3h20v-3c0-3.3-6.7-5-10-5z" fill="currentColor"/>
+                </svg>
                 MY STORIES
               </button>
-              <button
-                onClick={() => hook.navigateToPage('write')}
-                style={{
-                  background: '#000',
-                  color: '#fff',
-                  border: '3px solid #000',
-                  padding: '10px 20px',
-                  fontSize: '12px',
-                  fontWeight: 900,
-                  fontFamily: "'Share Tech Mono', monospace",
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  boxShadow: '4px 4px 0px rgba(0, 0, 0, 1)'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = '#fff';
-                  e.currentTarget.style.color = '#000';
-                  e.currentTarget.style.transform = 'translate(-2px, -2px)';
-                  e.currentTarget.style.boxShadow = '6px 6px 0px rgba(0, 0, 0, 1)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = '#000';
-                  e.currentTarget.style.color = '#fff';
-                  e.currentTarget.style.transform = 'none';
-                  e.currentTarget.style.boxShadow = '4px 4px 0px rgba(0, 0, 0, 1)';
-                }}
-              >
+
+              <button className="ts-btn solid" onClick={() => hook.navigateToPage('write')}>
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                </svg>
                 WRITE
               </button>
             </div>
           </div>
 
-          <FilterSection 
+          {/* 여행지, 기간, 예산, 태그 필터 */}
+          <FilterSection
             filters={hook.filters}
             setFilters={hook.setFilters}
           />
-          <div className="card-grid">
-            {hook.getFilteredStories().map((story) => (
-              <StoryCard
-                key={story.id}
-                story={story}
-                onCardClick={hook.handleStoryClick}
-                likedStories={hook.likedStories}
-                setLikedStories={hook.setLikedStories}
-                followedStories={hook.followedStories}
-                setFollowedStories={hook.setFollowedStories}
-              />
-            ))}
+
+          {/* 정렬 드롭다운 및 검색 결과 수 표시 */}
+          <div className="ts-sort-bar">
+            <div className="ts-sort-left" ref={sortRef}>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="rgba(0,0,0,0.6)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M7 3l0 18M7 3l-3 3M7 3l3 3"/>
+                <path d="M17 21l0 -18M17 21l-3 -3M17 21l3 -3"/>
+              </svg>
+
+              <span className="ts-sort-label">SORT BY:</span>
+
+              <div className="ts-sort-wrapper">
+                <button
+                  className={`ts-sort-trigger ${sortOpen ? 'open' : ''}`}
+                  onClick={() => setSortOpen(!sortOpen)}
+                >
+                  <span>{sortBy}</span>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                    style={{ transform: sortOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}
+                  >
+                    <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </button>
+
+                {sortOpen && (
+                  <div className="ts-sort-dropdown">
+                    <div className="ts-sort-dropdown-label">정렬 기준</div>
+                    {SORT_OPTIONS.map((opt) => (
+                      <div
+                        key={opt}
+                        className={`ts-sort-option ${sortBy === opt ? 'selected' : ''}`}
+                        onClick={() => {
+                          setSortBy(opt);
+                          setSortOpen(false);
+                        }}
+                      >
+                        {opt}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <span className="ts-post-count">{sortedStories.length} posts found</span>
           </div>
+
+          {/* 스토리 목록 - 전체 없음 / 검색 결과 없음 / 카드 그리드 분기 */}
+          {hook.allStories.length === 0 ? (
+            <div className="ts-empty" style={{ marginTop: '50px' }}>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="rgba(0,0,0,0.2)" strokeWidth="1.5">
+                <circle cx="11" cy="11" r="8"/>
+                <path d="M21 21l-4.35-4.35"/>
+              </svg>
+              <div className="ts-empty-text">아직 작성된 여행기가 없습니다.</div>
+              <div className="ts-empty-subtext">첫 여행기를 작성해보세요!</div>
+            </div>
+          ) : sortedStories.length === 0 ? (
+            <div className="ts-empty" style={{ marginTop: '50px' }}>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="rgba(0,0,0,0.2)" strokeWidth="1.5">
+                <circle cx="11" cy="11" r="8"/>
+                <path d="M21 21l-4.35-4.35"/>
+              </svg>
+              <div className="ts-empty-text">검색 결과가 없습니다.</div>
+              <div className="ts-empty-subtext">다른 조건으로 검색해보세요.</div>
+            </div>
+          ) : (
+            <>
+              <div className="posts-grid">
+                {pagedStories.map(story => (
+                  <StoryCard
+                    key={story.id}
+                    story={story}
+                    onCardClick={hook.handleStoryClick}
+                    likedStories={hook.likedStories}
+                    setLikedStories={hook.setLikedStories}
+                    followedStories={hook.followedStories}
+                    setFollowedStories={hook.setFollowedStories}
+                  />
+                ))}
+              </div>
+
+              {/* 페이지네이션 - 총 페이지가 2 이상일 때만 표시 */}
+              {totalPages > 1 && (
+                <div className="ts-pagination">
+                  <button
+                    className="ts-page-btn"
+                    onClick={() => setCurrentPageNum(p => Math.max(1, p - 1))}
+                    disabled={currentPageNum === 1}
+                  >
+                    {'<'}
+                  </button>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                    <button
+                      key={page}
+                      className={`ts-page-btn ${currentPageNum === page ? 'active' : ''}`}
+                      onClick={() => setCurrentPageNum(page)}
+                    >
+                      {page}
+                    </button>
+                  ))}
+                  <button
+                    className="ts-page-btn"
+                    onClick={() => setCurrentPageNum(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPageNum === totalPages}
+                  >
+                    {'>'}
+                  </button>
+                </div>
+              )}
+            </>
+          )}
         </div>
       )}
 
-      {/* Detail Page */}
+      {/* ================= DETAIL ================= */}
       {hook.currentPage === 'detail' && hook.selectedStory && (
         <DetailPage
           story={hook.selectedStory}
@@ -144,14 +262,20 @@ function TravelStory() {
           likedStories={hook.likedStories}
           toggleLike={hook.toggleLike}
           followedStories={hook.followedStories}
+          toggleFollow={hook.toggleFollow}
           setFollowedStories={hook.setFollowedStories}
           incrementViews={hook.incrementViews}
+          currentUserId={hook.currentUser?.id} 
+          onEdit={hook.handleEdit}              
+          onDelete={hook.handleDelete}
         />
       )}
 
-      {/* Write Page */}
+      {/* ================= WRITE ================= */}
       {hook.currentPage === 'write' && (
+        // key를 editingStory ID로 지정해 수정/신규 전환 시 컴포넌트 완전 초기화
         <WritePage
+          key={hook.editingStory?.id || 'new'}
           goBack={hook.goBack}
           onPublish={hook.handlePublish}
           onSaveDraft={hook.handleSaveDraft}
@@ -162,11 +286,12 @@ function TravelStory() {
         />
       )}
 
-      {/* My Stories Page */}
+      {/* ================= MY STORIES ================= */}
       {hook.currentPage === 'myStories' && (
         <MyStoriesPage
           goBack={hook.goBack}
           navigateToPage={hook.navigateToPage}
+          myStories={hook.myStories}
           getFilteredStories={hook.getFilteredStories}
           handleStoryClick={hook.handleStoryClick}
           handleEdit={hook.handleEdit}
@@ -179,60 +304,50 @@ function TravelStory() {
         />
       )}
 
-      {/* Draft Modal */}
-      {hook.showDraftModal && (
-        <DraftModal
-          show={hook.showDraftModal}
-          drafts={hook.drafts}
-          onClose={() => hook.setShowDraftModal(false)}
-          onSelectDraft={(draft) => {
-            hook.setCurrentDraft(draft);
-            hook.setCurrentDraftId(draft.id);
-            hook.setShowDraftModal(false);
-          }}
-          onDeleteDraft={(id) => {
-            hook.setDrafts(hook.drafts.filter(d => d.id !== id));
-          }}
-          hoveredDraftId={hoveredDraftId}
-          setHoveredDraftId={setHoveredDraftId}
-          deleteHoverId={deleteHoverId}
-          setDeleteHoverId={setDeleteHoverId}
-        />
-      )}
+      {/* MODALS */}
+      {/* 임시저장 목록 모달 */}
+      <DraftModal
+        show={hook.showDraftModal}
+        drafts={hook.drafts}
+        onClose={() => hook.setShowDraftModal(false)}
+        onSelectDraft={(draft) => {
+          hook.setCurrentDraft(draft);
+          hook.setCurrentDraftId(draft.id);
+          hook.setShowDraftModal(false);
+          hook.navigateToPage('write');
+        }}
+        onDeleteDraft={hook.deleteDraft}
+        hoveredDraftId={hoveredDraftId}
+        setHoveredDraftId={setHoveredDraftId}
+        deleteHoverId={deleteHoverId}
+        setDeleteHoverId={setDeleteHoverId}
+      />
 
-      {/* Likes Modal */}
-      {hook.showLikesModal && (
-        <LikesModal
-          show={hook.showLikesModal}
-          onClose={() => hook.setShowLikesModal(false)}
-          stories={getLikedStoriesList()}
-          onStoryClick={(story) => {
-            hook.handleStoryClick(story);
-            hook.setShowLikesModal(false);
-          }}
-        />
-      )}
+      {/* 저장한 일정 목록 모달 */}
+      <SavedItinerariesModal
+        show={hook.showLikesModal}
+        onClose={() => hook.setShowLikesModal(false)}
+        stories={getLikedStoriesList()}
+        onStoryClick={(story) => {
+          hook.setShowLikesModal(false);
+          hook.handleStoryClick(story);
+        }}
+      />
 
-      {/* Custom Alert */}
-      {hook.showAlert && (
-        <CustomAlert 
-          show={hook.showAlert}
-          message={hook.alertMessage}
-          onClose={hook.closeAlert}
-        />
-      )}
+      {/* 커스텀 알럿 모달 */}
+      <CustomAlert
+        show={hook.showAlert}
+        message={hook.alertMessage}
+        onClose={hook.closeAlert}
+      />
 
-      {/* Delete Modal */}
-      {hook.showDeleteModal && (
-        <DeleteModal
-          show={hook.showDeleteModal}
-          onClose={() => hook.setShowDeleteModal(false)}
-          onConfirm={hook.confirmDelete}
-          title="여행기 삭제"
-          message="여행기를 삭제하시겠습니까?\n삭제된 여행기는 복구할 수 없습니다."
-        />
-      )}
-    </>
+      {/* 스토리 삭제 확인 모달 */}
+      <DeleteModal
+        show={hook.showDeleteModal}
+        onClose={() => hook.setShowDeleteModal(false)}
+        onConfirm={hook.confirmDelete}
+      />
+    </div>
   );
 }
 

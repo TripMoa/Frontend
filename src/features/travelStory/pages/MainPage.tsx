@@ -1,249 +1,100 @@
-import { useEffect, useRef } from 'react';
-import CommentSection from '../components/CommentSection';
+import '../styles/travelStory.css';
+import '../styles/MainPage.css';
+import StoryCard from '../components/StoryCard';
+import FilterSection from '../components/FilterSection';
 
-interface DetailPageProps {
-  story: any;
-  goBack: () => void;
+interface MainPageProps {
+  stories: any[];
   likedStories: number[];
-  toggleLike: (id: number) => void;
+  setLikedStories: (ids: number[] | ((prev: number[]) => number[])) => void;
   followedStories: number[];
   setFollowedStories: (ids: number[] | ((prev: number[]) => number[])) => void;
-  incrementViews: (id: number) => void;
+  onStoryClick: (story: any) => void;
+  navigateToPage: (page: string) => void;
+  filters: {
+    destination: string;
+    duration: string;
+    minBudget: string;
+    maxBudget: string;
+    tags: string[];
+  };
+  setFilters: (filters: any) => void;
 }
 
-function DetailPage({
-  story,
-  goBack,
+// 메인 페이지 - 헤더 / 필터 / 스토리 카드 목록 렌더링
+function MainPage({
+  stories,
   likedStories,
-  toggleLike,
+  setLikedStories,
   followedStories,
   setFollowedStories,
-  incrementViews
-}: DetailPageProps) {
-  const hasIncrementedViews = useRef(false);
-
-  useEffect(() => {
-    if (!hasIncrementedViews.current) {
-      incrementViews(story.id);
-      hasIncrementedViews.current = true;
-    }
-  }, [story.id, incrementViews]);
-
+  onStoryClick,
+  navigateToPage,
+  filters,
+  setFilters
+}: MainPageProps) {
   return (
-    <div className="detail-page-container">
-      <div className="detail-page-content">
+    <div className="travel-story-app container">
 
-        {/* ================= HEADER ================= */}
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'flex-start',
-            paddingBottom: '24px',
-            borderBottom: '2px solid #000',
-            marginBottom: '40px'
-          }}
-        >
-          {/* 왼쪽 */}
-          <div>
-            <h1
-              style={{
-                fontSize: '32px',
-                fontWeight: 700,
-                marginBottom: '10px',
-                fontFamily: "'Share Tech Mono', monospace"
-              }}
-            >
-              {story.title}
-            </h1>
-
-            <div style={{ display: 'flex', gap: '10px' }}>
-              {[story.destination, story.duration, `${parseInt(story.budget).toLocaleString()}원`].map(
-                (item) => (
-                  <div
-                    key={item}
-                    style={{
-                      padding: '6px 14px',
-                      border: '2px solid #000',
-                      background: '#f5f5f5',
-                      fontSize: '12px',
-                      fontWeight: 700,
-                      fontFamily: "'Share Tech Mono', monospace"
-                    }}
-                  >
-                    {item}
-                  </div>
-                )
-              )}
-            </div>
-          </div>
-
-          {/* 오른쪽 */}
-          <div style={{ position: 'relative', marginTop: '32px' }}>
-            <button
-              onClick={goBack}
-              style={{
-                position: 'absolute',
-                top: '-28px',
-                right: '0',
-                border: 'none',
-                background: 'transparent',
-                cursor: 'pointer'
-              }}
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                style={{ width: '28px', height: '28px', fill: '#000' }}
-              >
-                <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
-              </svg>
-            </button>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <div style={{ width: '40px', height: '40px', background: '#000' }} />
-              <div>
-                <div
-                  style={{
-                    fontWeight: 700,
-                    fontFamily: "'Share Tech Mono', monospace"
-                  }}
-                >
-                  {story.author}
-                </div>
-                <div
-                  style={{
-                    fontSize: '11px',
-                    color: '#999',
-                    lineHeight: '1.4',
-                    fontFamily: "'Share Tech Mono', monospace"
-                  }}
-                >
-                  {story.date}<br />
-                  {story.views} VIEWS
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        {/* ================= HEADER 끝 ================= */}
-
-        {/* Cover Image - 화살표/점 완전 제거 */}
-        <div style={{ maxWidth: '700px', margin: '0 auto 40px auto' }}>
-          <img
-            src={story.image}
-            alt={story.title}
-            style={{ width: '100%', display: 'block' }}
-          />
+      {/* 상단 헤더 - 페이지 제목 + MY STORIES / WRITE 버튼 */}
+      <div className="main-header">
+        <div className="main-header-left">
+          <h1 className="main-header-title">VERIFIED DATA</h1>
+          <p className="main-header-subtitle">검증된 여행 작자 로그를 확인하십시오.</p>
         </div>
 
-        {/* Description */}
-        <div
-          style={{
-            fontSize: '15px',
-            lineHeight: '1.8',
-            marginBottom: '40px',
-            fontFamily: "'Share Tech Mono', monospace"
-          }}
-          dangerouslySetInnerHTML={{ __html: story.description }}
-        />
-
-        {/* ================= 여행 경비 총정리 ================= */}
-        <div
-          style={{
-            maxWidth: '700px',
-            margin: '0 auto 40px auto',
-            border: '2px solid #000',
-            padding: '20px',
-            background: '#f7f7f7'
-          }}
-        >
-          <h2
-            style={{
-              fontSize: '18px',
-              fontWeight: 700,
-              marginBottom: '12px',
-              fontFamily: "'Share Tech Mono', monospace"
-            }}
+        <div className="main-header-actions">
+          {/* 내 스토리 페이지 이동 버튼 */}
+          <button
+            onClick={() => navigateToPage('myStories')}
+            className="main-action-btn"
           >
-            여행 경비 총정리
-          </h2>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style={{ width: '18px', height: '18px', fill: 'currentColor' }}>
+              <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+            </svg>
+            MY STORIES
+          </button>
 
-          {[
-            ['교통비 (렌터카)', '95,000원'],
-            ['숙박비', '85,000원'],
-            ['식비', '98,000원'],
-            ['관광/입장료', '15,000원'],
-            ['쇼핑/기타', '35,000원']
-          ].map(([label, price]) => (
-            <div
-              key={label}
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                padding: '10px 0',
-                borderBottom: '1px solid #ddd',
-                fontSize: '14px',
-                fontFamily: "'Share Tech Mono', monospace",
-                background: '#f7f7f7'
-              }}
-            >
-              <span>{label}</span>
-              <span style={{ fontWeight: 700 }}>{price}</span>
-            </div>
-          ))}
-
-          <div
-            style={{
-              marginTop: '16px',
-              background: '#000',
-              color: '#fff',
-              padding: '14px 16px',
-              display: 'flex',
-              justifyContent: 'space-between',
-              fontFamily: "'Share Tech Mono', monospace"
-            }}
+          {/* 글쓰기 페이지 이동 버튼 */}
+          <button
+            onClick={() => navigateToPage('write')}
+            className="main-action-btn primary"
           >
-            <span style={{ fontWeight: 700 }}>총 합계</span>
-            <span style={{ fontWeight: 700 }}>328,000원</span>
-          </div>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style={{ width: '18px', height: '18px', fill: 'currentColor' }}>
+              <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+            </svg>
+            WRITE
+          </button>
         </div>
-        {/* ================= 여행 경비 총정리 끝 ================= */}
-
-        <CommentSection storyId={story.id} />
-
-        <style>{`
-          img {
-            max-width: 566px;
-            margin: 20px auto;
-          }
-
-          .detail-page-content > div + div img {
-            display: none;
-          }
-
-          [contenteditable="false"] {
-            display: none !important;
-          }
-
-          .set-cover-btn,
-          .cover-label,
-          .cover-text,
-          .editor-toolbar,
-          .editor-menu,
-          .editor-controls {
-            display: none !important;
-          }
-
-          div:has(> span:contains("COVER")),
-          div:has(> span:contains("커버")),
-          div:has(> span:contains("삭제")) {
-            display: none !important;
-          }
-        `}</style>
       </div>
+
+      {/* 필터 섹션 - 목적지 / 기간 / 예산 / 태그 */}
+      <FilterSection filters={filters} setFilters={setFilters} />
+
+      {/* 스토리 카드 목록 */}
+      <div className="posts-grid">
+        {stories.map((story) => (
+          <StoryCard
+            key={story.id}
+            story={story}
+            onCardClick={onStoryClick}
+            likedStories={likedStories}
+            setLikedStories={setLikedStories}
+            followedStories={followedStories}
+            setFollowedStories={setFollowedStories}
+          />
+        ))}
+      </div>
+
+      {/* 스토리 없을 때 빈 상태 안내 */}
+      {stories.length === 0 && (
+        <div className="main-empty">
+          <div className="main-empty-text">여행기가 없습니다.</div>
+          <div className="main-empty-subtext">첫 번째 여행기를 작성해보세요!</div>
+        </div>
+      )}
     </div>
   );
 }
 
-export default DetailPage;
+export default MainPage;
