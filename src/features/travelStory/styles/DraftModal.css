@@ -1,0 +1,187 @@
+/* 임시저장 모달 배경 오버레이 */
+.draft-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  animation: fadeIn 0.2s ease-in-out;
+}
+
+/* 임시저장 모달 본체 - 최대 높이 지정 후 내부 스크롤 */
+.draft-modal-container {
+  background: var(--secondary-color);
+  border: 4px solid var(--border-color);
+  box-shadow: 8px 8px 0px rgba(0, 0, 0, 1);
+  padding: 0;
+  max-width: 800px;
+  width: 90%;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  animation: slideUp 0.3s ease-out;
+}
+
+/* 모달 헤더 - 제목 + 닫기 버튼 */
+.draft-modal-header {
+  padding: 24px;
+  border-bottom: 3px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.draft-modal-title {
+  font-size: 24px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* 닫기 버튼 - 호버 시 검은 배경 */
+.draft-modal-close-btn {
+  width: 32px;
+  height: 32px;
+  border: 2px solid var(--border-color);
+  background: var(--secondary-color);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.draft-modal-close-btn:hover {
+  background: var(--primary-color);
+}
+
+.draft-modal-close-btn:hover svg {
+  fill: var(--secondary-color);
+}
+
+/* 모달 본문 - 목록 영역 스크롤 */
+.draft-modal-body {
+  padding: 24px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+/* 임시저장 목록 */
+.draft-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* 임시저장 항목 - 호버 시 우측으로 이동 */
+.draft-item {
+  border: 2px solid var(--border-color);
+  padding: 16px;
+  background: var(--secondary-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.2s;
+  cursor: pointer;
+}
+
+.draft-item:hover {
+  background: var(--bg-light);
+  transform: translateX(4px);
+}
+
+.draft-item-content {
+  flex: 1;
+}
+
+/* 임시저장 제목 */
+.draft-item-title {
+  font-size: 16px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  margin-bottom: 8px;
+}
+
+/* 임시저장 날짜 등 메타 정보 */
+.draft-item-meta {
+  display: flex;
+  gap: 12px;
+  font-size: 11px;
+  color: var(--text-gray);
+  font-family: var(--font-mono);
+}
+
+/* 불러오기/삭제 버튼 영역 */
+.draft-item-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* 불러오기/삭제 버튼 공통 스타일 */
+.draft-load-btn,
+.draft-delete-btn {
+  padding: 8px 16px;
+  border: 2px solid var(--border-color);
+  font-size: 11px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  cursor: pointer;
+  transition: all 0.2s;
+  text-transform: uppercase;
+  box-shadow: var(--shadow-small);
+}
+
+/* 불러오기 버튼 - 검은 배경, 호버 시 반전 */
+.draft-load-btn {
+  background: var(--primary-color);
+  color: var(--secondary-color);
+}
+
+.draft-load-btn:hover {
+  background: var(--secondary-color);
+  color: var(--primary-color);
+}
+
+/* 삭제 버튼 - 흰 배경, 호버 시 빨간 배경 */
+.draft-delete-btn {
+  background: var(--secondary-color);
+  color: var(--primary-color);
+}
+
+.draft-delete-btn:hover {
+  background: #ff4444;
+  color: var(--secondary-color);
+  border-color: #ff4444;
+}
+
+/* 임시저장 없을 때 빈 상태 안내 */
+.draft-empty {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-gray);
+  font-family: var(--font-mono);
+  font-size: 14px;
+}
+
+.draft-empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.draft-empty-text {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.draft-empty-subtext {
+  font-size: 13px;
+  color: var(--text-gray);
+}

@@ -1,0 +1,684 @@
+/* 상세 페이지 최대 너비 및 중앙 정렬 */
+.detail-page-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 40px;
+}
+
+/* 상세 페이지 전체 박스 */
+.detail-page-content {
+  width: 100%;
+  background: var(--secondary-color);
+  border: 3px solid var(--border-color);
+  box-shadow: 8px 8px 0px rgba(0, 0, 0, 1);
+  overflow: visible;
+}
+
+/* 헤더 - 제목/태그/작성자 영역 */
+.detail-header {
+  position: relative;
+  padding: 20px 30px 24px 30px;
+  background: var(--secondary-color);
+  border: none;
+  border-bottom: none;
+  box-shadow: none;
+  margin-bottom: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+/* 태그 아래 구분선 - 헤더 내 가상 요소로 전체 너비 */
+.detail-header::after {
+  content: '';
+  position: absolute;
+  left: 30px;
+  right: 30px;
+  top: 132px;
+  height: 2px;
+  background: var(--border-color);
+  z-index: 1;
+  display: block;
+}
+
+/* 제목/태그/예산 등 좌측 콘텐츠 영역 */
+.detail-header-left {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  position: relative;
+}
+
+/* 제목 | 목적지 | 기간 한 줄 배치 */
+.detail-title-row {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  flex-wrap: wrap;
+}
+
+/* 목적지 · 기간 그룹 */
+.detail-title-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* 제목 */
+.detail-title {
+  font-family: var(--font-mono);
+  font-size: 28px;
+  font-weight: 700;
+  margin: 6px 0 0 0;
+  line-height: 1.5;
+}
+
+/* · 구분 점 */
+.detail-divider {
+  color: #000;
+  font-weight: 600;
+  font-size: 28px;
+  line-height: 1;
+}
+
+/* 목적지 및 기간 텍스트 */
+.detail-location,
+.detail-duration {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: 700;
+  color: #000;
+}
+
+/* 기존 목적지+기간 통합 스타일 - 미사용 */
+.detail-location-duration {
+  display: none;
+}
+
+/* 태그 목록 */
+.detail-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-bottom: 12px;
+  margin-bottom: 8px;
+  margin-top: -4px;
+  width: 100%;
+}
+
+/* 태그 구분선 - 미사용 */
+.detail-tags-divider {
+  display: none;
+}
+
+/* 태그 칩 */
+.detail-tag {
+  padding: 6px 14px;
+  border: 2px solid var(--border-color);
+  background: var(--bg-light);
+  color: var(--primary-color);
+  font-size: 11px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+}
+
+/* 예산 등 정보 칩 목록 */
+.detail-info-chips {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* 정보 칩 단일 항목 */
+.detail-chip {
+  padding: 8px 16px;
+  border: 2px solid var(--border-color);
+  background: var(--bg-light);
+  font-size: 12px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+}
+
+/* 헤더 우측 - 미사용 */
+.detail-header-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12px;
+  margin-top: -32px;
+  padding-right: 0;
+}
+
+/* X 닫기 버튼 - 헤더 우측 상단 원형 */
+.detail-close-btn {
+  position: absolute;
+  top: -15px;
+  right: -15px;
+  width: 40px;
+  height: 40px;
+  border: 2px solid var(--border-color);
+  background: var(--secondary-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 50%;
+  box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+  z-index: 10;
+  transition: all 0.2s;
+}
+
+/* 호버 시 검은 배경으로 전환 */
+.detail-close-btn:hover {
+  background: var(--primary-color);
+}
+
+.detail-close-btn svg {
+  transition: fill 0.2s;
+}
+
+.detail-close-btn:hover svg {
+  fill: var(--secondary-color);
+}
+
+/* 작성자 정보 - 프로필 사진 + 이름 세로 배치 */
+.detail-author-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* 프로필 사진 - 원형 */
+.detail-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 2px solid #000;
+  object-fit: cover;
+  background: #fff;
+  margin-top: 25px;
+}
+
+/* 프로필 사진 없을 때 - 이름 첫 글자 텍스트로 대체 */
+.detail-avatar-placeholder {
+  width: 56px;
+  height: 56px;
+  background: var(--primary-color);
+  color: var(--secondary-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 24px;
+}
+
+/* 작성자 이름 텍스트 영역 */
+.detail-author-text {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  margin-top: 0;
+}
+
+/* 작성자 이름 */
+.detail-author-name {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--primary-color);
+  line-height: 1.2;
+  text-align: center;
+  margin-top: -4px;
+}
+
+/* 작성일/조회수/메타 - 미사용 */
+.detail-author-date,
+.detail-author-views,
+.detail-author-meta {
+  display: none;
+}
+
+/* 커버 이미지 - 현재 미사용 */
+.detail-cover-image {
+  position: relative;
+  width: 100%;
+  max-width: 960px;
+  margin: 0 auto;
+  border: 3px solid var(--border-color);
+  box-shadow: var(--shadow-default);
+  overflow: hidden;
+}
+
+.detail-cover-image img {
+  width: 100%;
+  height: 460px;
+  object-fit: cover;
+  display: block;
+}
+
+/* 커버 이미지 뱃지 */
+.detail-cover-badge {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  background: #f5c800;
+  color: #000;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 5px 12px;
+  border: 2px solid #000;
+  letter-spacing: 0.05em;
+}
+
+/* 본문 에디터 HTML 렌더링 영역 */
+.detail-description {
+  background: var(--secondary-color);
+  padding: 32px 40px;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--primary-color);
+  word-wrap: break-word;
+}
+
+.detail-description h2 {
+  font-size: 22px;
+  font-weight: 700;
+  margin: 24px 0 12px;
+  font-family: var(--font-mono);
+}
+
+.detail-description h3 {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 20px 0 10px;
+  font-family: var(--font-mono);
+}
+
+.detail-description p {
+  margin: 12px 0;
+}
+
+.detail-description ol,
+.detail-description ul {
+  margin: 12px 0;
+  padding-left: 24px;
+}
+
+.detail-description li {
+  margin: 8px 0;
+}
+
+/* 여행 경비 총정리 영역 */
+.detail-expenses {
+  background: var(--secondary-color);
+  padding: 14px 20px;
+  margin: 10px auto;
+  max-width: 693px;
+  width: 100%;
+  border: 3px solid var(--border-color);
+  box-shadow: var(--shadow-default);
+}
+
+/* 경비 섹션 제목 */
+.detail-expenses-title {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  margin: 0 0 10px 0;
+  padding-bottom: 10px;
+  border-bottom: 3px solid var(--border-color);
+  box-shadow: 0 3px 0 0 var(--border-color);
+}
+
+/* 경비 항목 행 - 항목명과 금액 양쪽 정렬 */
+.detail-expense-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 16px;
+  border: 2px solid var(--border-color);
+  background: var(--bg-light);
+  margin-bottom: 6px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* 항목명 좌측으로 살짝 이동 */
+.detail-expense-row span:first-child {
+  transform: translateX(-6px);
+}
+
+/* 금액 우측으로 살짝 이동 */
+.detail-expense-row span:last-child {
+  transform: translateX(6px);
+}
+
+/* 총 합계 행 - 검은 배경 강조 */
+.detail-expenses-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 16px;
+  border: 3px solid var(--border-color);
+  background: var(--primary-color);
+  color: var(--secondary-color);
+  margin-top: 10px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 14px;
+}
+
+/* 좋아요/일정저장/조회수 액션 버튼 영역 */
+.detail-actions {
+  background: var(--secondary-color);
+  padding: 40px 40px 24px 40px;
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.detail-actions > button,
+.detail-actions > .detail-comments-info {
+  flex-shrink: 0;
+}
+
+/* 액션 버튼 공통 스타일 */
+.detail-action-btn {
+  padding: 8px 14px;
+  border: 3px solid var(--border-color);
+  background: var(--secondary-color);
+  color: var(--primary-color);
+  font-weight: 700;
+  font-size: 14px;
+  font-family: var(--font-mono);
+  cursor: pointer;
+  box-shadow: var(--shadow-default);
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex: 0 0 auto;
+  min-width: 90px;
+  height: 48px;
+}
+
+.detail-action-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.detail-action-btn:hover {
+  background: var(--bg-light);
+  transform: translate(-2px, -2px);
+}
+
+/* 활성 상태 - 좋아요/저장 완료 시 검은 배경 */
+.detail-action-btn.active {
+  background: var(--primary-color);
+  color: var(--secondary-color);
+}
+
+/* 조회수 + 작성일 - 우측 하단 정렬 */
+.detail-date-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 5px;
+  margin-left: auto;
+  margin-top: 30px;
+  text-align: right;
+}
+
+.detail-views-text {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-gray);
+  line-height: 1.2;
+}
+
+.detail-created-date {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-gray);
+  line-height: 1.2;
+}
+
+.detail-updated-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-gray);
+  line-height: 1.2;
+}
+
+/* 이미지 슬라이더 래퍼 */
+.image-slider-wrapper {
+  position: relative;
+  width: 100%;
+  max-width: 693px;
+  margin: 20px auto;
+  background: #f5f5f5;
+  border: 3px solid var(--border-color);
+  box-shadow: var(--shadow-default);
+}
+
+/* 상세 페이지 본문에서 커버/삭제 버튼 숨김 (에디터 전용) */
+.detail-description .slider-button-container,
+.detail-description .slider-cover-btn,
+.detail-description .slider-delete-container,
+.detail-description .slider-delete-btn {
+  display: none !important;
+}
+
+/* 슬라이더 이미지 컨테이너 */
+.slider-images-container {
+  position: relative;
+  width: 100%;
+  height: 350px;
+  overflow: hidden;
+}
+
+/* 슬라이더 이전/다음 버튼 공통 */
+.slider-prev-btn,
+.slider-next-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 32px;
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(4px);
+  color: white;
+  border: none;
+  font-size: 20px;
+  font-weight: 700;
+  cursor: pointer;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity 0.2s, background 0.2s;
+}
+
+.slider-prev-btn {
+  left: 10px;
+}
+
+.slider-next-btn {
+  right: 10px;
+}
+
+.image-slider-wrapper:hover .slider-prev-btn,
+.image-slider-wrapper:hover .slider-next-btn {
+  opacity: 1;
+}
+
+.slider-prev-btn:hover,
+.slider-next-btn:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+/* 현재 이미지 인덱스 표시 (예: 1/3) */
+.slider-indicator {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  padding: 2px 6px;
+  border-radius: 8px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  z-index: 10;
+}
+
+/* 액션 버튼 툴팁 래퍼 */
+.detail-action-tooltip-wrapper {
+  position: relative;
+  display: inline-flex;
+}
+
+/* 호버 시 나타나는 툴팁 */
+.detail-action-tooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #000;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  padding: 4px 8px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+  letter-spacing: 0.5px;
+}
+
+.detail-action-tooltip-wrapper:hover .detail-action-tooltip {
+  opacity: 1;
+}
+
+/* 일정 저장 팝업 메뉴 */
+.itinerary-menu {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #fff;
+  border: 2px solid #000;
+  box-shadow: 4px 4px 0px rgba(0, 0, 0, 1);
+  z-index: 200;
+  min-width: 160px;
+  white-space: nowrap;
+}
+
+/* 팝업 메뉴 항목 */
+.itinerary-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 14px;
+  background: #fff;
+  border: none;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  font-size: 12px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.1s;
+  color: #000;
+}
+
+.itinerary-menu-item:last-child {
+  border-bottom: none;
+}
+
+/* 호버 시 반전 */
+.itinerary-menu-item:hover {
+  background: #000;
+  color: #fff;
+}
+
+/* 수정/삭제 버튼 영역 - X 버튼 왼쪽 */
+.detail-edit-actions {
+  position: absolute;
+  top: 20px;
+  right: 60px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* 수정 버튼 */
+.detail-edit-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  color: #000;
+}
+
+.detail-edit-btn:hover {
+  color: #333;
+}
+
+/* 삭제 버튼 - 빨간색 */
+.detail-delete-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  color: #d00000;
+}
+
+.detail-delete-btn:hover {
+  color: #ff0000;
+}
+
+/* 신고 버튼 래퍼 - 타인 게시글에만 표시 */
+.detail-report-btn-wrapper {
+  position: absolute;
+  top: 140px;
+  right: 35px;
+  z-index: 100;
+}
+
+/* ••• 신고 버튼 */
+.detail-report-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-gray);
+  font-family: var(--font-mono);
+  padding: 0;
+}
+
+.detail-report-btn:hover {
+  color: var(--primary-color);
+}
