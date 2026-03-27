@@ -1,468 +1,75 @@
-//src\features\workspace\hooks\useExpenses.ts
-import { useEffect, useMemo, useState } from "react";
-
-/* ==========================================
-   constants
-========================================== */
-export const EXPENSE_MEMS = ["ME", "J", "K", "M"] as const;
-export type ExpenseMember = (typeof EXPENSE_MEMS)[number];
-
-export const TOTAL_BUDGET = 1000000; // 기본 공통 예산(초기값)
-const LS_EXPENSES = "tripmoa_expenses";
-const LS_SETTINGS = "tripmoa_expense_settings";
-
-/* ==========================================
-   Types
-========================================== */
-export type ExpenseCategory = string;
-export type ExpenseMethod = string;
-
-export type SplitMode = "EQUAL" | "AMOUNT";
-export type SplitMap = Partial<Record<ExpenseMember, number>>;
-
-export interface ExpenseItem {
-  id: number;
-  date: string; // "YYYY-MM-DD"
-  storeName: string;
-  title: string;
-  cost: number;
-  cat: ExpenseCategory;
-  payer: ExpenseMember;
-  method: ExpenseMethod;
-
-  /** 참여자. 비어있으면 전체(공동)로 취급 */
-  involved: ExpenseMember[];
-
-  /** 분할 방식 */
-  splitMode: SplitMode;
-
-  /** splitMode === "AMOUNT" 일 때만 사용 (멤버별 금액) */
-  split: SplitMap;
-
-  /** 영수증 이미지(base64) */
-  receipt: string | null;
-  fileName: string | null;
-}
-
-export interface ExpenseSummary {
-  totalBudget: number;
-  totalSpent: number;
-  remaining: number;
-}
-
-export interface MemberStatsRow {
-  mem: ExpenseMember;
-  share: number; // 부담
-  paid: number; // 결제
-  diff: number; // paid - share
-}
-
-export interface CategoryStatsRow {
-  cat: string;
-  amount: number;
-  percent: number;
-}
-
-export interface SettlementTx {
-  from: ExpenseMember;
-  to: ExpenseMember;
-  amount: number;
-}
-
-export interface SettlementDetailRow {
-  type: "send" | "receive";
-  other: ExpenseMember;
-  amount: number;
-}
-
-/** 정산 방식 설정 */
-export type PaymentMode = "INDIVIDUAL" | "POOL" | "HYBRID";
-
-/** 1원 처리(나머지 분배) */
-export type RoundingRule = "PAYER" | "SEQUENTIAL" | "RANDOM";
-
-/** 남은 금액 처리(POOL/HYBRID 전용) */
-export type RemainingRule = "AUTO" | "EQUAL" | "CARRY";
-
-export interface ExpenseSettings {
-  paymentMode: PaymentMode;
-  roundingRule: RoundingRule;
-
-  /** 남은 금액 처리(POOL/HYBRID 전용) */
-  remainingRule: RemainingRule;
-
-  /** 공통 예산/모임통장 금액 */
-  sharedBudget: number;
-}
-
-/* ==========================================
-   Helpers
-========================================== */
-const isMember = (v: unknown): v is ExpenseMember =>
-  typeof v === "string" && (EXPENSE_MEMS as readonly string[]).includes(v);
-
-const isSplitMode = (v: unknown): v is SplitMode =>
-  v === "EQUAL" || v === "AMOUNT";
-
-const normalizeInvolved = (v: unknown): ExpenseMember[] => {
-  if (!Array.isArray(v)) return [...EXPENSE_MEMS];
-  const list = v.filter(isMember);
-  return list.length > 0
-    ? (Array.from(new Set(list)) as ExpenseMember[])
-    : [...EXPENSE_MEMS];
-};
-
-const normalizeSplit = (v: unknown): SplitMap => {
-  if (typeof v !== "object" || v === null) return {};
-  const obj = v as Record<string, unknown>;
-  const out: SplitMap = {};
-  for (const m of EXPENSE_MEMS) {
-    const val = obj[m];
-    const num =
-      typeof val === "number" ? val : typeof val === "string" ? Number(val) : 0;
-    if (Number.isFinite(num) && num !== 0) out[m] = num;
-  }
-  return out;
-};
-
-const uniqMembers = (arr: ExpenseMember[]) => Array.from(new Set(arr));
-
-/** ✅ 참여자가 전체 멤버(ALL)이면 공동지출 */
-const isSharedItem = (
-  item: Pick<ExpenseItem, "involved">,
-  memberCount: number,
-) => uniqMembers(item.involved ?? []).length === memberCount;
-
-/** ✅ 1원 처리에서 순서 분배: 결제자부터 시작 */
-const orderFromPayer = (involved: ExpenseMember[], payer: ExpenseMember) => {
-  const uniq = uniqMembers(involved);
-  const idx = uniq.indexOf(payer);
-  if (idx === -1) return uniq;
-  return [...uniq.slice(idx), ...uniq.slice(0, idx)];
-};
-
-const safeParseExpenses = (raw: string | null): ExpenseItem[] => {
-  if (!raw) return [];
-  try {
-    const parsed = JSON.parse(raw) as unknown;
-    if (!Array.isArray(parsed)) return [];
-
-    const normalized: ExpenseItem[] = [];
-
-    for (const it of parsed) {
-      if (typeof it !== "object" || it === null) continue;
-      const obj = it as Record<string, unknown>;
-
-      const id = typeof obj.id === "number" ? obj.id : null;
-      const date = typeof obj.date === "string" ? obj.date : null;
-
-      const title = typeof obj.title === "string" ? obj.title : null;
-      const storeName = typeof obj.storeName === "string" ? obj.storeName : "";
-
-      const cost =
-        typeof obj.cost === "number"
-          ? obj.cost
-          : typeof obj.cost === "string"
-            ? Number(obj.cost)
-            : null;
-
-      const cat = typeof obj.cat === "string" ? obj.cat : "";
-      const method = typeof obj.method === "string" ? obj.method : "";
-
-      const payer = isMember(obj.payer) ? obj.payer : null;
-      const involved = normalizeInvolved(obj.involved);
-
-      const splitMode = isSplitMode(obj.splitMode) ? obj.splitMode : "EQUAL";
-      const split = normalizeSplit(obj.split);
-
-      const receipt =
-        typeof obj.receipt === "string"
-          ? obj.receipt
-          : obj.receipt === null
-            ? null
-            : null;
-
-      const fileName =
-        typeof obj.fileName === "string"
-          ? obj.fileName
-          : obj.fileName === null
-            ? null
-            : null;
-
-      if (
-        id === null ||
-        date === null ||
-        title === null ||
-        cost === null ||
-        !Number.isFinite(cost) ||
-        payer === null
-      ) {
-        continue;
-      }
-
-      normalized.push({
-        id,
-        date,
-        storeName,
-        title,
-        cost: Number(cost),
-        cat,
-        payer,
-        method,
-        involved,
-        splitMode,
-        split,
-        receipt,
-        fileName,
-      });
-    }
-
-    return normalized;
-  } catch {
-    return [];
-  }
-};
-
-const writeExpenses = (items: ExpenseItem[]) => {
-  localStorage.setItem(LS_EXPENSES, JSON.stringify(items));
-};
-
-const defaultSettings: ExpenseSettings = {
-  paymentMode: "INDIVIDUAL",
-  roundingRule: "PAYER",
-  remainingRule: "AUTO",
-  sharedBudget: TOTAL_BUDGET,
-};
-
-const safeParseSettings = (raw: string | null): ExpenseSettings => {
-  if (!raw) return defaultSettings;
-  try {
-    const parsed = JSON.parse(raw) as unknown;
-    if (typeof parsed !== "object" || parsed === null) return defaultSettings;
-    const obj = parsed as Record<string, unknown>;
-
-    const paymentMode: PaymentMode =
-      obj.paymentMode === "POOL"
-        ? "POOL"
-        : obj.paymentMode === "HYBRID"
-          ? "HYBRID"
-          : "INDIVIDUAL";
-
-    const roundingRule: RoundingRule =
-      obj.roundingRule === "SEQUENTIAL"
-        ? "SEQUENTIAL"
-        : obj.roundingRule === "RANDOM"
-          ? "RANDOM"
-          : "PAYER";
-
-    const remainingRule: RemainingRule =
-      obj.remainingRule === "EQUAL"
-        ? "EQUAL"
-        : obj.remainingRule === "CARRY"
-          ? "CARRY"
-          : "AUTO";
-
-    const sharedBudgetRaw =
-      typeof obj.sharedBudget === "number"
-        ? obj.sharedBudget
-        : typeof obj.sharedBudget === "string"
-          ? Number(obj.sharedBudget)
-          : TOTAL_BUDGET;
-
-    const sharedBudget =
-      Number.isFinite(sharedBudgetRaw) && sharedBudgetRaw >= 0
-        ? Math.floor(sharedBudgetRaw)
-        : TOTAL_BUDGET;
-
-    return { paymentMode, roundingRule, remainingRule, sharedBudget };
-  } catch {
-    return defaultSettings;
-  }
-};
-
-const writeSettings = (settings: ExpenseSettings) => {
-  localStorage.setItem(LS_SETTINGS, JSON.stringify(settings));
-};
-
-/* ==========================================
-   Core calculations
-========================================== */
-
-/**
- * ✅ splitMode별 멤버별 부담액 계산
- * - EQUAL: cost를 참여자 수로 나눔
- * - AMOUNT: split 사용 (UI에서 합 검증)
- * ✅ roundingRule: 1원 처리 방식
- */
-export const calcSharesForItem = (
-  item: Pick<
-    ExpenseItem,
-    "cost" | "payer" | "involved" | "splitMode" | "split"
-  >,
-  roundingRule: RoundingRule = "PAYER",
-): Record<ExpenseMember, number> => {
-  const cost = Number(item.cost) || 0;
-  const involved = item.involved?.length ? item.involved : [...EXPENSE_MEMS];
-
-  const result: Record<ExpenseMember, number> = { ME: 0, J: 0, K: 0, M: 0 };
-
-  if (item.splitMode === "AMOUNT") {
-    for (const m of involved) result[m] = Number(item.split?.[m] ?? 0) || 0;
-    return result;
-  }
-
-  const n = involved.length || 1;
-  const base = Math.floor(cost / n);
-  const remainder = cost - base * n;
-
-  for (const m of involved) result[m] = base;
-
-  // ✅ remainder 만큼 +1씩 분배
-  if (remainder > 0) {
-    if (roundingRule === "PAYER") {
-      const receiver = involved.includes(item.payer) ? item.payer : involved[0];
-      result[receiver] += remainder;
-    } else if (roundingRule === "SEQUENTIAL") {
-      for (let i = 0; i < remainder; i++) {
-        const target = involved[i % n]; // 참여자 순서대로
-        result[target] += 1;
-      }
-    } else {
-      for (let i = 0; i < remainder; i++) {
-        const target = involved[Math.floor(Math.random() * n)];
-        result[target] += 1;
-      }
-    }
-  }
-
-  return result;
-};
-
-/** ✅ 상단 요약은 '공동(SHARED)'만 반영 */
-const calcSummary = (
-  items: ExpenseItem[],
-  sharedBudget: number,
-  memberCount: number,
-): ExpenseSummary => {
-  const sharedSpent = items
-    .filter((it) => isSharedItem(it, memberCount))
-    .reduce((sum, item) => sum + Number(item.cost), 0);
-
-  const totalBudget = Math.max(0, Math.floor(sharedBudget || 0));
-  const totalSpent = sharedSpent;
-  const remaining = totalBudget - totalSpent;
-
-  return { totalBudget, totalSpent, remaining };
-};
-
-const calcMemberStats = (
-  items: ExpenseItem[],
-  roundingRule: RoundingRule,
-): MemberStatsRow[] => {
-  const totalPaid: Record<ExpenseMember, number> = { ME: 0, J: 0, K: 0, M: 0 };
-  const totalShare: Record<ExpenseMember, number> = { ME: 0, J: 0, K: 0, M: 0 };
-
-  for (const item of items) {
-    const cost = Number(item.cost);
-    if (!Number.isFinite(cost)) continue;
-
-    totalPaid[item.payer] += cost;
-
-    const shares = calcSharesForItem(item, roundingRule);
-    for (const m of EXPENSE_MEMS) totalShare[m] += shares[m] || 0;
-  }
-
-  return EXPENSE_MEMS.map((m) => {
-    const paid = totalPaid[m];
-    const share = totalShare[m];
-    return { mem: m, paid, share, diff: paid - share };
-  });
-};
-
-const calcCategoryStats = (items: ExpenseItem[]): CategoryStatsRow[] => {
-  const catSum: Record<string, number> = {};
-  for (const item of items) {
-    const key = item.cat || "기타";
-    catSum[key] = (catSum[key] || 0) + Number(item.cost);
-  }
-
-  const totalSpent =
-    items.reduce((sum, item) => sum + Number(item.cost), 0) || 1;
-  const sortedCats = Object.keys(catSum).sort((a, b) => catSum[b] - catSum[a]);
-
-  return sortedCats.map((cat) => {
-    const amount = catSum[cat];
-    const percent = Number(((amount / totalSpent) * 100).toFixed(1));
-    return { cat, amount, percent };
-  });
-};
-
-const calculateSettlements = (
-  items: ExpenseItem[],
-  roundingRule: RoundingRule,
-): SettlementTx[] => {
-  const balances: Record<ExpenseMember, number> = { ME: 0, J: 0, K: 0, M: 0 };
-
-  for (const item of items) {
-    const cost = Number(item.cost);
-    if (!Number.isFinite(cost)) continue;
-
-    balances[item.payer] += cost;
-
-    const shares = calcSharesForItem(item, roundingRule);
-    for (const m of EXPENSE_MEMS) balances[m] -= shares[m] || 0;
-  }
-
-  const debtors: Array<{ id: ExpenseMember; amount: number }> = [];
-  const creditors: Array<{ id: ExpenseMember; amount: number }> = [];
-
-  (Object.entries(balances) as Array<[ExpenseMember, number]>).forEach(
-    ([mem, bal]) => {
-      if (bal < -10) debtors.push({ id: mem, amount: Math.abs(bal) });
-      else if (bal > 10) creditors.push({ id: mem, amount: bal });
-    },
-  );
-
-  const transactions: SettlementTx[] = [];
-  let dIndex = 0;
-  let cIndex = 0;
-
-  while (dIndex < debtors.length && cIndex < creditors.length) {
-    const debtor = debtors[dIndex];
-    const creditor = creditors[cIndex];
-    const tradeAmount = Math.min(debtor.amount, creditor.amount);
-
-    transactions.push({
-      from: debtor.id,
-      to: creditor.id,
-      amount: tradeAmount,
-    });
-
-    debtor.amount -= tradeAmount;
-    creditor.amount -= tradeAmount;
-
-    if (debtor.amount < 10) dIndex += 1;
-    if (creditor.amount < 10) cIndex += 1;
-  }
-
-  return transactions;
-};
-
-const settlementDetailForMember = (
-  txs: SettlementTx[],
-  target: ExpenseMember,
-): SettlementDetailRow[] => {
-  const myTrans = txs.filter((t) => t.from === target || t.to === target);
-  if (myTrans.length === 0) return [];
-
-  const rows: SettlementDetailRow[] = [];
-  for (const t of myTrans) {
-    if (t.from === target)
-      rows.push({ type: "send", other: t.to, amount: t.amount });
-    else rows.push({ type: "receive", other: t.from, amount: t.amount });
-  }
-  return rows;
-};
+// src/features/workspace/hooks/useExpenses.ts
+
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useParams } from "react-router-dom";
+
+import {
+  getSettlementPreview,
+  getSettlementSetting,
+  getSettlementSummary,
+  updateSettlementSettings,
+} from "../../../api/settlement.api";
+import { getTripDetail, getTripMembers } from "../../../api/trip.api";
+import {
+  createExpense as createExpenseApi,
+  deleteExpense as deleteExpenseApi,
+  getExpense,
+  getExpenses,
+  updateExpense as updateExpenseApi,
+} from "../../../api/expense.api";
+
+import type { ExpenseCreateRequest } from "../../../types/expense.types";
+import type {
+  ExpenseCategory,
+  PayMethod,
+  SettlementSummaryResponse,
+} from "../../../types/settlement.types";
+import type { TripMemberResponse } from "../../../types/trip.types";
+
+import type {
+  ExpenseItem,
+  ExpenseMember,
+  ExpenseSettings,
+  ExpenseSummary,
+  MemberStatsRow,
+  CategoryStatsRow,
+  PersonalCategoryReferenceRow,
+  SettlementTx,
+  PaymentMode,
+  RoundingRule,
+  RemainingRule,
+  DepositLogItem,
+} from "./expense.ui.types";
+
+import {
+  buildSettlementUpdateRequest,
+  mapExpenseResponseToItem,
+  mapServerSettingToUi,
+  mapSummaryCategoryStats,
+  mapSummaryMemberStats,
+  mapSummaryPersonalReference,
+  mapSummaryTransactions,
+} from "./expense.mapper";
+
+import {
+  calcSharesForItem,
+  isSharedItem,
+  normalizeInvolved,
+  settlementDetailForMember,
+} from "./expense.calc";
+
+import {
+  createDepositLog,
+  getMemberDepositLogs,
+  deleteDepositLog,
+  confirmDepositLog,
+  rejectDepositLog,
+} from "../../../api/deposit.api";
+
+import type {
+  DepositLogCreateRequest,
+  DepositLogResponse,
+} from "../../../types/deposit.types";
 
 /* ==========================================
    Hook
@@ -470,81 +77,273 @@ const settlementDetailForMember = (
 export type UseExpensesStore = ReturnType<typeof useExpenses>;
 
 export const useExpenses = () => {
+  const params = useParams<{ tripId: string }>();
+  const tripId = Number(params.tripId);
+
   const [expenses, setExpenses] = useState<ExpenseItem[]>([]);
   const [filterDate, setFilterDate] = useState<string>("ALL");
-
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState<boolean>(false);
   const [editingId, setEditingId] = useState<number | null>(null);
-
   const [currentFileName, setCurrentFileName] = useState<string | null>(null);
   const [currentReceiptBase64, setCurrentReceiptBase64] = useState<
     string | null
   >(null);
 
-  // ✅ 정산 설정(결제 방식/1원 처리/공동 예산)
-  const [settings, setSettings] = useState<ExpenseSettings>(() =>
-    safeParseSettings(localStorage.getItem(LS_SETTINGS)),
-  );
+  const [settings, setSettings] = useState<ExpenseSettings | null>(null);
+  const settingsRef = useRef<ExpenseSettings | null>(null);
+
+  const [members, setMembers] = useState<TripMemberResponse[]>([]);
+  const [ownerUserId, setOwnerUserId] = useState<number | null>(null);
+  const [summaryData, setSummaryData] =
+    useState<SettlementSummaryResponse | null>(null);
+
+  const [isBootstrapLoading, setIsBootstrapLoading] = useState<boolean>(true);
+  const [bootstrapError, setBootstrapError] = useState<string | null>(null);
+
+  const [isPreviewLoading, setIsPreviewLoading] = useState<boolean>(false);
+  const [isApplyLoading, setIsApplyLoading] = useState<boolean>(false);
+
+  const [depositLogs, setDepositLogs] = useState<
+    Record<ExpenseMember, DepositLogItem[]>
+  >({});
+  const [depositLoading, setDepositLoading] = useState<boolean>(false);
 
   useEffect(() => {
-    const stored = safeParseExpenses(localStorage.getItem(LS_EXPENSES));
-    setExpenses(stored);
-  }, []);
-
-  useEffect(() => {
-    writeExpenses(expenses);
-  }, [expenses]);
-
-  useEffect(() => {
-    writeSettings(settings);
+    settingsRef.current = settings;
   }, [settings]);
 
-  const summary = useMemo(
-    () => calcSummary(expenses, settings.sharedBudget, EXPENSE_MEMS.length),
-    [expenses, settings.sharedBudget],
+  const memberNames = useMemo(
+    () => members.map((member) => member.nickname),
+    [members],
   );
 
-  const memberStats = useMemo(
-    () => calcMemberStats(expenses, settings.roundingRule),
-    [expenses, settings.roundingRule],
+  const effectiveMemberCount = Math.max(1, memberNames.length);
+
+  const loadExpenses = useCallback(
+    async (nextMembers: TripMemberResponse[]) => {
+      if (!Number.isFinite(tripId) || tripId <= 0) {
+        setExpenses([]);
+        return [];
+      }
+
+      const { data } = await getExpenses(tripId);
+      const mapped = data.map((row) =>
+        mapExpenseResponseToItem(row, nextMembers),
+      );
+
+      setExpenses(mapped);
+      return mapped;
+    },
+    [tripId],
   );
 
-  const categoryStats = useMemo(() => calcCategoryStats(expenses), [expenses]);
+  const loadSummary = useCallback(async () => {
+    if (!Number.isFinite(tripId) || tripId <= 0) {
+      setSummaryData(null);
+      return null;
+    }
 
-  const settlements = useMemo(
-    () => calculateSettlements(expenses, settings.roundingRule),
-    [expenses, settings.roundingRule],
+    const { data } = await getSettlementSummary(tripId);
+    setSummaryData(data);
+    return data;
+  }, [tripId]);
+
+  const previewSettings = useCallback(
+    async (nextSettings?: ExpenseSettings) => {
+      if (!Number.isFinite(tripId) || tripId <= 0) return null;
+
+      const targetSettings = nextSettings ?? settingsRef.current;
+      if (!targetSettings) return null;
+
+      setIsPreviewLoading(true);
+
+      try {
+        const { data } = await getSettlementPreview(
+          tripId,
+          buildSettlementUpdateRequest(targetSettings),
+        );
+        setSummaryData(data);
+        return data;
+      } catch (error) {
+        console.error("정산 설정 미리보기 실패", error);
+        return null;
+      } finally {
+        setIsPreviewLoading(false);
+      }
+    },
+    [tripId],
+  );
+
+  const applySettings = useCallback(
+    async (nextSettings?: ExpenseSettings) => {
+      if (!Number.isFinite(tripId) || tripId <= 0) return;
+      const targetSettings = nextSettings ?? settingsRef.current;
+      if (!targetSettings) return;
+
+      setIsApplyLoading(true);
+
+      try {
+        const { data } = await updateSettlementSettings(
+          tripId,
+          buildSettlementUpdateRequest(targetSettings),
+        );
+
+        const normalized = mapServerSettingToUi(data);
+        setSettings(normalized);
+        settingsRef.current = normalized;
+
+        await loadSummary();
+      } catch (error) {
+        console.error("정산 설정 적용 실패", error);
+      } finally {
+        setIsApplyLoading(false);
+      }
+    },
+    [loadSummary, tripId],
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const bootstrap = async () => {
+      if (!Number.isFinite(tripId) || tripId <= 0) {
+        setBootstrapError("유효한 여행 ID를 찾을 수 없습니다.");
+        setIsBootstrapLoading(false);
+        return;
+      }
+
+      setIsBootstrapLoading(true);
+      setBootstrapError(null);
+
+      try {
+        const [settingRes, tripRes, membersRes] = await Promise.all([
+          getSettlementSetting(tripId),
+          getTripDetail(tripId),
+          getTripMembers(tripId),
+        ]);
+
+        if (cancelled) return;
+
+        const nextSettings = mapServerSettingToUi(settingRes.data);
+        const nextMembers =
+          membersRes.data?.length > 0
+            ? membersRes.data
+            : (tripRes.data.members ?? []);
+
+        setSettings(nextSettings);
+        settingsRef.current = nextSettings;
+        setMembers(nextMembers);
+        setOwnerUserId(tripRes.data.ownerUserId ?? null);
+
+        await Promise.all([loadExpenses(nextMembers), loadSummary()]);
+      } catch (error) {
+        console.error("정산 화면 초기 조회 실패", error);
+        if (!cancelled) {
+          setBootstrapError("정산 페이지 데이터를 불러오지 못했습니다.");
+          setExpenses([]);
+          setSummaryData(null);
+          setSettings(null);
+        }
+      } finally {
+        if (!cancelled) setIsBootstrapLoading(false);
+      }
+    };
+
+    void bootstrap();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [loadExpenses, loadSummary, tripId]);
+
+  const updateDraftSettings = useCallback((patch: Partial<ExpenseSettings>) => {
+    if (!settingsRef.current) return;
+
+    const nextSettings: ExpenseSettings = {
+      ...settingsRef.current,
+      ...patch,
+    };
+
+    setSettings(nextSettings);
+    settingsRef.current = nextSettings;
+  }, []);
+
+  const setPaymentMode = (paymentMode: PaymentMode) => {
+    updateDraftSettings({ paymentMode });
+  };
+
+  const setRoundingRule = (roundingRule: RoundingRule) => {
+    updateDraftSettings({ roundingRule });
+  };
+
+  const setRemainingRule = (remainingRule: RemainingRule) => {
+    updateDraftSettings({ remainingRule });
+  };
+
+  const setSharedBudget = (sharedBudget: number) => {
+    const budget = Math.max(0, Math.floor(sharedBudget || 0));
+    updateDraftSettings({ sharedBudget: budget });
+  };
+
+  const summary = useMemo<ExpenseSummary>(
+    () => ({
+      totalBudget: Math.max(0, Math.floor(summaryData?.budgetAmount ?? 0)),
+      totalSpent: Math.max(0, Math.floor(summaryData?.totalSpent ?? 0)),
+      remaining: Math.floor(summaryData?.remainingAmount ?? 0),
+    }),
+    [summaryData],
+  );
+
+  const memberStats = useMemo<MemberStatsRow[]>(
+    () => mapSummaryMemberStats(summaryData?.settlement ?? [], members),
+    [members, summaryData],
+  );
+
+  const categoryStats = useMemo<CategoryStatsRow[]>(
+    () => (summaryData ? mapSummaryCategoryStats(summaryData) : []),
+    [summaryData],
+  );
+
+  const personalCategoryReference =
+    useMemo<PersonalCategoryReferenceRow | null>(
+      () => (summaryData ? mapSummaryPersonalReference(summaryData) : null),
+      [summaryData],
+    );
+
+  const settlements = useMemo<SettlementTx[]>(
+    () => (summaryData ? mapSummaryTransactions(summaryData.transactions) : []),
+    [summaryData],
   );
 
   const filteredList = useMemo<ExpenseItem[]>(() => {
     let list = expenses;
 
     if (filterDate !== "ALL") {
-      const date = filterDate.startsWith("DAY:")
-        ? filterDate.split(":")[1]
-        : filterDate;
-      list = expenses.filter((item) => item.date === date);
+      if (filterDate.startsWith("DATE:")) {
+        const date = filterDate.slice(5);
+        list = expenses.filter((item) => item.date === date);
+      } else if (filterDate.startsWith("CAL:")) {
+        const date = filterDate.slice(4);
+        list = expenses.filter((item) => item.date === date);
+      } else if (filterDate.startsWith("CALRANGE:")) {
+        const [start, end] = filterDate.slice(9).split("~");
+        if (start && end) {
+          list = expenses.filter(
+            (item) => item.date >= start && item.date <= end,
+          );
+        }
+      } else if (filterDate.startsWith("DAY:")) {
+        const date = filterDate.slice(4);
+        list = expenses.filter((item) => item.date === date);
+      } else {
+        list = expenses.filter((item) => item.date === filterDate);
+      }
     }
 
     return [...list].sort((a, b) => b.id - a.id);
   }, [expenses, filterDate]);
 
   const setFilter = (date: string) => setFilterDate(date);
-
-  const setPaymentMode = (paymentMode: PaymentMode) =>
-    setSettings((prev) => ({ ...prev, paymentMode }));
-
-  const setRoundingRule = (roundingRule: RoundingRule) =>
-    setSettings((prev) => ({ ...prev, roundingRule }));
-
-  const setSharedBudget = (sharedBudget: number) =>
-    setSettings((prev) => ({
-      ...prev,
-      sharedBudget: Math.max(0, Math.floor(sharedBudget || 0)),
-    }));
-
-  const setRemainingRule = (remainingRule: RemainingRule) =>
-    setSettings((prev) => ({ ...prev, remainingRule }));
 
   const resetReceiptUI = () => {
     setCurrentReceiptBase64(null);
@@ -557,14 +356,25 @@ export const useExpenses = () => {
     setIsExpenseModalOpen(true);
   };
 
-  const openEditModal = (id: number) => {
+  const openEditModal = async (id: number) => {
     setEditingId(id);
-    const item = expenses.find((d) => d.id === id);
-    if (!item) return;
 
-    setCurrentReceiptBase64(item.receipt ?? null);
-    setCurrentFileName(item.fileName ?? null);
-    setIsExpenseModalOpen(true);
+    try {
+      const { data } = await getExpense(tripId, id);
+      const mapped = mapExpenseResponseToItem(data as any, members);
+
+      setExpenses((prev) =>
+        prev.map((expense) => (expense.id === id ? mapped : expense)),
+      );
+
+      setCurrentReceiptBase64(mapped.receipt ?? null);
+      setCurrentFileName(mapped.fileName ?? null);
+
+      setIsExpenseModalOpen(true);
+    } catch (error) {
+      console.error("지출 상세 조회 실패", error);
+      setIsExpenseModalOpen(true);
+    }
   };
 
   const closeExpenseModal = () => {
@@ -575,45 +385,320 @@ export const useExpenses = () => {
 
   const getEditingExpense = (): ExpenseItem | null => {
     if (!editingId) return null;
-    return expenses.find((d) => d.id === editingId) ?? null;
+    return expenses.find((expense) => expense.id === editingId) ?? null;
   };
 
-  const saveExpense = (payload: Omit<ExpenseItem, "id">) => {
-    if (editingId) {
-      setExpenses((prev) => {
-        const idx = prev.findIndex((d) => d.id === editingId);
-        if (idx === -1) return prev;
-        const next = [...prev];
-        next[idx] = { ...next[idx], ...payload, id: editingId };
-        return next;
-      });
+  const buildExpenseRequest = (
+    payload: Omit<ExpenseItem, "id">,
+  ): ExpenseCreateRequest | null => {
+    if (!settings) return null;
+    if (memberNames.length === 0) return null;
+
+    const allMembers = memberNames;
+
+    const involved = normalizeInvolved(payload.involved, allMembers);
+    if (involved.length === 0) return null;
+
+    const payerMember = members.find(
+      (member) => member.nickname === payload.payer,
+    );
+    if (!payerMember) return null;
+
+    const normalizedPayload = {
+      ...payload,
+      involved,
+    };
+
+    const shares = calcSharesForItem(
+      normalizedPayload,
+      settings.roundingRule,
+      allMembers,
+    );
+
+    const splits = involved
+      .map((nickname) => {
+        const member = members.find((row) => row.nickname === nickname);
+        if (!member) return null;
+
+        return {
+          memberId: member.memberId,
+          amount: Math.max(0, Math.floor(shares[nickname] ?? 0)),
+        };
+      })
+      .filter(
+        (row): row is { memberId: number; amount: number } => row !== null,
+      );
+
+    return {
+      payerMemberId: payerMember.memberId,
+      paidAt: `${payload.date} 00:00:00`,
+      storeName: payload.storeName,
+      itemMemo: payload.title || undefined,
+      totalAmount: Math.max(0, Math.floor(payload.cost)),
+      category: payload.cat as ExpenseCategory,
+      payMethod: payload.method as PayMethod,
+      isShared: payload.expenseKind === "SHARED",
+      autoIncludePayer: involved.includes(payload.payer),
+      splitMode: normalizedPayload.splitMode,
+      splits,
+      receiptUrl: payload.receipt ?? undefined,
+      receiptFileName: payload.fileName ?? undefined,
+    };
+  };
+
+  const refreshAfterExpenseChange = useCallback(async () => {
+    await Promise.all([loadExpenses(members), loadSummary()]);
+  }, [loadExpenses, loadSummary, members]);
+
+  const createExpense = async (payload: Omit<ExpenseItem, "id">) => {
+    const request = buildExpenseRequest(payload);
+    if (!request) return;
+
+    try {
+      console.log("지출 생성 요청", request);
+      await createExpenseApi(tripId, request);
+      await refreshAfterExpenseChange();
       closeExpenseModal();
-      return;
+    } catch (error: any) {
+      console.error("지출 생성 실패", error);
+      console.error("응답 바디", error?.response?.data);
+      alert(
+        error?.response?.data?.message ??
+          error?.response?.data?.error ??
+          "지출 생성에 실패했습니다.",
+      );
     }
-
-    const newId = Date.now();
-    setExpenses((prev) => [...prev, { id: newId, ...payload }]);
-    closeExpenseModal();
   };
 
-  const deleteCurrentExpense = () => {
-    if (!editingId) return;
-    setExpenses((prev) => prev.filter((d) => d.id !== editingId));
-    closeExpenseModal();
+  const updateExpense = async (payload: ExpenseItem) => {
+    const request = buildExpenseRequest(payload);
+    if (!request || !editingId) return;
+
+    try {
+      await updateExpenseApi(tripId, editingId, request);
+      await refreshAfterExpenseChange();
+      closeExpenseModal();
+    } catch (error) {
+      console.error("지출 수정 실패", error);
+    }
   };
 
-  const getSettlementDetail = (target: ExpenseMember) =>
-    settlementDetailForMember(settlements, target);
+  const deleteExpense = async (id: number) => {
+    try {
+      await deleteExpenseApi(tripId, id);
+      await refreshAfterExpenseChange();
+      if (editingId === id) closeExpenseModal();
+    } catch (error) {
+      console.error("지출 삭제 실패", error);
+    }
+  };
+
+  const sharedSpent = useMemo(
+    () =>
+      filteredList
+        .filter((item) => isSharedItem(item, effectiveMemberCount))
+        .reduce((sum, item) => sum + Number(item.cost || 0), 0),
+    [effectiveMemberCount, filteredList],
+  );
+
+  const personalSpent = useMemo(
+    () =>
+      filteredList
+        .filter((item) => !isSharedItem(item, effectiveMemberCount))
+        .reduce((sum, item) => sum + Number(item.cost || 0), 0),
+    [effectiveMemberCount, filteredList],
+  );
+
+  const sharedPercent = useMemo(() => {
+    const total = sharedSpent + personalSpent;
+    if (total <= 0) return 0;
+    return Number(((sharedSpent / total) * 100).toFixed(1));
+  }, [personalSpent, sharedSpent]);
+
+  const personalPercent = useMemo(() => {
+    const total = sharedSpent + personalSpent;
+    if (total <= 0) return 0;
+    return Number(((personalSpent / total) * 100).toFixed(1));
+  }, [personalSpent, sharedSpent]);
+
+  const getSettlementDetailRows = (member: ExpenseMember) =>
+    settlementDetailForMember(settlements, member);
+
+  const safeDateOnly = (value: string | null | undefined) => {
+    if (!value) return "";
+    return value.length >= 10 ? value.slice(0, 10) : value;
+  };
+
+  const mapDepositStatusLabel = (
+    status: "PENDING" | "CONFIRMED" | "REJECTED",
+  ) => {
+    if (status === "CONFIRMED") return "승인 완료";
+    if (status === "REJECTED") return "거절됨";
+    return "승인 대기";
+  };
+
+  const mapDepositResponseToItem = (
+    row: DepositLogResponse,
+    nextMembers: TripMemberResponse[],
+  ): DepositLogItem => {
+    const memberNickname =
+      nextMembers.find((m) => m.memberId === row.memberId)?.nickname ??
+      String(row.memberId);
+
+    return {
+      id: row.id,
+      memberId: row.memberId,
+      memberNickname,
+      amount: Math.max(0, Math.floor(row.amount ?? 0)),
+      depositDate: safeDateOnly(row.depositDate),
+      memo: row.memo ?? undefined,
+      depositStatus: row.depositStatus,
+      depositStatusLabel: mapDepositStatusLabel(row.depositStatus),
+    };
+  };
+
+  const getMemberByNickname = (nickname: ExpenseMember) =>
+    members.find((member) => member.nickname === nickname);
+
+  const loadMemberDepositLogs = useCallback(
+    async (nickname: ExpenseMember) => {
+      if (!Number.isFinite(tripId) || tripId <= 0) return [];
+
+      const member = getMemberByNickname(nickname);
+      if (!member) {
+        setDepositLogs((prev) => ({ ...prev, [nickname]: [] }));
+        return [];
+      }
+
+      setDepositLoading(true);
+      try {
+        const { data } = await getMemberDepositLogs(tripId, member.memberId);
+        const mapped = data.map((row) =>
+          mapDepositResponseToItem(row, members),
+        );
+
+        setDepositLogs((prev) => ({
+          ...prev,
+          [nickname]: mapped,
+        }));
+
+        return mapped;
+      } catch (error) {
+        console.error("입금 로그 조회 실패", error);
+        setDepositLogs((prev) => ({ ...prev, [nickname]: [] }));
+        return [];
+      } finally {
+        setDepositLoading(false);
+      }
+    },
+    [tripId, members],
+  );
+
+  const createDepositForMember = useCallback(
+    async (
+      nickname: ExpenseMember,
+      payload: Omit<DepositLogCreateRequest, "memberId">,
+    ) => {
+      if (!Number.isFinite(tripId) || tripId <= 0) return;
+
+      const member = getMemberByNickname(nickname);
+      if (!member) return;
+
+      setDepositLoading(true);
+      try {
+        await createDepositLog(tripId, {
+          memberId: member.memberId,
+          amount: payload.amount,
+          depositDate: payload.depositDate,
+          memo: payload.memo,
+        });
+
+        await loadMemberDepositLogs(nickname);
+        await loadSummary();
+      } finally {
+        setDepositLoading(false);
+      }
+    },
+    [tripId, loadMemberDepositLogs, loadSummary, members],
+  );
+
+  const deleteDepositById = useCallback(
+    async (nickname: ExpenseMember, depositLogId: number) => {
+      if (!Number.isFinite(tripId) || tripId <= 0) return;
+
+      setDepositLoading(true);
+      try {
+        await deleteDepositLog(tripId, depositLogId);
+        await loadMemberDepositLogs(nickname);
+        await loadSummary();
+      } finally {
+        setDepositLoading(false);
+      }
+    },
+    [tripId, loadMemberDepositLogs, loadSummary],
+  );
+
+  const confirmDepositById = useCallback(
+    async (nickname: ExpenseMember, depositLogId: number) => {
+      if (!Number.isFinite(tripId) || tripId <= 0) return;
+
+      setDepositLoading(true);
+      try {
+        await confirmDepositLog(tripId, depositLogId);
+        await loadMemberDepositLogs(nickname);
+        await loadSummary();
+      } finally {
+        setDepositLoading(false);
+      }
+    },
+    [tripId, loadMemberDepositLogs, loadSummary],
+  );
+
+  const rejectDepositById = useCallback(
+    async (nickname: ExpenseMember, depositLogId: number) => {
+      if (!Number.isFinite(tripId) || tripId <= 0) return;
+
+      setDepositLoading(true);
+      try {
+        await rejectDepositLog(tripId, depositLogId);
+        await loadMemberDepositLogs(nickname);
+        await loadSummary();
+      } finally {
+        setDepositLoading(false);
+      }
+    },
+    [tripId, loadMemberDepositLogs, loadSummary],
+  );
+
+  const depositStatusRows = useMemo<
+    {
+      mem: ExpenseMember;
+      targetAmount: number;
+      depositedAmount: number;
+      remainingAmount: number;
+      overpaidAmount: number;
+      status: "UNPAID" | "PARTIAL" | "PAID" | "OVERPAID";
+    }[]
+  >(() => {
+    return (summaryData?.status ?? []).map((row) => ({
+      mem: row.nickname as ExpenseMember,
+      targetAmount: row.targetAmount,
+      depositedAmount: row.depositedAmount,
+      remainingAmount: row.remainingAmount,
+      overpaidAmount: row.overpaidAmount,
+      status: row.status,
+    }));
+  }, [summaryData]);
 
   return {
     expenses,
+    filteredList,
     filterDate,
-    isExpenseModalOpen,
-    editingId,
-    currentFileName,
-    currentReceiptBase64,
+    setFilter,
 
     settings,
+    previewSettings,
+    applySettings,
     setPaymentMode,
     setRoundingRule,
     setRemainingRule,
@@ -622,20 +707,46 @@ export const useExpenses = () => {
     summary,
     memberStats,
     categoryStats,
+    personalCategoryReference,
     settlements,
-    filteredList,
+    getSettlementDetailRows,
 
-    setFilter,
+    members,
+    ownerUserId,
+
+    sharedPercent,
+    personalPercent,
+
+    isBootstrapLoading,
+    bootstrapError,
+    isPreviewLoading,
+    isApplyLoading,
+
+    isExpenseModalOpen,
     openAddModal,
     openEditModal,
     closeExpenseModal,
+    editingId,
+    getEditingExpense,
 
+    currentFileName,
+    currentReceiptBase64,
     setCurrentFileName,
     setCurrentReceiptBase64,
 
-    saveExpense,
-    deleteCurrentExpense,
-    getEditingExpense,
-    getSettlementDetail,
+    createExpense,
+    updateExpense,
+    deleteExpense,
+
+    depositLogs,
+    depositLoading,
+    loadMemberDepositLogs,
+    createDepositForMember,
+    deleteDepositById,
+    confirmDepositById,
+    rejectDepositById,
+    depositStatusRows,
   };
 };
+
+export default useExpenses;

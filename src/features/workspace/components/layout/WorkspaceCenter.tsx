@@ -9,7 +9,7 @@ import { useWorkspaceCore } from "../../hooks/useWorkspaceCore";
 import { useTimeline } from "../../hooks/useTimeline";
 import { useTopOption } from "../../hooks/useTopOption";
 import { useExpenses } from "../../hooks/useExpenses";
-import type { ExpenseMember } from "../../hooks/useExpenses";
+import type { ExpenseMember } from "../../hooks/expense.ui.types";
 
 // 수정 후
 import { ExpenseView } from "../expense";
@@ -17,8 +17,8 @@ import { VoucherView } from "../voucher";
 import { DayAllView, DayDetailView } from "../schedule";
 import WorkspaceModals from "./WorkspaceModals";
 import NoticeModal from "../NoticeItemModal";
-import ExpenseModal from "../../components/expense/ExpenseModal";
-import SettleDetailModal from "../../components/expense/SettleDetailModal";
+import ExpenseModal from "../expense/modal/ExpenseModal";
+import SettleDetailModal from "../../components/expense/modal/SettleDetailModal";
 import VoucherModal from "../voucher/VoucherModal";
 
 import { useVouchers } from "../../hooks/useVouchers";
@@ -108,7 +108,7 @@ const WorkspaceCenter: React.FC<Props> = ({
           </button>
 
           <div className={`ws-dropdown ${open ? "active" : ""}`}>
-            {/* 1. 여행 수정 */}
+            {/* 여행 수정 */}
             <div
               className="ws-dd-item"
               onClick={(e) => {
@@ -119,17 +119,22 @@ const WorkspaceCenter: React.FC<Props> = ({
               <i className="fa-solid fa-pen-to-square"></i> 여행 수정
             </div>
 
-            {/* 2. PDF 다운로드 */}
-            <div className="ws-dd-item" onClick={downloadPDF}>
-              <i className="fa-solid fa-file-pdf"></i> PDF 다운로드
+            {/* 멤버 관리 */}
+            <div className="ws-dd-item">
+              <i className="fa-solid fa-users"></i> 멤버 관리
             </div>
 
-            {/* 3. 공개/비공개 전환 */}
+            {/* 공개/비공개 전환 */}
             <div className="ws-dd-item" onClick={togglePrivacy}>
               <i
                 className={`fa-solid ${isPrivate ? "fa-lock" : "fa-lock-open"}`}
               ></i>
               <span>{isPrivate ? "공개로 전환" : "비공개로 전환"}</span>
+            </div>
+
+            {/* PDF 다운로드 */}
+            <div className="ws-dd-item" onClick={downloadPDF}>
+              <i className="fa-solid fa-file-pdf"></i> PDF 다운로드
             </div>
           </div>
         </div>

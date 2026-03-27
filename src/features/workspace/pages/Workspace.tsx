@@ -1,4 +1,5 @@
 // src\features\workspace\pages\Workspace.tsx
+
 import { useState, useEffect } from "react";
 import "../styles/layout.css";
 import {
@@ -23,7 +24,7 @@ const WorkspaceContent: React.FC = () => {
   // timeline은 DAY ALL일 때만 2열, DAY 1/DAY 2 등은 rightOpen 상태에 따라
   const isTwoColumn =
     !rightOpen ||
-    (activeView === "timeline" && currentDay === "DAY ALL") ||  // ✅ DAY ALL만 무조건 2열
+    (activeView === "timeline" && currentDay === "DAY ALL") || // ✅ DAY ALL만 무조건 2열
     activeView === "expenses" ||
     activeView === "voucher" ||
     activeView === "notice";

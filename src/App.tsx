@@ -2,9 +2,8 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import Layout from "./shared/components/Layout";
 import "./features/travelStory/styles/travelStory.css";
 
-
-import Home from "./pages/Home";
-import MyTrips from "./pages/MyTrips";
+import Home from "./features/home/pages/Home";
+import MyTrips from "./features/myTrips/pages/MyTrips";
 import Mate from "./features/mate/pages/Mate";
 import MateDetail from "./features/mate/pages/MateDetail";
 import { Workspace } from "./features/workspace/pages";
@@ -37,6 +36,7 @@ export default function App() {
         <Route element={<ProtectedRoute />}>
           <Route path="/mytrips" element={<MyTrips />} />
           <Route path="/workspace" element={<Workspace />} />
+          <Route path="/workspace/:tripId" element={<Workspace />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />

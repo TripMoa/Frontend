@@ -1,2 +1,0 @@
-export { default as Home } from "./Home";
-export { default as MyTrips } from "./MyTrips";
