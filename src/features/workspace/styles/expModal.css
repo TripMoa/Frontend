@@ -84,7 +84,7 @@
 /* 업로드 클릭 영역(프리뷰/라벨 영역) */
 .exp2-upload {
   flex: 1;
-  min-height: 260px;
+  min-height: 230px;
 
   border: 0;
   background: transparent;
@@ -111,6 +111,11 @@
   text-align: center;
 }
 
+.exp2-info-box {
+  color: #6b7280;
+  text-align: center;
+}
+
 /* 업로드 타이틀 */
 .exp2-upload-label {
   display: flex;
@@ -132,7 +137,7 @@
 /* 프리뷰 */
 .exp2-preview {
   width: 100%;
-  height: 280px;
+  height: 250px;
   border: 1px solid #e5e7eb;
   border-radius: 12px;
   background: #fff;
@@ -183,7 +188,7 @@
 .exp2-upload-actions .exp2-btn {
   flex: 1 1 0;
   min-width: 0;
-  height: 56px;
+  height: 50px;
 
   display: flex;
   align-items: center;
@@ -231,14 +236,14 @@
 }
 
 .exp2-pill-row {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
 }
 
 .exp2-pill {
-  min-width: 120px;
-  padding: 14px 14px;
+  width: 100%;
+  padding: 14px 0;
   border: 1px solid #000;
   background: #000;
   color: #fff;
@@ -253,6 +258,46 @@
 .exp2-pill.is-off {
   background: #fff;
   color: #111;
+}
+
+.exp2-seg {
+  display: flex;
+  border: 1px solid #000;
+  border-radius: 10px;
+  overflow: hidden;
+  width: 100%;
+  margin-top: 2px;
+}
+
+.exp2-seg button {
+  flex: 1;
+  padding: 12px 10px;
+  border: 0;
+  background: #fff;
+  color: #111;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+.exp2-seg button + button {
+  border-left: 1px solid #000;
+}
+
+.exp2-seg button.active {
+  background: #000;
+  color: #fff;
+}
+
+.exp2-inline-warning {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #d11a2a;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.4;
 }
 
 /* 오른쪽 폼 */

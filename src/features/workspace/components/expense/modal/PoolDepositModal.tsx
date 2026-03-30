@@ -1,23 +1,17 @@
 // src/features/workspace/components/expense/PoolDepositModal.tsx
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import "../../styles/poolModal.css";
 
-export type DepositLog = {
-  id: string;
-  member: string;
-  amount: number;
-  date: string; // YYYY-MM-DD
-  memo?: string;
-};
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import "./../../../styles/poolModal.css";
+
+import type { UseExpensesStore } from "../../../hooks/useExpenses";
+import type { ExpenseMember } from "../../../hooks/expense.ui.types";
 
 type Props = {
   open: boolean;
-  member: string | null;
+  member: ExpenseMember | null;
   targetPerMember: number;
-  logs: DepositLog[];
+  store: UseExpensesStore;
   onClose: () => void;
-  onAddLog: (member: string, log: Omit<DepositLog, "id" | "member">) => void;
-  onDeleteLog?: (member: string, id: string) => void;
 };
 
 // 오늘 날짜를 YYYY-MM-DD 형식으로 반환
@@ -35,89 +29,109 @@ const formatWonInput = (value: number | string) => {
     typeof value === "number"
       ? value
       : Number(String(value).replace(/[^\d]/g, ""));
-  if (isNaN(num)) return "";
+  if (Number.isNaN(num)) return "";
   return `₩ ${num.toLocaleString("ko-KR")}`;
 };
 
-// 문자열 → 숫자 (₩, 콤마 제거)
+// 문자열 → 숫자
 const parseWonInput = (value: string) => {
   const num = Number(String(value).replace(/[^\d]/g, ""));
-  return isNaN(num) ? 0 : num;
+  return Number.isNaN(num) ? 0 : num;
 };
 
-// 화면 출력용
 const formatWon = (n: number) => `₩ ${Math.max(0, n).toLocaleString("ko-KR")}`;
 
 const PoolDepositModal: React.FC<Props> = ({
   open,
   member,
   targetPerMember,
-  logs,
+  store,
   onClose,
-  onAddLog,
-  onDeleteLog,
 }) => {
-  // State: 폼 입력값
+  const {
+    depositLogs,
+    depositLoading,
+    loadMemberDepositLogs,
+    createDepositForMember,
+    deleteDepositById,
+    confirmDepositById,
+    rejectDepositById,
+    ownerUserId,
+  } = store;
+
   const [amount, setAmount] = useState<string>("");
   const [date, setDate] = useState<string>(todayYmd());
   const [memo, setMemo] = useState<string>("");
 
-  // Ref: Enter로 다음 입력칸 이동 및 포커스 제어
   const amountRef = useRef<HTMLInputElement | null>(null);
   const dateRef = useRef<HTMLInputElement | null>(null);
   const memoRef = useRef<HTMLInputElement | null>(null);
 
-  // Effect: 모달이 열리면 첫 입력(입금액)으로 포커스 이동
   useEffect(() => {
-    if (open) {
-      requestAnimationFrame(() => amountRef.current?.focus());
-    }
-  }, [open]);
+    if (!open || !member) return;
 
-  // Memo: 해당 멤버의 총 입금액 합계 계산
-  const sum = useMemo(
-    () => logs.reduce((acc, it) => acc + (it.amount ?? 0), 0),
+    void loadMemberDepositLogs(member);
+    requestAnimationFrame(() => amountRef.current?.focus());
+  }, [open, member, loadMemberDepositLogs]);
+
+  const logs = useMemo(() => {
+    if (!member) return [];
+    return depositLogs[member] ?? [];
+  }, [depositLogs, member]);
+
+  const confirmedSum = useMemo(
+    () =>
+      logs
+        .filter((it) => it.depositStatus === "CONFIRMED")
+        .reduce((acc, it) => acc + (it.amount ?? 0), 0),
     [logs],
   );
 
-  // Derived: 목표 대비 차액(초과/부족/달성 표시용)
-  const diff = sum - targetPerMember;
+  const diff = confirmedSum - targetPerMember;
 
   if (!open || !member) return null;
 
-  // 입금 기록 추가 핸들러
-  const submit = () => {
+  const submit = async () => {
     const n = parseWonInput(amount);
     if (!n || n <= 0) {
       requestAnimationFrame(() => amountRef.current?.focus());
       return false;
     }
 
-    onAddLog(member, {
-      amount: n,
-      date,
-      memo: memo.trim() || undefined,
-    });
+    try {
+      await createDepositForMember(member, {
+        amount: n,
+        depositDate: date,
+        memo: memo.trim() || undefined,
+      });
 
-    setAmount("");
-    setMemo("");
+      setAmount("");
+      setMemo("");
+      setDate(todayYmd());
 
-    requestAnimationFrame(() => amountRef.current?.focus());
-    return true;
+      requestAnimationFrame(() => amountRef.current?.focus());
+      return true;
+    } catch (error: any) {
+      alert(
+        error?.response?.data?.message ??
+          error?.message ??
+          "입금 등록에 실패했습니다.",
+      );
+      return false;
+    }
   };
 
-  // Enter 동작 공통 핸들러
   const onEnterNext =
     (
       next?: React.RefObject<HTMLInputElement | null>,
       submitIfLast?: boolean,
     ): React.KeyboardEventHandler<HTMLInputElement> =>
-    (e) => {
+    async (e) => {
       if (e.key !== "Enter") return;
       e.preventDefault();
 
       if (submitIfLast) {
-        submit();
+        await submit();
         return;
       }
 
@@ -156,6 +170,7 @@ const PoolDepositModal: React.FC<Props> = ({
                 onKeyDown={onEnterNext(dateRef)}
                 placeholder="예: ₩ 300,000"
                 inputMode="numeric"
+                disabled={depositLoading}
               />
             </div>
 
@@ -167,6 +182,7 @@ const PoolDepositModal: React.FC<Props> = ({
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
                 onKeyDown={onEnterNext(memoRef)}
+                disabled={depositLoading}
               />
             </div>
 
@@ -178,11 +194,16 @@ const PoolDepositModal: React.FC<Props> = ({
                 onChange={(e) => setMemo(e.target.value)}
                 onKeyDown={onEnterNext(undefined, true)}
                 placeholder="선택"
+                disabled={depositLoading}
               />
             </div>
 
-            <button className="pdm-add" onClick={submit}>
-              + ADD
+            <button
+              className="pdm-add"
+              onClick={() => void submit()}
+              disabled={depositLoading}
+            >
+              {depositLoading ? "처리 중..." : "+ ADD"}
             </button>
           </div>
 
@@ -190,11 +211,13 @@ const PoolDepositModal: React.FC<Props> = ({
             <div className="pdm-summary">
               <span className="pdm-summary-main">
                 {member} · 목표 {formatWon(targetPerMember)} · 현재{" "}
-                {formatWon(sum)}
+                {formatWon(confirmedSum)}
               </span>
 
               <span
-                className={`pdm-summary-gap ${diff < 0 ? "pdm-neg" : diff > 0 ? "pdm-pos" : ""}`}
+                className={`pdm-summary-gap ${
+                  diff < 0 ? "pdm-neg" : diff > 0 ? "pdm-pos" : ""
+                }`}
               >
                 ({diff < 0 ? "부족 " : diff > 0 ? "초과 " : "달성 "}
                 {formatWon(Math.abs(diff))})
@@ -207,30 +230,72 @@ const PoolDepositModal: React.FC<Props> = ({
             </div>
 
             {logs.length === 0 ? (
-              <div className="pdm-empty">아직 입금 내역이 없습니다.</div>
+              <div className="pdm-empty">
+                {depositLoading
+                  ? "불러오는 중..."
+                  : "아직 입금 내역이 없습니다."}
+              </div>
             ) : (
               <ul>
                 {logs
                   .slice()
-                  .sort((a, b) => (a.date < b.date ? 1 : -1))
+                  .sort((a, b) => (a.depositDate < b.depositDate ? 1 : -1))
                   .map((it) => (
                     <li key={it.id} className="pdm-item">
                       <div className="pdm-item-left">
-                        <div className="pdm-date">{it.date}</div>
+                        <div className="pdm-date">{it.depositDate}</div>
                         {it.memo && (
                           <div className="pdm-memo-txt">{it.memo}</div>
                         )}
                       </div>
+
                       <div className="pdm-amt">{formatWon(it.amount)}</div>
-                      {onDeleteLog && (
-                        <button
-                          className="pdm-del"
-                          onClick={() => onDeleteLog(member, it.id)}
-                          title="삭제"
+
+                      <button
+                        className="pdm-del"
+                        onClick={() => void deleteDepositById(member, it.id)}
+                        disabled={depositLoading}
+                      >
+                        ✕
+                      </button>
+
+                      <div className="pdm-actions">
+                        <span
+                          className={`pdm-status-badge ${
+                            it.depositStatus === "CONFIRMED"
+                              ? "is-confirmed"
+                              : it.depositStatus === "REJECTED"
+                                ? "is-rejected"
+                                : "is-pending"
+                          }`}
                         >
-                          ✕
-                        </button>
-                      )}
+                          {it.depositStatusLabel}
+                        </span>
+
+                        {ownerUserId && it.depositStatus === "PENDING" && (
+                          <>
+                            <button
+                              className="pdm-approve"
+                              onClick={() =>
+                                void confirmDepositById(member, it.id)
+                              }
+                              disabled={depositLoading}
+                            >
+                              승인
+                            </button>
+
+                            <button
+                              className="pdm-reject"
+                              onClick={() =>
+                                void rejectDepositById(member, it.id)
+                              }
+                              disabled={depositLoading}
+                            >
+                              거절
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </li>
                   ))}
               </ul>

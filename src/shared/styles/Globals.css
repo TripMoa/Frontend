@@ -1,4 +1,4 @@
-/* common.css */
+/* Globals.css */
 
 /* === [기본 설정 및 변수] === */
 /* 모든 페이지 공통 변수 및 리셋 */
@@ -31,9 +31,10 @@ body {
   color: var(--text-main);
   font-family: var(--font-body);
   line-height: 1.6;
-  overflow-x: hidden; /* 가로 스크롤 방지 */
+  overflow-x: hidden;
   /* 배경 패턴 */
-  background-image: linear-gradient(#e5e7eb 1px, transparent 1px),
+  background-image:
+    linear-gradient(#e5e7eb 1px, transparent 1px),
     linear-gradient(90deg, #e5e7eb 1px, transparent 1px);
   background-size: 40px 40px;
 }
@@ -75,12 +76,12 @@ ul {
   background: transparent !important;
 }
 
-/* ✅ 진짜 오직 "스크롤바 위에 마우스 올렸을 때"만 보임 */
+/* 진짜 오직 "스크롤바 위에 마우스 올렸을 때"만 보임 */
 ::-webkit-scrollbar-thumb:hover {
   background: #cecece !important; /* 연한 회색 */
 }
 
-/* ⭐ 워크스페이스일 때만 HTML 스크롤바 숨김 */
+/* 워크스페이스일 때만 HTML 스크롤바 숨김 */
 html.ws-hide-scrollbar::-webkit-scrollbar {
   display: none; /* Chrome / Edge / Safari */
 }
