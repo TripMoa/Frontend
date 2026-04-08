@@ -1,34 +1,30 @@
 // components/mate/ChatModal.tsx
 import { useState, useEffect, useRef } from "react";
 import { X, MessageSquare, Users, Send, Search } from "lucide-react";
-import type { OneOnOneChat, GroupChat } from "../../hooks/chat.types";
-import type { Post } from "../../hooks/mate.types";
-// import { CURRENT_USER } from "../../hooks/mate.constants";
+import type { OneOnOneChat } from "../hooks/chat.types";
+import type { Post } from "../../mate/hooks/mate.types";
+import { useCurrentUser } from "../hooks/useCurrentUser";
 
 interface ChatModalProps {
   isOpen: boolean;
   onClose: () => void;
   oneOnOneChats: OneOnOneChat[];
-  groupChats: GroupChat[];
   allPosts: Post[];
   onSendOneOnOneMessage: (chatId: string, content: string) => void;
-  onSendGroupMessage: (chatId: string, content: string) => void;
 }
 
 type SelectedChat = 
   | { type: "one-on-one"; chat: OneOnOneChat; post: Post }
-  | { type: "group"; chat: GroupChat }
   | null;
 
 export function ChatModal({
   isOpen,
   onClose,
   oneOnOneChats,
-  groupChats,
   allPosts,
   onSendOneOnOneMessage,
-  onSendGroupMessage,
-}: ChatModalProps): JSX.Element | null {
+}: ChatModalProps){
+  const { email: currentUserEmail } = useCurrentUser();
   const [selectedChat, setSelectedChat] = useState<SelectedChat>(null);
   const [messageInput, setMessageInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
@@ -49,7 +45,7 @@ export function ChatModal({
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
       }, 100);
     }
-  }, [selectedChat?.type === "one-on-one" ? selectedChat?.chat.messages : selectedChat?.type === "group" ? selectedChat?.chat.messages : []]);
+  }, [selectedChat?.chat.messages]);
 
   // 채팅 업데이트 감지
   useEffect(() => {
@@ -62,18 +58,13 @@ export function ChatModal({
             setSelectedChat({ type: "one-on-one", chat: updatedChat, post });
           }
         }
-      } else if (selectedChat.type === "group") {
-        const updatedChat = groupChats.find(c => c.id === selectedChat.chat.id);
-        if (updatedChat && updatedChat.messages.length !== selectedChat.chat.messages.length) {
-          setSelectedChat({ type: "group", chat: updatedChat });
-        }
       }
     }
-  }, [oneOnOneChats, groupChats]);
+  }, [oneOnOneChats]);
 
   if (!isOpen) return null;
 
-  const getPostInfo = (postId: string) => allPosts.find(p => p.id === postId);
+  const getPostInfo = (postId: string) => allPosts.find(p => String(p.id) === postId);
 
   const formatTime = (timestamp: string) => {
     const date = new Date(timestamp);
@@ -101,8 +92,6 @@ export function ChatModal({
     if (!messageInput.trim() || !selectedChat) return;
     if (selectedChat.type === "one-on-one") {
       onSendOneOnOneMessage(selectedChat.chat.id, messageInput);
-    } else {
-      onSendGroupMessage(selectedChat.chat.id, messageInput);
     }
     setMessageInput("");
   };
@@ -112,25 +101,16 @@ export function ChatModal({
     if (post) setSelectedChat({ type: "one-on-one", chat, post });
   };
 
-  const handleSelectGroup = (chat: GroupChat) => {
-    setSelectedChat({ type: "group", chat });
-  };
-
   const filteredOneOnOneChats = oneOnOneChats.filter(chat => {
     if (!searchQuery) return true;
     const post = getPostInfo(chat.postId);
-    const isMyChat = chat.applicantId === CURRENT_USER.email;
-    const otherUserName = isMyChat ? post?.author.name : "Unknown";
+    const isMyChat = chat.applicantId === currentUserEmail;
+    const otherUserName = isMyChat ? post?.author.nickname : "Unknown";
     return post?.destination.toLowerCase().includes(searchQuery.toLowerCase()) ||
-           otherUserName.toLowerCase().includes(searchQuery.toLowerCase());
+           otherUserName?.toLowerCase().includes(searchQuery.toLowerCase());
   });
 
-  const filteredGroupChats = groupChats.filter(chat => {
-    if (!searchQuery) return true;
-    return chat.postDestination.toLowerCase().includes(searchQuery.toLowerCase());
-  });
-
-  const allChatsEmpty = oneOnOneChats.length === 0 && groupChats.length === 0;
+  const allChatsEmpty = oneOnOneChats.length === 0;
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[2000]" onClick={onClose}>
@@ -181,8 +161,10 @@ export function ChatModal({
                 <div className="space-y-4 max-w-5xl mx-auto">
                   {filteredOneOnOneChats.map((chat) => {
                     const post = getPostInfo(chat.postId);
-                    const isMyChat = chat.applicantId === CURRENT_USER.email;
-                    const otherUser = isMyChat ? post?.author : null;
+                    const isMyChat = chat.applicantId === currentUserEmail;
+                    const otherUser = chat.postAuthorId === currentUserEmail
+                     ? chat.applicant
+                     : chat.postAuthor;
                     const lastMessage = chat.messages[chat.messages.length - 1];
 
                     return (
@@ -194,7 +176,7 @@ export function ChatModal({
                       >
                         <div className="flex items-center gap-4">
                           <div className="w-16 h-16 rounded-full bg-pink-200 border-2 border-black flex items-center justify-center text-3xl flex-shrink-0">
-                            {otherUser?.avatar || "👤"}
+                            {otherUser?.avatarEmoji || "👤"}
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between mb-2">
@@ -210,39 +192,6 @@ export function ChatModal({
                       </div>
                     );
                   })}
-
-                  {filteredGroupChats.map((chat) => {
-                    const lastMessage = chat.messages[chat.messages.length - 1];
-
-                    return (
-                      <div
-                        key={chat.id}
-                        onClick={() => handleSelectGroup(chat)}
-                        className="bg-white border-2 border-black p-5 cursor-pointer hover:translate-y-[-2px] transition-all"
-                        style={{ boxShadow: "4px 4px 0 0 black" }}
-                      >
-                        <div className="flex items-center gap-4">
-                          <div className="w-16 h-16 rounded-full bg-purple-200 border-2 border-black flex items-center justify-center flex-shrink-0">
-                            <Users className="w-8 h-8" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="font-bold text-lg truncate">{chat.postDestination} 여행</span>
-                              <span className="text-xs text-black/50 font-mono flex-shrink-0 ml-2">
-                                {formatLastMessageTime(chat.lastMessageAt)}
-                              </span>
-                            </div>
-                            <div className="text-sm text-black/60 mb-1">👥 {chat.members.length}명</div>
-                            {lastMessage && (
-                              <div className="text-base text-black/60 truncate">
-                                <span className="font-bold">{lastMessage.senderName}:</span> {lastMessage.content}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
                 </div>
               )}
             </div>
@@ -253,27 +202,22 @@ export function ChatModal({
             {/* 채팅 헤더 */}
             <div className="bg-white border-b-2 border-black p-5 flex items-center justify-between">
               <div className="flex items-center gap-4">
-                {selectedChat.type === "one-on-one" ? (
-                  <>
-                    <div className="w-12 h-12 rounded-full bg-pink-200 border-2 border-black flex items-center justify-center text-2xl">
-                      {selectedChat.post.author.avatar}
-                    </div>
-                    <div>
-                      <div className="font-bold text-lg">{selectedChat.post.author.name}</div>
-                      <div className="text-base text-black/60">📍 {selectedChat.post.destination}</div>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div className="w-12 h-12 rounded-full bg-purple-200 border-2 border-black flex items-center justify-center">
-                      <Users className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <div className="font-bold text-lg">{selectedChat.chat.postDestination} 여행 단체방</div>
-                      <div className="text-base text-black/60">👥 {selectedChat.chat.members.length}명</div>
-                    </div>
-                  </>
-                )}
+                {(() => {
+                  const otherUser = selectedChat.chat.postAuthorId === currentUserEmail
+                    ? selectedChat.chat.applicant
+                    : selectedChat.chat.postAuthor;
+                  return (
+                    <>
+                      <div className="w-12 h-12 rounded-full bg-pink-200 border-2 border-black flex items-center justify-center text-2xl">
+                        {otherUser.avatarEmoji ?? "👤"}
+                      </div>
+                      <div>
+                        <div className="font-bold text-lg">{otherUser.name}</div>
+                        <div className="text-base text-black/60">📍 {selectedChat.chat.destination}</div>
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
               <button
                 onClick={() => setSelectedChat(null)}
@@ -287,7 +231,7 @@ export function ChatModal({
             {/* 메시지 영역 */}
             <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-blue-50">
               {(selectedChat.type === "one-on-one" ? selectedChat.chat.messages : selectedChat.chat.messages).map((msg) => {
-                const isMyMessage = msg.senderId === CURRENT_USER.email;
+                const isMyMessage = msg.senderId === currentUserEmail;
 
                 return (
                   <div key={msg.id} className={`flex ${isMyMessage ? "justify-end" : "justify-start"}`}>

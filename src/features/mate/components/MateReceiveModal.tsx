@@ -1,12 +1,12 @@
 import { Send, Check, XCircle, ArrowLeft } from "lucide-react";
 import { useState } from "react";
 import "../styles/MateModals.css";
-import type { ReceivedApplication, SelectedApplicant } from "../hooks/mate.types";
+import type { ApplicationResponse, SelectedApplicant } from "../hooks/mate.types";
 
 interface ReceivedModalProps {
-  applications: ReceivedApplication[];
+  applications: ApplicationResponse[];
   getApplicantStatus: (id: string) => "approved" | "rejected" | "pending";
-  onApprove: (id: string, e?: React.MouseEvent<HTMLButtonElement>) => void;
+  onApprove: (id: string, postId: number, applicantId: number, e?: React.MouseEvent<HTMLButtonElement>) => void;
   onReject: (id: string, e?: React.MouseEvent<HTMLButtonElement>) => void;
   onClose: () => void;
 }
@@ -23,15 +23,15 @@ export function MateReceivedModal({
   const safeApplications = applications || [];
 
   const groupedByPost = applications.reduce((acc, app) => {
-    if (!acc[app.postId]) {
-      acc[app.postId] = { 
+    if (!acc[app.matePostId]) {
+      acc[app.matePostId] = { 
         destination: app.postDestination, 
         startDate: app.startDate,
         endDate: app.endDate, 
         applicants: [] 
       };
     }
-    acc[app.postId].applicants.push(app);
+    acc[app.matePostId].applicants.push(app);
     return acc;
   }, {} as Record<string, any>);
 
@@ -123,7 +123,7 @@ export function MateReceivedModal({
                     className="flex-1 py-3 font-bold uppercase transition-colors button bg-white text-black hover:bg-[#eee]">
                     REJECT
                   </button>
-                  <button onClick={() => onApprove(selectedApplicant.id)}
+                  <button onClick={() => onApprove(selectedApplicant.id, selectedApplicant.postId, selectedApplicant.applicantId)}
                     className="flex-1 py-3 font-bold uppercase transition-colors flex items-center justify-center gap-2 button bgBlack text-white">
                     <Check className="w-4 h-4" /> APPROVE
                   </button>
@@ -204,35 +204,45 @@ export function MateReceivedModal({
                         return (
                           <div key={app.id}
                             onClick={() => setSelectedApplicant({ 
-                              id: app.id,
-                              postId: app.postId, 
-                              postDestination: app.postDestination, 
-                              applicant: app.applicant 
+                              id: String(app.id),
+                              postId: app.matePostId,
+                              applicantId: app.applicantId,
+                              postDestination: app.postDestination,
+                              applicant: {
+                                name: app.applicantName,
+                                email: app.applicantEmail,
+                                avatar: app.avatar ?? "👤",
+                                age: app.age,
+                                gender: app.gender,
+                                message: app.content,
+                                travelStyles: [],
+                                appliedDate: "",
+                              }
                             })}
                             className={`border-2 border-black p-5 cursor-pointer transition-colors ${status === "pending" ? "bg-[#eee] hover:bg-[#ddd]" : status === "approved" ? "bg-green-100" : "bg-red-100"}`}>
                             <div className="flex items-center justify-between flex-wrap gap-4">
                               <div className="flex items-center gap-4">
                                 <div className="w-12 h-12 text-2xl flex items-center justify-center infoBox bgBlack">
-                                  {app.applicant.avatar}
+                                  {app.avatar}
                                 </div>
                                 <div>
                                   <div className="font-bold text-black flex items-center gap-2 flex-wrap">
-                                    {app.applicant.name}
+                                    {app.name}
                                     {status !== "pending" && (
                                       <span className={`text-xs px-2 py-0.5 text-white ${status === "approved" ? "bgGreen" : "bgRed"}`}>
                                         {status === "approved" ? "APPROVED" : "REJECTED"}
                                       </span>
                                     )}
                                   </div>
-                                  <div className="text-xs text-black/60 font-mono mt-1">{app.applicant.email}</div>
+                                  <div className="text-xs text-black/60 font-mono mt-1">{app.email}</div>
                                   <div className="flex gap-2 mt-2">
-                                    <span className="text-xs bg-white px-2 py-0.5 font-bold infoBox">{app.applicant.age}세</span>
-                                    <span className="text-xs bg-white px-2 py-0.5 font-bold infoBox">{app.applicant.gender}</span>
+                                    <span className="text-xs bg-white px-2 py-0.5 font-bold infoBox">{app.age}세</span>
+                                    <span className="text-xs bg-white px-2 py-0.5 font-bold infoBox">{app.gender}</span>
                                   </div>
                                 </div>
                               </div>
                               <div className="flex gap-2">
-                                <button onClick={(e) => { e.stopPropagation(); onApprove(app.id, e); }}
+                                <button onClick={(e) => { e.stopPropagation(); onApprove(String(app.id), app.matePostId, app.applicantId, e); }}
                                   className={`px-4 py-2 border-2 border-black text-sm font-bold transition-colors ${status === "approved" ? "bgGreen" : "bgBlack"}`}>
                                   <Check className="w-4 h-4" />
                                 </button>
@@ -242,7 +252,7 @@ export function MateReceivedModal({
                                 </button>
                               </div>
                             </div>
-                            <p className="mt-4 text-sm text-black/70 line-clamp-2">{app.applicant.message}</p>
+                            <p className="mt-4 text-sm text-black/70 line-clamp-2">{app.message}</p>
                           </div>
                         );
                       })}

@@ -502,6 +502,64 @@
   box-shadow: 1px 1px 0 0 black;
 }
 
+.chat-slide-expiredBanner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 12px 20px;
+  background: linear-gradient(135deg, #fef2f2, #fff1f2);
+  border-bottom: 2px solid #e5e5e5;
+  animation: slideDown 0.3s ease;
+}
+
+.chat-slide-expiredBanner .expired-icon {
+  font-size: 18px;
+}
+
+.chat-slide-expiredBanner .expired-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.chat-slide-expiredBanner .expired-main {
+  font-weight: 700;
+  font-size: 13px;
+  color: #888;
+}
+
+.chat-slide-expiredBanner .expired-sub {
+  font-size: 11px;
+  color: #bbb;
+}
+
+.chat-slide-systemMessage {
+  text-align: center;
+  padding: 8px 16px;
+  margin: 8px 0;
+  font-size: 12px;
+  color: #999;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.chat-slide-systemMessage::before,
+.chat-slide-systemMessage::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: #ddd;
+}
+
+@keyframes slideDown {
+  from { transform: translateY(-100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
 /* 반응형 */
 @media (max-width: 640px) {
   .chat-slide-slidePanel {
