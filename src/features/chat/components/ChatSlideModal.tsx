@@ -2,25 +2,35 @@
 
 import { useState, useEffect, useRef } from "react";
 import { X, MessageSquare, Send, Plus, LogOut, MapPin, Calendar, User } from "lucide-react";
-import type { OneOnOneChat } from "../../hooks/chat.types";
-import type { Post, MyApplication, ReceivedApplication } from "../../hooks/mate.types";
-// import { CURRENT_USER } from "../../hooks/mate.constants";
-import "../../styles/ChatSlide.css";
+import type { OneOnOneChat } from "../hooks/chat.types";
+import type { Post, ApplicationResponse } from "../../mate/hooks/mate.types";
+import { useCurrentUser } from "../hooks/useCurrentUser";
+import { markRoomAsRead } from "../../../api/chat.api";
+import "../styles/ChatSlide.css";
 
 interface ChatSlideModalProps {
   isOpen: boolean;
   onClose: () => void;
   oneOnOneChats: OneOnOneChat[];
   allPosts: Post[];
-  myApplications: MyApplication[];
-  receivedApplications: ReceivedApplication[];
+  myApplications: ApplicationResponse[];
+  receivedApplications: ApplicationResponse[];
   onSendOneOnOneMessage: (chatId: string, content: string) => void;
-  onCreateOneOnOneChat: (postId: string, otherUserId: string) => void;
+  onCreateOneOnOneChat: (postId: string, applicantId?: number) => Promise<OneOnOneChat | null>;
   onLeaveOneOnOneChat: (chatId: string) => void;
+  onMarkAsRead: (chatId: string) => void;
 }
 
+type ChatPostInfo = {
+  id: string;
+  destination: string;
+  startDate: string;
+  endDate: string;
+  author: OneOnOneChat["postAuthor"];
+};
+
 type SelectedChat = 
-  | { type: "one-on-one"; chat: OneOnOneChat; post: Post }
+  | { type: "one-on-one"; chat: OneOnOneChat; post: ChatPostInfo }
   | null;
 
 type TabType = "active" | "available";
@@ -35,13 +45,16 @@ export function ChatSlideModal({
   onSendOneOnOneMessage,
   onCreateOneOnOneChat,
   onLeaveOneOnOneChat,
-}: ChatSlideModalProps): JSX.Element | null {
+  onMarkAsRead,
+}: ChatSlideModalProps){
   const [selectedChat, setSelectedChat] = useState<SelectedChat>(null);
   const [messageInput, setMessageInput] = useState("");
   const [showNewChatList, setShowNewChatList] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>("active");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { email: currentUserEmail, id: currentUserId } = useCurrentUser();
+  const [readMessageCounts, setReadMessageCounts] = useState<Record<string, number>>({});
 
   // 모달 닫을 때 애니메이션
   const handleClose = () => {
@@ -86,21 +99,22 @@ export function ChatSlideModal({
 
   if (!isOpen) return null;
 
-  const getPostInfo = (chat: OneOnOneChat) => {
+  const getPostInfo = (chat: OneOnOneChat): ChatPostInfo => {
     // 채팅 객체에 이미 모든 정보가 있으므로 바로 반환
-    const isIamAuthor = chat.postAuthorId === CURRENT_USER.email;
+    const isIamAuthor = chat.postAuthorId === currentUserEmail;
     
     return {
       id: chat.postId,
       destination: chat.destination,
-      dates: chat.dates,
+      startDate: chat.startDate,
+      endDate: chat.endDate,
       author: isIamAuthor ? chat.postAuthor : chat.applicant
     };
   };
 
   const getOtherUser = (chat: OneOnOneChat) => {
     // 상대방 정보 가져오기
-    const isIamAuthor = chat.postAuthorId === CURRENT_USER.email;
+    const isIamAuthor = chat.postAuthorId === currentUserEmail;
     return isIamAuthor ? chat.applicant : chat.postAuthor;
   };
 
@@ -131,40 +145,60 @@ export function ChatSlideModal({
     const available: Array<{
       type: "sent" | "received";
       postId: string;
-      post: Post;
-      otherUser: { name: string; email: string; avatar: string };
+      applicantId?: number;
+      destination: string;
+      startDate: string;
+      endDate: string;
+      post: Post | null;
+      otherUser: { name: string; email: string; avatarEmoji: string | null};
     }> = [];
 
     // 내가 신청한 목록
-    myApplications.forEach(app => {
-      const post = allPosts.find(p => p.id === app.postId);
-      if (!post) return;
-      const hasChat = oneOnOneChats.some(
-        chat => chat.postId === app.postId && chat.applicantId === CURRENT_USER.email
-      );
-      if (!hasChat) {
-        available.push({
-          type: "sent",
-          postId: app.postId,
-          post,
-          otherUser: { name: post.author.name, email: post.author.email, avatar: post.author.avatar }
-        });
-      }
-    });
+    // myApplications.filter(app => app.status === 'APPROVED').forEach(app => {
+    //   const hasChat = oneOnOneChats.some(
+    //     chat => chat.postId === String(app.matePostId) && chat.applicantId === currentUserEmail
+    //   );
+    //   if (!hasChat) {
+    //     available.push({
+    //       type: "sent",
+    //       postId: String(app.matePostId),
+    //       applicantId: undefined,
+    //       destination: app.postDestination,
+    //       startDate: app.startDate,
+    //       endDate: app.endDate,
+    //       post: null as any,
+    //       otherUser: { 
+    //         name: app.postAuthorName, 
+    //         email: app.postAuthorEmail, 
+    //         avatarEmoji: app.postAuthorAvatar ?? null
+    //       }
+    //     });
+    //   }
+    // });
 
     // 받은 신청 목록
-    receivedApplications.forEach(app => {
-      const post = allPosts.find(p => p.id === app.postId);
-      if (!post) return;
+    receivedApplications
+    .filter(app => app.status?.toUpperCase() === 'APPROVED')
+    .filter(app => new Date(app.endDate) >= new Date(new Date().toDateString()))
+    .forEach(app => {
       const hasChat = oneOnOneChats.some(
-        chat => chat.postId === app.postId && chat.postAuthorId === CURRENT_USER.email && chat.applicantId === app.applicant.email
+        chat => chat.postId === String(app.matePostId) 
+        && chat.applicant.email === String(app.applicantEmail)
       );
       if (!hasChat) {
         available.push({
           type: "received",
-          postId: app.postId,
-          post,
-          otherUser: { name: app.applicant.name, email: app.applicant.email, avatar: app.applicant.avatar }
+          postId: String(app.matePostId),
+          applicantId: app.applicantId,
+          destination: app.postDestination,
+          startDate: app.startDate,
+          endDate: app.endDate,
+          post: null as any,
+          otherUser: { 
+            name: app.applicantName, 
+            email: app.applicantEmail, 
+            avatarEmoji: app.avatar ?? null
+          }
         });
       }
     });
@@ -174,19 +208,28 @@ export function ChatSlideModal({
 
   const availableChats = getAvailableChats();
 
-  const handleCreateNewChat = (item: typeof availableChats[0]) => {
-    onCreateOneOnOneChat(item.postId, item.otherUser.email);
-    // 채팅 생성 후 자동으로 해당 채팅방 열기
-    setTimeout(() => {
-      const newChat = oneOnOneChats.find(
-        chat => chat.postId === item.postId && 
-        (chat.applicantId === item.otherUser.email || chat.postAuthorId === item.otherUser.email)
-      );
-      if (newChat) {
-        const post = getPostInfo(newChat);
-        setSelectedChat({ type: "one-on-one", chat: newChat, post });
-      }
-    }, 100);
+  // const handleCreateNewChat = (item: typeof availableChats[0]) => {
+  //   console.log("postId:", item.postId, "applicantId:", item.applicantId); 
+  //   onCreateOneOnOneChat(item.postId, item.applicantId);
+  //   // 채팅 생성 후 자동으로 해당 채팅방 열기
+  //   setTimeout(() => {
+  //     const newChat = oneOnOneChats.find(
+  //       chat => chat.postId === item.postId && 
+  //       (chat.applicantId === item.otherUser.email || chat.postAuthorId === item.otherUser.email)
+  //     );
+  //     if (newChat) {
+  //       const post = getPostInfo(newChat);
+  //       setSelectedChat({ type: "one-on-one", chat: newChat, post });
+  //     }
+  //   }, 100);
+  // };
+
+  const handleCreateNewChat = async (item: typeof availableChats[0]) => {
+    const newRoom = await onCreateOneOnOneChat(item.postId, item.applicantId);
+    if (newRoom) {
+      const post = getPostInfo(newRoom);
+      setSelectedChat({ type: "one-on-one", chat: newRoom, post });
+    }
   };
 
   const handleLeaveChat = (chatId: string, chatName: string) => {
@@ -206,13 +249,15 @@ export function ChatSlideModal({
     setMessageInput("");
   };
 
-  const handleSelectOneOnOne = (chat: OneOnOneChat) => {
+  const handleSelectOneOnOne = async (chat: OneOnOneChat) => {
     const post = getPostInfo(chat);
     setSelectedChat({ type: "one-on-one", chat, post });
+    setReadMessageCounts(prev => ({ ...prev, [chat.id]: chat.messages.length }));
+    onMarkAsRead(chat.id);
+    await markRoomAsRead(chat.id);
   };
 
   const allChatsEmpty = oneOnOneChats.length === 0;
-  const totalUnreadCount = 0; // 추후 구현 가능
 
   return (
     <>
@@ -301,7 +346,7 @@ export function ChatSlideModal({
                           <div className="chat-slide-chatCardContent">
                             <div className="chat-slide-avatarWrapper">
                               <div className={`chat-slide-avatar chat-slide-avatarPink`}>
-                                {item.otherUser.avatar || "👤"}
+                                {item.otherUser.avatarEmoji || "👤"}
                               </div>
                               <div className="chat-slide-onlineDot"></div>
                             </div>
@@ -316,11 +361,11 @@ export function ChatSlideModal({
                               </div>
                               <div className="chat-slide-chatLocation">
                                 <MapPin size={14} />
-                                {item.post.destination}
+                                {item.destination}
                               </div>
                               <div className="chat-slide-chatDates">
                                 <Calendar size={14} />
-                                {item.post.dates.start} ~ {item.post.dates.end}
+                                {item.startDate} ~ {item.endDate}
                               </div>
                             </div>
                           </div>
@@ -346,18 +391,34 @@ export function ChatSlideModal({
                       {oneOnOneChats.map((chat) => {
                         const post = getPostInfo(chat);
                         const otherUser = getOtherUser(chat);
-                        const lastMessage = chat.messages[chat.messages.length - 1];
-                        const unreadCount = 0; // 추후 구현 가능
+                        const lastMessage = chat.messages[chat.messages.length - 1]
 
                         return (
                           <div key={chat.id} className="chat-slide-chatCard">
                             <div className="chat-slide-chatCardContent" onClick={() => handleSelectOneOnOne(chat)}>
                               <div className="chat-slide-avatarWrapper">
-                                <div className={`chat-slide-avatar chat-slide-avatarPink`}>
-                                  {otherUser.avatar}
-                                </div>
-                                {unreadCount > 0 && (
-                                  <div className="chat-slide-unreadBadge">{unreadCount}</div>
+                                <div className={`chat-slide-avatar chat-slide-avatarPink`} style={{ overflow: "hidden" }}>
+                                  {otherUser.profileImage ? (
+                                    <img 
+                                      src={otherUser.profileImage} 
+                                      alt={otherUser.name}
+                                      style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }}
+                                    />
+                                ) : (
+                                  otherUser.avatarEmoji || "👤"
+                                )}
+                              </div>
+                                {chat.unreadCount > 0 && (
+                                  <div style={{
+                                    position: "absolute",
+                                    top: "-2px",
+                                    right: "-2px",
+                                    width: "12px",
+                                    height: "12px",
+                                    borderRadius: "50%",
+                                    background: "#ef4444",
+                                    border: "2px solid white",
+                                  }} />
                                 )}
                               </div>
                               <div className="chat-slide-chatInfo">
@@ -377,7 +438,7 @@ export function ChatSlideModal({
                                 )}
                                 <div className="chat-slide-chatDates">
                                   <Calendar size={14} />
-                                  {post.dates.start} ~ {post.dates.end}
+                                  {post.startDate} ~ {post.endDate}
                                 </div>
                               </div>
                             </div>
@@ -418,7 +479,7 @@ export function ChatSlideModal({
                               <div className="chat-slide-chatCardContent">
                                 <div className="chat-slide-avatarWrapper">
                                   <div className={`chat-slide-avatar chat-slide-avatarPink`}>
-                                    {item.otherUser.avatar || "👤"}
+                                    {item.otherUser.avatarEmoji || "👤"}
                                   </div>
                                   <div className="chat-slide-onlineDot"></div>
                                 </div>
@@ -433,11 +494,11 @@ export function ChatSlideModal({
                                   </div>
                                   <div className="chat-slide-chatLocation">
                                     <MapPin size={14} />
-                                    {item.post.destination}
+                                    {item.destination}
                                   </div>
                                   <div className="chat-slide-chatDates">
                                     <Calendar size={14} />
-                                    {item.post.dates.start} ~ {item.post.dates.end}
+                                    {item.startDate} ~ {item.endDate}
                                   </div>
                                 </div>
                               </div>
@@ -457,7 +518,7 @@ export function ChatSlideModal({
             <div className="chat-slide-header">
               <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                 <div className={`chat-slide-avatar chat-slide-avatarPink`} style={{ width: "40px", height: "40px", fontSize: "20px" }}>
-                  {selectedChat.post.author.avatar}
+                  {selectedChat.post.author.avatarEmoji}
                 </div>
                 <div>
                   <div style={{ fontWeight: 700, fontSize: "16px" }}>{selectedChat.post.author.name}</div>
@@ -469,10 +530,32 @@ export function ChatSlideModal({
               </button>
             </div>
 
+            {/* 만료 배너 */}
+            {new Date(selectedChat.post.endDate) < new Date(new Date().toDateString()) && (
+              <div className="chat-slide-expiredBanner">
+                <span className="expired-icon">🕊️</span>
+                <div className="expired-text">
+                  <span className="expired-main">여행 기간이 종료되었습니다</span>
+                  <span className="expired-sub">이 채팅방은 더 이상 메시지를 보낼 수 없어요</span>
+                </div>
+              </div>
+            )}
+
             <div style={{ flex: 1, overflowY: "auto", padding: "20px", background: "#eff6ff" }}>
               <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                 {selectedChat.chat.messages.map((msg) => {
-                  const isMyMessage = msg.senderId === CURRENT_USER.email;
+                  if (msg.type === "LEAVE" || msg.type === "SYSTEM") {
+                    return (
+                      <div key={msg.id} className="chat-slide-systemMessage">
+                        {msg.content}
+                      </div>
+                    );
+                  }
+                  
+                  const myEmail = selectedChat.chat.postAuthor.id === currentUserId
+                    ? selectedChat.chat.postAuthor.email
+                    : selectedChat.chat.applicant.email;
+                  const isMyMessage = msg.senderId === myEmail;
 
                   return (
                     <div key={msg.id} style={{ display: "flex", justifyContent: isMyMessage ? "flex-end" : "flex-start" }}>
@@ -503,36 +586,45 @@ export function ChatSlideModal({
             </div>
 
             <div style={{ padding: "16px", background: "white", borderTop: "2px solid black" }}>
-              <div style={{ display: "flex", gap: "8px" }}>
-                <input
-                  type="text"
-                  value={messageInput}
-                  onChange={(e) => setMessageInput(e.target.value)}
-                  onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
-                  placeholder="메시지 입력..."
-                  style={{
-                    flex: 1,
-                    padding: "12px",
-                    border: "2px solid black",
-                    fontFamily: "monospace",
-                    fontSize: "14px"
-                  }}
-                />
-                <button
-                  onClick={handleSendMessage}
-                  disabled={!messageInput.trim()}
-                  style={{
-                    padding: "12px 16px",
-                    background: "#fbbf24",
-                    border: "2px solid black",
-                    cursor: messageInput.trim() ? "pointer" : "not-allowed",
-                    boxShadow: "3px 3px 0 0 black",
-                    opacity: messageInput.trim() ? 1 : 0.5
-                  }}
-                >
-                  <Send size={20} />
-                </button>
-              </div>
+              {(() => {
+                const isExpired = new Date(selectedChat.post.endDate) < new Date(new Date().toDateString());
+                return (
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    <input
+                      type="text"
+                      value={messageInput}
+                      onChange={(e) => setMessageInput(e.target.value)}
+                      onKeyPress={(e) => e.key === "Enter" && !isExpired && handleSendMessage()}
+                      placeholder={isExpired ? "종료된 채팅방입니다" : "메시지 입력..."}
+                      disabled={isExpired}
+                      style={{
+                        flex: 1,
+                        padding: "12px",
+                        border: "2px solid black",
+                        fontFamily: "monospace",
+                        fontSize: "14px",
+                        opacity: isExpired ? 0.5 : 1,
+                        cursor: isExpired ? "not-allowed" : "text",
+                        background: isExpired ? "#f5f5f5" : "white",
+                      }}
+                    />
+                    <button
+                      onClick={handleSendMessage}
+                      disabled={!messageInput.trim() || isExpired}
+                      style={{
+                        padding: "12px 16px",
+                        background: isExpired ? "#ddd" : "#fbbf24",
+                        border: "2px solid black",
+                        cursor: !messageInput.trim() || isExpired ? "not-allowed" : "pointer",
+                        boxShadow: isExpired ? "none" : "3px 3px 0 0 black",
+                        opacity: !messageInput.trim() || isExpired ? 0.5 : 1,
+                      }}
+                    >
+                      <Send size={20} />
+                    </button>
+                  </div>
+                );
+              })()}
             </div>
           </>
         )}

@@ -1,14 +1,14 @@
 // components/mate/ChatFAB.tsx
 
 import { MessageSquare } from "lucide-react";
-import "../../styles/ChatFAB.css";
+import "../styles/ChatFAB.css";
 
 interface ChatFABProps {
   onClick: () => void;
   unreadCount?: number;
 }
 
-export function ChatFAB({ onClick, unreadCount = 0 }: ChatFABProps): JSX.Element {
+export function ChatFAB({ onClick, unreadCount = 0 }: ChatFABProps){
   return (
     <button className="chat-fab-fabBtn" onClick={onClick}>
       {unreadCount > 0 && (

@@ -1,8 +1,8 @@
 // components/mate/chat/OneOnOneChatModal.tsx
 
 import { useEffect, useRef } from "react";
-import type { Post } from "../../hooks/mate.types";
-import type { ChatMessage } from "../../hooks/chat.types";  // 경로 수정
+import type { Post } from "../../mate/hooks/mate.types";
+import type { ChatMessage } from "../hooks/chat.types";  // 경로 수정
 import ChatBubble from "./ChatBubble";
 import ChatInput from "./ChatInput";    
 // import { CURRENT_USER } from "../../hooks/mate.constants";

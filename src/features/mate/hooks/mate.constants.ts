@@ -1,15 +1,15 @@
 // mate.constants.ts
 
-import type { Author, Post, ReceivedApplication } from "./mate.types";
+import type { Author, Post, ApplicationResponse } from "./mate.types";
 
 export const POSTS_PER_PAGE = 5;
 
 export const ALL_TAGS = ["맛집탐방", "액티비티", "힐링", "문화탐방", "쇼핑", "자연", "사진", "야경"];
 
 // 프론트엔드 표시용 옵션들
-export const GENDER_OPTIONS = ["전체", "남성", "여성", "무관"];
+export const GENDER_OPTIONS = ["남성", "여성", "무관"];
 export const AGE_OPTIONS = ["전체", "20대", "30대", "40대", "50대+"];
-export const TRANSPORT_OPTIONS = ["비행기", "버스", "기차", "자차", "도보"];
+export const TRANSPORT_OPTIONS = ["비행기", "버스", "기차", "자차", "도보", "렌트카", "택시"];
 export const TRAVEL_TYPE_OPTIONS = ["맛집탐방", "액티비티", "힐링", "문화탐방", "쇼핑", "자연", "사진", "야경"];
 export const AGE_GROUP_OPTIONS = ["20대", "30대", "40대", "50대+"];
 
@@ -31,6 +31,7 @@ export const GENDER_PREFERENCE_MAP: { [key: string]: string } = {
 };
 
 export const AGE_GROUP_MAP: { [key: string]: string } = {
+  "전체": "all",
   "20대": "20s",
   "30대": "30s",
   "40대": "40s",

@@ -1,5 +1,5 @@
 // components/mate/chat/ChatBubble.tsx
-import type { ChatMessage } from "../../hooks/chat.types";
+import type { ChatMessage } from "../hooks/chat.types";
 
 interface ChatBubbleProps {
   message: ChatMessage;

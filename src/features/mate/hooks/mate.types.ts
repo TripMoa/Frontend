@@ -59,25 +59,25 @@ export interface Applicant {
   budget?: string;
 }
 
-export interface MyApplication {
-  id: string;
-  postId: number;
-  postDestination: string;
-  startDate: string;
-  endDate: string;
-  postAuthor: Author;
-  applicant: Applicant;
-}
+// export interface MyApplication {
+//   id: string;
+//   postId: number;
+//   postDestination: string;
+//   startDate: string;
+//   endDate: string;
+//   postAuthor: Author;
+//   applicant: Applicant;
+// }
 
-export interface ReceivedApplication {
-  id: string;
-  postId: number;
-  postAuthorEmail: string;
-  postDestination: string;
-  startDate: string;
-  endDate: string;
-  applicant: Applicant;
-}
+// export interface ReceivedApplication {
+//   id: string;
+//   postId: number;
+//   postAuthorEmail: string;
+//   postDestination: string;
+//   startDate: string;
+//   endDate: string;
+//   applicant: Applicant;
+// }
 
 export interface PostStats {
   [postId: number]: {
@@ -91,6 +91,7 @@ export interface SelectedApplicant {
   postId: number;
   postDestination: string;
   applicant: Applicant;
+  applicantId: number;
 }
 
 export interface ApplicationRequest {
@@ -98,10 +99,22 @@ export interface ApplicationRequest {
 }
 
 export interface ApplicationResponse {
-  applicant: User;
-  matePost: Post;
+  id: number;
+  applicantId: number;
+  applicantName: string;
+  applicantEmail: string;
+  postAuthorName: string;
+  postAuthorEmail: string;
+  postAuthorAvatar: string | null;
+  startDate: string;
+  endDate: string;
   status: ApplyStatus;
   content: string;
+  matePostId: number;
+  postDestination: string;
+  avatar: string | null;
+  age: number;
+  gender: string;
 }
 
 export interface User {

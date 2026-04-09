@@ -5,6 +5,7 @@ import {
   GENDER_PREFERENCE_MAP,
   AGE_GROUP_MAP
 } from "./mate.constants";
+import { useChat } from "../../chat/hooks/useChat";
 
 const API_BASE_URL = "http://localhost:8080/api";
 
@@ -15,6 +16,8 @@ export function useMate() {
   const [receivedApplications, setReceivedApplications] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
   const token = localStorage.getItem("accessToken");
+
+  const { createRoom } = useChat();
 
   const fetchPosts = useCallback(async () => {
     setLoading(true);
@@ -203,29 +206,20 @@ export function useMate() {
       });
       if (!response.ok) throw new Error("데이터 로딩 실패");
       const data = await response.json();
-      
-      const mappedData = data.map((app: any) => ({
-        id: app.id,
-        postId: app.matePostId,
-        postDestination: app.postDestination,
-        status: app.status,
-        applicant: {
-          name: app.applicantName,
-          email: app.applicantEmail,
-          message: app.content,
-          avatar: app.avatar || "👤",
-          age: app.age,
-          gender: app.gender,
-        }
-      }));
-      setReceivedApplications(mappedData);
+
+      setReceivedApplications(data);
     } catch (err) {
-      console.error("신청 목록 로딩 실패", err);
     }
   }, [token]);
 
   // 2. 승인/거절 처리 (상태 업데이트 로직 포함)
-  const handleApplicationStatus = async (applyId: string, type: 'approve' | 'reject') => {
+  const handleApplicationStatus = async (
+    applyId: string,
+    type: 'approve' | 'reject',
+    postId?: number,
+    onApproved?: (postId: number, applicantId?: number) => unknown,
+    applicantId?: number,
+  ) => {
     try {
       const response = await fetch(`${API_BASE_URL}/mate/applications/${applyId}/${type}`, {
         method: "PUT",
@@ -236,14 +230,29 @@ export function useMate() {
       
       if (response.ok) {
         alert(type === 'approve' ? "승인되었습니다." : "거절되었습니다.");
-        fetchReceivedApplications(); // 목록 새로고침
+        if (type === 'approve' && postId && onApproved) {
+          onApproved(postId, applicantId);  // createRoom 호출은 Mate.tsx에서
+        }
+        fetchReceivedApplications();
       } else {
         alert(errorData.message || "이미 처리가 완료된 신청서입니다.");
       }
     } catch (err) {
-      console.error(err);
     }
   };
+
+  // 3. 보낸 신청서 조회하기
+  const fetchSentApplications = useCallback(async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/mate/applications/sent`, {
+        headers: { "Authorization": `Bearer ${localStorage.getItem("accessToken")}`}
+      });
+      if(!response.ok) throw new Error("데이터 로딩 실패");
+      const data = await response.json();
+      setApplications(data);
+    } catch (err) {
+    }
+  }, []);
 
   return {
     posts,
@@ -258,6 +267,7 @@ export function useMate() {
     fetchReceivedApplications,
     receivedApplications,
     handleApplicationStatus,
+    fetchSentApplications,
     getApplicantStatus: (id: string) => {
       const app = receivedApplications.find(a => String(a.id) === String(id));
       return app?.status || "pending"; 

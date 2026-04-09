@@ -3,6 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { ArrowUpDown, User, ChevronDown } from "lucide-react";
 
 import { useMate } from "../hooks/useMate";
+import { useChat } from "../../chat/hooks/useChat";
+import { ChatFAB } from "../../chat/components/ChatFAB";
+import { ChatSlideModal } from "../../chat/components/ChatSlideModal";
 import { useMateFilters } from "../hooks/useMateFilters";
 import { usePagination } from "../hooks/usePagination";
 import { SORT_OPTIONS, getSortLabel, POSTS_PER_PAGE, TRANSPORT_MAP, GENDER_PREFERENCE_MAP, AGE_GROUP_MAP } from "../hooks/mate.constants";
@@ -17,6 +20,7 @@ import {
 } from "../components";
 
 import "../styles/Mate.css";
+import "../../chat/styles/ChatFAB.css";
 
 export default function Mate() {
   const navigate = useNavigate();
@@ -32,9 +36,12 @@ export default function Mate() {
   const [selectedTransport, setSelectedTransport] = useState("");
   const [selectedGender, setSelectedGender] = useState("");
   const [selectedAgeGroup, setSelectedAgeGroup] = useState("");
+  const [showChatModal, setShowChatModal] = useState(false);
+  
+  const { chatRooms, createRoom, sendMessage, refreshRooms, markAsRead, leaveRoom } = useChat();
 
   const { posts, loading, error, fetchPosts, createPost, deletePost, toggleLike,
-    applications, receivedApplications, fetchReceivedApplications, handleApplicationStatus, getApplicantStatus
+    applications, receivedApplications, fetchSentApplications, fetchReceivedApplications, handleApplicationStatus, getApplicantStatus
    } = useMate();
 
   const {
@@ -338,9 +345,37 @@ export default function Mate() {
               const app = receivedApplications.find(a => a.id === id);
               return app?.status || "pending";
           }}
-          onApprove={(id) => handleApplicationStatus(id, 'approve')}
+          onApprove={(id, postId, applicantId) => handleApplicationStatus(id, 'approve')}
           onReject={(id) => handleApplicationStatus(id, 'reject')}
           onClose={() => setShowReceivedModal(false)}
+        />
+      )}
+
+      <ChatFAB 
+        onClick={() => {
+          refreshRooms();
+          fetchSentApplications();
+          fetchReceivedApplications();
+          setShowChatModal(true);
+        }}
+        unreadCount={0}
+      />
+
+      {showChatModal && (
+        <ChatSlideModal
+          isOpen={showChatModal}
+          onClose={() => setShowChatModal(false)}
+          oneOnOneChats={chatRooms}
+          allPosts={posts}
+          myApplications={applications}
+          receivedApplications={receivedApplications}
+          onSendOneOnOneMessage={(chatId, content) => sendMessage(chatId, content)}
+          onCreateOneOnOneChat={async (postId, applicantId) => {
+            const room = await createRoom(Number(postId), applicantId!);
+            return room;
+          }}
+          onLeaveOneOnOneChat={(chatId) => {leaveRoom(chatId)}}
+          onMarkAsRead={(chatId) => markAsRead(chatId)}
         />
       )}
 
