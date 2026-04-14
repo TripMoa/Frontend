@@ -1,12 +1,22 @@
 // src/features/workspace/components/expense/sections/ExpenseList.tsx
 import React from "react";
+import type {
+  ExpenseItem,
+  ExpenseMember,
+  ExpenseSettings,
+  ShareType,
+} from "../../../hooks/expense.ui.types";
+
+interface MemberLike {
+  nickname: ExpenseMember;
+}
 
 interface ExpenseListProps {
-  detailsFiltered: any[];
-  visibleDetails: any[];
-  settings: any;
-  shareType: "ALL" | "SHARED" | "PERSONAL";
-  setShareType: (t: any) => void;
+  detailsFiltered: ExpenseItem[];
+  visibleDetails: ExpenseItem[];
+  settings: ExpenseSettings;
+  shareType: ShareType;
+  setShareType: (t: ShareType) => void;
   activePayer: string;
   setActivePayer: (p: string) => void;
   activeCat: string;
@@ -16,9 +26,9 @@ interface ExpenseListProps {
   setVisibleCount: React.Dispatch<React.SetStateAction<number>>;
   detailsSum: number;
   CAT_LABEL: Record<string, string>;
-  members: any[];
+  members: MemberLike[];
   openEditModal: (id: number) => void;
-  viewReceipt: (e: React.MouseEvent, base64: string) => void;
+  viewReceipt: (receiptUrl: string) => void;
   openAddModal: () => void;
   detailsRef: React.RefObject<HTMLDivElement | null>;
 }
@@ -44,7 +54,9 @@ const ExpenseList: React.FC<ExpenseListProps> = ({
   openAddModal,
   detailsRef,
 }) => {
-  const getInvolvedLabel = (item: any) => {
+  const SHARE_TYPES: ShareType[] = ["ALL", "SHARED", "PERSONAL"];
+
+  const getInvolvedLabel = (item: ExpenseItem) => {
     const unique = Array.from(new Set((item.involved ?? []).filter(Boolean)));
 
     if (unique.length === 0) return "-";
@@ -61,11 +73,11 @@ const ExpenseList: React.FC<ExpenseListProps> = ({
           DETAILS
           {settings.paymentMode !== "POOL" && (
             <div className="seg">
-              {["ALL", "SHARED", "PERSONAL"].map((t) => (
+              {SHARE_TYPES.map((t) => (
                 <button
                   key={t}
                   className={`seg-btn ${shareType === t ? "active" : ""}`}
-                  onClick={() => setShareType(t as any)}
+                  onClick={() => setShareType(t)}
                 >
                   {t === "ALL" ? "전체" : t === "SHARED" ? "공동" : "개인"}
                 </button>
@@ -132,7 +144,14 @@ const ExpenseList: React.FC<ExpenseListProps> = ({
                   {item.receipt && (
                     <span
                       className="receipt-link"
-                      onClick={(e) => viewReceipt(e, item.receipt!)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+
+                        const receiptUrl = item.receipt;
+                        if (!receiptUrl) return;
+
+                        viewReceipt(receiptUrl);
+                      }}
                     >
                       <i className="fa-solid fa-paperclip"></i>{" "}
                       {item.fileName || "영수증"}

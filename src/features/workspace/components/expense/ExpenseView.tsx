@@ -5,13 +5,20 @@ import "../../styles/center.css";
 
 import type { UseExpensesStore } from "../../hooks/useExpenses";
 import type {
+  CategoryDisplayItem,
+  DepositStatusRow,
   ExpenseMember,
   ExpenseSettings,
+  MemberStatsRow,
+  ShareType,
+} from "../../hooks/expense.ui.types";
+import {
+  PERSONAL_REFERENCE_KEY,
+  STATUS_PAGE_SIZE,
 } from "../../hooks/expense.ui.types";
 import { isSharedItem } from "../../hooks/expense.calc";
 
 import PoolDepositModal from "./modal/PoolDepositModal";
-
 import CalendarPopover from "./CalendarPopover";
 import TripSettings from "./sections/TripSettings";
 import ExpenseSummary from "./sections/ExpenseSummary";
@@ -63,8 +70,6 @@ const ExpenseView: React.FC<Props> = ({ store, onOpenSettleDetail }) => {
     ETC: "기타",
   };
 
-  const PERSONAL_REFERENCE_KEY = "PERSONAL_REFERENCE";
-
   const [dayOpen, setDayOpen] = useState(false);
   const [calMonth, setCalMonth] = useState(() => new Date());
   const [daySelectedDates, setDaySelectedDates] = useState<string[]>([]);
@@ -112,12 +117,34 @@ const ExpenseView: React.FC<Props> = ({ store, onOpenSettleDetail }) => {
     setDepositOpen(true);
   };
 
-  const viewReceipt = (e: React.MouseEvent, base64: string) => {
-    e.stopPropagation();
-    const win = window.open("", "_blank");
-    if (win) {
-      win.document.write(`<img src="${base64}" style="max-width:100%">`);
+  const resolveReceiptSrc = (receipt: string) => {
+    if (!receipt) return "";
+
+    if (receipt.startsWith("data:image")) return receipt;
+
+    if (receipt.startsWith("http://") || receipt.startsWith("https://")) {
+      return receipt;
     }
+
+    return `${import.meta.env.VITE_API_BASE_URL}${receipt}`;
+  };
+
+  const viewReceipt = (receiptUrl: string) => {
+    const src = resolveReceiptSrc(receiptUrl);
+    if (!src) return;
+
+    const win = window.open("", "_blank");
+    if (!win) return;
+
+    win.document.write(`
+    <html>
+      <head><title>Receipt</title></head>
+      <body style="margin:0;display:flex;justify-content:center;align-items:flex-start;background:#111;">
+        <img src="${src}" style="max-width:100%;height:auto;" alt="receipt" />
+      </body>
+    </html>
+  `);
+    win.document.close();
   };
 
   const formatWon = (value: number | string) => {
@@ -132,10 +159,13 @@ const ExpenseView: React.FC<Props> = ({ store, onOpenSettleDetail }) => {
     return Number.isNaN(num) ? 0 : num;
   };
 
-  const buildNextSettingsFromInput = (): ExpenseSettings | null => {
+  const buildNextSettingsFromInput = (
+    fixedBudget?: number,
+  ): ExpenseSettings | null => {
     if (!settings) return null;
 
-    const budget = parseWon(sharedBudgetInput);
+    const budget =
+      fixedBudget !== undefined ? fixedBudget : parseWon(sharedBudgetInput);
 
     return {
       ...settings,
@@ -144,30 +174,16 @@ const ExpenseView: React.FC<Props> = ({ store, onOpenSettleDetail }) => {
   };
 
   const handlePreviewSettings = async (fixedBudget?: number) => {
-    if (!settings) return;
-
-    const budget =
-      fixedBudget !== undefined ? fixedBudget : parseWon(sharedBudgetInput);
-
-    const nextSettings = {
-      ...settings,
-      sharedBudget: Math.max(0, Math.floor(budget)),
-    };
+    const nextSettings = buildNextSettingsFromInput(fixedBudget);
+    if (!nextSettings) return;
 
     setSharedBudget(nextSettings.sharedBudget);
     await previewSettings(nextSettings);
   };
 
   const handleApplySettings = async (fixedBudget?: number) => {
-    if (!settings) return;
-
-    const budget =
-      fixedBudget !== undefined ? fixedBudget : parseWon(sharedBudgetInput);
-
-    const nextSettings = {
-      ...settings,
-      sharedBudget: Math.max(0, Math.floor(budget)),
-    };
+    const nextSettings = buildNextSettingsFromInput(fixedBudget);
+    if (!nextSettings) return;
 
     setSharedBudget(nextSettings.sharedBudget);
     await applySettings(nextSettings);

@@ -28,8 +28,6 @@ export type ExpenseCreateRequest = {
   autoIncludePayer?: boolean;
   splitMode: SplitMode;
   splits?: ExpenseSplitCreateRequest[];
-  receiptUrl?: string;
-  receiptFileName?: string;
 };
 
 export type ExpensePreviewManualSplitRequest = {
@@ -62,6 +60,8 @@ export type ExpenseResponse = {
   payMethod: PayMethod;
   isShared: boolean;
   splitMode: SplitMode;
+  receiptUrl: string | null;
+  receiptFileName: string | null;
   paidAt: string;
   createdAt: string;
 };

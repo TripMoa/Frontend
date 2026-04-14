@@ -8,6 +8,10 @@ export type SplitMap = Partial<Record<ExpenseMember, number>>;
 export type PaymentMode = "INDIVIDUAL" | "POOL" | "HYBRID";
 export type RoundingRule = "PAYER" | "SEQUENTIAL" | "RANDOM";
 export type RemainingRule = "AUTO" | "EQUAL" | "CARRY";
+export type ShareType = "ALL" | "SHARED" | "PERSONAL";
+
+export const PERSONAL_REFERENCE_KEY = "PERSONAL_REFERENCE" as const;
+export const STATUS_PAGE_SIZE = 3;
 
 export interface ExpenseItem {
   id: number;
@@ -45,8 +49,14 @@ export interface CategoryStatsRow {
   percent: number;
 }
 
+export interface CategoryDisplayItem {
+  cat: string;
+  amount: number;
+  percent: number;
+}
+
 export interface PersonalCategoryReferenceRow {
-  key: "PERSONAL_REFERENCE";
+  key: typeof PERSONAL_REFERENCE_KEY;
   amount: number;
   percent: number;
 }
@@ -79,4 +89,13 @@ export interface DepositLogItem {
   memo?: string;
   depositStatus: "PENDING" | "CONFIRMED" | "REJECTED";
   depositStatusLabel: string;
+}
+
+export interface DepositStatusRow {
+  mem: ExpenseMember;
+  targetAmount: number;
+  depositedAmount: number;
+  remainingAmount: number;
+  overpaidAmount: number;
+  status: "UNPAID" | "PARTIAL" | "PAID" | "OVERPAID";
 }
