@@ -2,9 +2,11 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import "./../../../styles/poolModal.css";
+import BaseModal from "../../../../../shared/components/BaseModal";
 
 import type { UseExpensesStore } from "../../../hooks/useExpenses";
 import type { ExpenseMember } from "../../../hooks/expense.ui.types";
+import { useTripContext } from "../../../hooks/useTripContext";
 
 type Props = {
   open: boolean;
@@ -56,8 +58,9 @@ const PoolDepositModal: React.FC<Props> = ({
     deleteDepositById,
     confirmDepositById,
     rejectDepositById,
-    ownerUserId,
   } = store;
+
+  const { isOwner } = useTripContext();
 
   const [amount, setAmount] = useState<string>("");
   const [date, setDate] = useState<string>(todayYmd());
@@ -69,6 +72,10 @@ const PoolDepositModal: React.FC<Props> = ({
 
   useEffect(() => {
     if (!open || !member) return;
+
+    setAmount("");
+    setDate(todayYmd());
+    setMemo("");
 
     void loadMemberDepositLogs(member);
     requestAnimationFrame(() => amountRef.current?.focus());
@@ -139,171 +146,157 @@ const PoolDepositModal: React.FC<Props> = ({
     };
 
   return (
-    <div className="pdm-backdrop" onMouseDown={onClose}>
-      <div
-        className="pdm-modal"
-        role="dialog"
-        aria-modal="true"
-        onMouseDown={(e) => e.stopPropagation()}
-      >
-        <div className="pdm-head">
-          <div>
-            <div className="pdm-title">&gt;&gt; DEPOSIT LOG</div>
+    <BaseModal
+      open={open}
+      title="DEPOSIT LOG"
+      onClose={onClose}
+      className="pdm-modal"
+      width="min(980px, 92vw)"
+    >
+      <div className="pdm-body">
+        <div className="pdm-form">
+          <div className="pdm-field">
+            <div className="pdm-panel-title">입금액</div>
+            <input
+              ref={amountRef}
+              value={amount}
+              onChange={(e) => {
+                const raw = e.target.value;
+                const parsed = parseWonInput(raw);
+                setAmount(parsed ? formatWonInput(parsed) : "");
+              }}
+              onKeyDown={onEnterNext(dateRef)}
+              placeholder="예: ₩ 300,000"
+              inputMode="numeric"
+              disabled={depositLoading}
+            />
           </div>
-          <button className="pdm-close" onClick={onClose}>
-            CLOSE [X]
+
+          <div className="pdm-field">
+            <div className="pdm-panel-title">날짜</div>
+            <input
+              ref={dateRef}
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              onKeyDown={onEnterNext(memoRef)}
+              disabled={depositLoading}
+            />
+          </div>
+
+          <div className="pdm-field pdm-memo">
+            <div className="pdm-panel-title">메모</div>
+            <input
+              ref={memoRef}
+              value={memo}
+              onChange={(e) => setMemo(e.target.value)}
+              onKeyDown={onEnterNext(undefined, true)}
+              placeholder="선택"
+              disabled={depositLoading}
+            />
+          </div>
+
+          <button
+            className="pdm-add"
+            onClick={() => void submit()}
+            disabled={depositLoading}
+          >
+            {depositLoading ? "처리 중..." : "+ ADD"}
           </button>
         </div>
 
-        <div className="pdm-body">
-          <div className="pdm-form">
-            <div className="pdm-field">
-              <div className="pdm-panel-title">입금액</div>
-              <input
-                ref={amountRef}
-                value={amount}
-                onChange={(e) => {
-                  const raw = e.target.value;
-                  const parsed = parseWonInput(raw);
-                  setAmount(parsed ? formatWonInput(parsed) : "");
-                }}
-                onKeyDown={onEnterNext(dateRef)}
-                placeholder="예: ₩ 300,000"
-                inputMode="numeric"
-                disabled={depositLoading}
-              />
-            </div>
+        <div className="pdm-list">
+          <div className="pdm-summary">
+            <span className="pdm-summary-main">
+              {member} · 목표 {formatWon(targetPerMember)} · 현재{" "}
+              {formatWon(confirmedSum)}
+            </span>
 
-            <div className="pdm-field">
-              <div className="pdm-panel-title">날짜</div>
-              <input
-                ref={dateRef}
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                onKeyDown={onEnterNext(memoRef)}
-                disabled={depositLoading}
-              />
-            </div>
-
-            <div className="pdm-field pdm-memo">
-              <div className="pdm-panel-title">메모</div>
-              <input
-                ref={memoRef}
-                value={memo}
-                onChange={(e) => setMemo(e.target.value)}
-                onKeyDown={onEnterNext(undefined, true)}
-                placeholder="선택"
-                disabled={depositLoading}
-              />
-            </div>
-
-            <button
-              className="pdm-add"
-              onClick={() => void submit()}
-              disabled={depositLoading}
+            <span
+              className={`pdm-summary-gap ${
+                diff < 0 ? "pdm-neg" : diff > 0 ? "pdm-pos" : ""
+              }`}
             >
-              {depositLoading ? "처리 중..." : "+ ADD"}
-            </button>
+              ({diff < 0 ? "부족 " : diff > 0 ? "초과 " : "달성 "}
+              {formatWon(Math.abs(diff))})
+            </span>
           </div>
 
-          <div className="pdm-list">
-            <div className="pdm-summary">
-              <span className="pdm-summary-main">
-                {member} · 목표 {formatWon(targetPerMember)} · 현재{" "}
-                {formatWon(confirmedSum)}
-              </span>
+          <div className="pdm-list-head">
+            <span>입금 기록</span>
+            <span className="pdm-count"> {logs.length}건</span>
+          </div>
 
-              <span
-                className={`pdm-summary-gap ${
-                  diff < 0 ? "pdm-neg" : diff > 0 ? "pdm-pos" : ""
-                }`}
-              >
-                ({diff < 0 ? "부족 " : diff > 0 ? "초과 " : "달성 "}
-                {formatWon(Math.abs(diff))})
-              </span>
+          {logs.length === 0 ? (
+            <div className="pdm-empty">
+              {depositLoading ? "불러오는 중..." : "아직 입금 내역이 없습니다."}
             </div>
+          ) : (
+            <ul>
+              {logs
+                .slice()
+                .sort((a, b) => (a.depositDate < b.depositDate ? 1 : -1))
+                .map((it) => (
+                  <li key={it.id} className="pdm-item">
+                    <div className="pdm-item-left">
+                      <div className="pdm-date">{it.depositDate}</div>
+                      {it.memo && <div className="pdm-memo-txt">{it.memo}</div>}
+                    </div>
 
-            <div className="pdm-list-head">
-              <span>입금 기록</span>
-              <span className="pdm-count"> {logs.length}건</span>
-            </div>
+                    <div className="pdm-amt">{formatWon(it.amount)}</div>
 
-            {logs.length === 0 ? (
-              <div className="pdm-empty">
-                {depositLoading
-                  ? "불러오는 중..."
-                  : "아직 입금 내역이 없습니다."}
-              </div>
-            ) : (
-              <ul>
-                {logs
-                  .slice()
-                  .sort((a, b) => (a.depositDate < b.depositDate ? 1 : -1))
-                  .map((it) => (
-                    <li key={it.id} className="pdm-item">
-                      <div className="pdm-item-left">
-                        <div className="pdm-date">{it.depositDate}</div>
-                        {it.memo && (
-                          <div className="pdm-memo-txt">{it.memo}</div>
-                        )}
-                      </div>
+                    <button
+                      className="pdm-del"
+                      onClick={() => void deleteDepositById(member, it.id)}
+                      disabled={depositLoading}
+                    >
+                      ✕
+                    </button>
 
-                      <div className="pdm-amt">{formatWon(it.amount)}</div>
-
-                      <button
-                        className="pdm-del"
-                        onClick={() => void deleteDepositById(member, it.id)}
-                        disabled={depositLoading}
+                    <div className="pdm-actions">
+                      <span
+                        className={`pdm-status-badge ${
+                          it.depositStatus === "CONFIRMED"
+                            ? "is-confirmed"
+                            : it.depositStatus === "REJECTED"
+                              ? "is-rejected"
+                              : "is-pending"
+                        }`}
                       >
-                        ✕
-                      </button>
+                        {it.depositStatusLabel}
+                      </span>
 
-                      <div className="pdm-actions">
-                        <span
-                          className={`pdm-status-badge ${
-                            it.depositStatus === "CONFIRMED"
-                              ? "is-confirmed"
-                              : it.depositStatus === "REJECTED"
-                                ? "is-rejected"
-                                : "is-pending"
-                          }`}
-                        >
-                          {it.depositStatusLabel}
-                        </span>
+                      {isOwner && it.depositStatus === "PENDING" && (
+                        <>
+                          <button
+                            className="pdm-approve"
+                            onClick={() =>
+                              void confirmDepositById(member, it.id)
+                            }
+                            disabled={depositLoading}
+                          >
+                            승인
+                          </button>
 
-                        {ownerUserId && it.depositStatus === "PENDING" && (
-                          <>
-                            <button
-                              className="pdm-approve"
-                              onClick={() =>
-                                void confirmDepositById(member, it.id)
-                              }
-                              disabled={depositLoading}
-                            >
-                              승인
-                            </button>
-
-                            <button
-                              className="pdm-reject"
-                              onClick={() =>
-                                void rejectDepositById(member, it.id)
-                              }
-                              disabled={depositLoading}
-                            >
-                              거절
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </li>
-                  ))}
-              </ul>
-            )}
-          </div>
+                          <button
+                            className="pdm-reject"
+                            onClick={() =>
+                              void rejectDepositById(member, it.id)
+                            }
+                            disabled={depositLoading}
+                          >
+                            거절
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </li>
+                ))}
+            </ul>
+          )}
         </div>
       </div>
-    </div>
+    </BaseModal>
   );
 };
 

@@ -2,6 +2,8 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { checkEmail } from "../../../api/auth.api";
+import BaseModal from "../../../shared/components/BaseModal";
+import "../styles/TripCreateModal.css";
 import type { UserResponse } from "../../../types/auth.types";
 import type {
   SelectedMember,
@@ -46,8 +48,6 @@ export const TripCreateModal = ({
     [formData.selectedMembers],
   );
 
-  if (!isOpen) return null;
-
   const showTempMessage = (message: string) => {
     setAgentMessage(message);
     window.setTimeout(() => {
@@ -58,9 +58,7 @@ export const TripCreateModal = ({
   const addAgent = async () => {
     const email = agentInput.trim().toLowerCase();
 
-    if (!email) {
-      return;
-    }
+    if (!email) return;
 
     if (!EMAIL_REGEX.test(email)) {
       showTempMessage("이메일 형식이 올바르지 않습니다.");
@@ -118,116 +116,108 @@ export const TripCreateModal = ({
   };
 
   return (
-    <div className="modal-overlay active" onClick={onClose}>
-      <div
-        className="modal-content mission-modal"
-        style={{ width: 650, maxWidth: 700 }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="modal-header-black">
-          <h3 className="modal-title-black">CREATE NEW MISSION</h3>
-          <button className="close-btn-black" onClick={onClose}>
-            CLOSE [X]
-          </button>
+    <BaseModal
+      open={isOpen}
+      onClose={onClose}
+      title="CREATE NEW MISSION"
+      className="tcm-modal"
+      bodyClassName="tcm-body"
+    >
+      <form onSubmit={onSubmit} className="tcm-form">
+        <div className="tcm-field">
+          <label>MISSION TITLE</label>
+          <input
+            type="text"
+            value={formData.title}
+            onChange={(e) =>
+              setFormData((prev) => ({ ...prev, title: e.target.value }))
+            }
+            placeholder="작전명을 입력하세요"
+            required
+          />
         </div>
 
-        <form onSubmit={onSubmit} className="modal-body-neob">
-          <div className="input-group">
-            <label>MISSION TITLE</label>
+        <div className="tcm-date-row">
+          <div className="tcm-field">
+            <label>START DATE</label>
             <input
-              type="text"
-              value={formData.title}
+              type="date"
+              value={formData.tripStartDate}
               onChange={(e) =>
-                setFormData((prev) => ({ ...prev, title: e.target.value }))
+                setFormData((prev) => ({
+                  ...prev,
+                  tripStartDate: e.target.value,
+                }))
               }
-              placeholder="작전명을 입력하세요"
               required
             />
           </div>
 
-          <div className="date-row">
-            <div className="input-group">
-              <label>START DATE</label>
-              <input
-                type="date"
-                value={formData.tripStartDate}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    tripStartDate: e.target.value,
-                  }))
+          <div className="tcm-field">
+            <label>END DATE</label>
+            <input
+              type="date"
+              value={formData.tripEndDate}
+              min={formData.tripStartDate}
+              onChange={(e) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  tripEndDate: e.target.value,
+                }))
+              }
+              required
+            />
+          </div>
+        </div>
+
+        <div className="tcm-field">
+          <label>AGENTS</label>
+
+          <div className="tcm-agent-row">
+            <input
+              type="email"
+              value={agentInput}
+              onChange={(e) => setAgentInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  void addAgent();
                 }
-                required
-              />
-            </div>
-            <div className="input-group">
-              <label>END DATE</label>
-              <input
-                type="date"
-                value={formData.tripEndDate}
-                min={formData.tripStartDate}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    tripEndDate: e.target.value,
-                  }))
-                }
-                required
-              />
-            </div>
+              }}
+              placeholder="이메일 입력"
+            />
+
+            <button
+              type="button"
+              onClick={() => void addAgent()}
+              className="tcm-add-btn"
+              disabled={isCheckingAgent}
+            >
+              {isCheckingAgent ? "CHECKING..." : "ADD"}
+            </button>
           </div>
 
-          <div className="input-group">
-            <label>AGENTS</label>
-            <div className="agent-input-row">
-              <input
-                type="email"
-                value={agentInput}
-                onChange={(e) => setAgentInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    void addAgent();
-                  }
-                }}
-                placeholder="이메일 입력"
-              />
-              <button
-                type="button"
-                onClick={() => void addAgent()}
-                className="add-text-btn"
-                disabled={isCheckingAgent}
-              >
-                {isCheckingAgent ? "CHECKING..." : "ADD"}
-              </button>
-            </div>
-            {agentMessage && (
-              <p className="invite-error-text">⚠ {agentMessage}</p>
-            )}
-            <div className="agent-tag-list">
-              {formData.selectedMembers.map((member) => (
-                <span key={member.userId} className="agent-tag">
-                  {member.name ?? member.email}
-                  <button
-                    type="button"
-                    onClick={() => removeAgent(member.userId)}
-                  >
-                    ×
-                  </button>
-                </span>
-              ))}
-            </div>
-          </div>
+          {agentMessage && <p className="tcm-error">⚠ {agentMessage}</p>}
 
-          <button
-            type="submit"
-            className="submit-btn-black"
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? "SAVING..." : "SAVE MISSION"}
-          </button>
-        </form>
-      </div>
-    </div>
+          <div className="tcm-agent-tags">
+            {formData.selectedMembers.map((member) => (
+              <span key={member.userId} className="tcm-agent-tag">
+                {member.name ?? member.email}
+                <button
+                  type="button"
+                  onClick={() => removeAgent(member.userId)}
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
+        </div>
+
+        <button type="submit" className="tcm-submit" disabled={isSubmitting}>
+          {isSubmitting ? "SAVING..." : "SAVE MISSION"}
+        </button>
+      </form>
+    </BaseModal>
   );
 };
