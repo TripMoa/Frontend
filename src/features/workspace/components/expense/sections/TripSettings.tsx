@@ -60,37 +60,54 @@ const TripSettings: React.FC<TripSettingsProps> = ({
   parseWon,
   inputRef,
 }) => {
-  const showActionButtons = isOwner;
-
   const previewDisabled =
-    !isOwner ||
-    isBootstrapLoading ||
-    isPreviewLoading ||
-    isApplyLoading ||
-    parseWon(sharedBudgetInput) < 0;
+    !isOwner || isBootstrapLoading || isPreviewLoading || isApplyLoading;
 
   const applyDisabled =
     !isOwner || isBootstrapLoading || isApplyLoading || isPreviewLoading;
 
-  const validateAndFixBudget = (rawInput: string): number => {
+  const normalizeBudgetByMemberCount = (rawInput: string) => {
     const currentAmount = parseWon(rawInput);
-    if (currentAmount <= 0) return 0;
 
-    if (currentAmount % memberCount !== 0) {
-      const fixedAmount = Math.floor(currentAmount / memberCount) * memberCount;
-      const difference = currentAmount - fixedAmount;
-
-      alert(
-        `인원 수(${memberCount}명)에 맞춰 균등 분할이 가능하도록 금액을 조정했습니다.\n` +
-          `- 기존: ${formatWon(currentAmount)}\n` +
-          `- 조정: ${formatWon(fixedAmount)} (${formatWon(difference)} 차감)`,
-      );
-
-      setSharedBudgetInput(formatWon(fixedAmount));
-      return fixedAmount;
+    if (currentAmount <= 0) {
+      return {
+        fixedAmount: 0,
+        adjusted: false,
+        difference: 0,
+      };
     }
 
-    return currentAmount;
+    if (currentAmount % memberCount === 0) {
+      return {
+        fixedAmount: currentAmount,
+        adjusted: false,
+        difference: 0,
+      };
+    }
+
+    const fixedAmount = Math.floor(currentAmount / memberCount) * memberCount;
+
+    return {
+      fixedAmount,
+      adjusted: true,
+      difference: currentAmount - fixedAmount,
+    };
+  };
+
+  const validateAndFixBudget = (rawInput: string): number => {
+    const result = normalizeBudgetByMemberCount(rawInput);
+
+    if (result.adjusted) {
+      alert(
+        `인원 수(${memberCount}명)에 맞춰 균등 분할이 가능하도록 금액을 조정했습니다.\n` +
+          `- 기존: ${formatWon(parseWon(rawInput))}\n` +
+          `- 조정: ${formatWon(result.fixedAmount)} (${formatWon(result.difference)} 차감)`,
+      );
+
+      setSharedBudgetInput(formatWon(result.fixedAmount));
+    }
+
+    return result.fixedAmount;
   };
 
   const handlePreviewClick = () => {
@@ -214,7 +231,6 @@ const TripSettings: React.FC<TripSettingsProps> = ({
           </div>
 
           <div className="ts-action">
-            {/* 설정 적용 버튼은 소유자에게만 노출 */}
             {isOwner && (
               <button
                 type="button"
@@ -226,7 +242,6 @@ const TripSettings: React.FC<TripSettingsProps> = ({
               </button>
             )}
 
-            {/* 지출 추가 버튼은 모든 멤버에게 노출 */}
             <button
               type="button"
               className="ts-btn primary"

@@ -1,40 +1,62 @@
 // src\features\workspace\hooks\useWorkspaceCore.tsx
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
+import { useParams } from "react-router-dom";
+
+import {
+  createNoticeGroup as createNoticeGroupApi,
+  deleteNoticeGroup as deleteNoticeGroupApi,
+  getNoticeGroups,
+  renameNoticeGroup as renameNoticeGroupApi,
+} from "../../../api/notice.api";
+
+import type { NoticeGroupResponse } from "../../../types/notice.types";
 
 export type WorkspaceViewType = "timeline" | "expenses" | "voucher" | "notice";
 export type NoticeColor = "white" | "yellow" | "blue" | "green";
 
-export interface NoticeItem {
-  id: number;
-  color: NoticeColor;
-  tag: string;
-  title: string;
-  content: string;
-  isPinned?: boolean;
-}
-
-export interface NoticeGroup {
-  name: string;
-  notices: NoticeItem[];
-}
+/**
+ * [참고]
+ * - 일정은 기존 로컬 로직 유지
+ * - 공지사항은 그룹만 관리하고, 아이템은 useNotices에서 분리 관리
+ *
+ * 기존에는 공지 그룹 내부에 아이템까지 포함한 뒤 name/index 기반으로 수정, 삭제를 처리했지만,
+ * 현재는 공지 그룹을 groupId 기반으로 분리하여 서버 중심 구조로 변경했다.
+ *
+ * 일정은 아직 기존 구조를 유지해야 하므로 관련 함수는 그대로 두고,
+ * 공지사항만 add/rename/delete 전용 함수를 추가했다.
+ *
+ * 추후 일정도 id 기반으로 변경되면,
+ * 수정/삭제 로직을 공통 패턴으로 합칠 수 있다.
+ */
 
 interface WorkspaceCoreState {
   /* state */
   dateLogs: string[];
-  noticeGroups: NoticeGroup[];
+  noticeGroups: NoticeGroupResponse[];
   activeView: WorkspaceViewType;
   currentDay: string;
+  currentNoticeGroupId: number | null;
   currentNoticeGroup: string;
   hideRight: boolean;
+  isNoticeGroupsLoading: boolean;
 
   /* actions */
   selectTab: (title: string, view: WorkspaceViewType) => void;
+  selectNoticeGroup: (groupId: number) => void;
+  reloadNoticeGroups: () => Promise<void>;
+
   addDateLog: () => void;
-  addNoticeGroup: () => void;
+  renameDateLog: (index: number) => void;
+  deleteDateLog: (index: number) => void;
+
+  addNoticeGroup: () => Promise<void>;
+  renameNoticeGroup: (groupId: number) => Promise<void>;
+  deleteNoticeGroup: (groupId: number) => Promise<void>;
+
+  // 기존 Sidebar 호환용
   renameItem: (type: "date" | "notice", index: number) => void;
   deleteItem: (type: "date" | "notice", index: number) => void;
-  updateNotices: (groupName: string, nextNotices: NoticeItem[]) => void;
 
   /* internal setters */
   setHideRight: (v: boolean) => void;
@@ -45,28 +67,61 @@ interface WorkspaceCoreState {
    상수
 ========================= */
 const LS_DATE_LOGS = "tripmoa_date_logs";
-const LS_NOTICE_GROUPS = "tripmoa_notice_groups";
-const LS_CURRENT_NOTICE = "tripmoa_current_notice_group";
-
+const LS_CURRENT_NOTICE_GROUP_ID = "tripmoa_current_notice_group_id";
 const DEFAULT_DAY_LABEL = "DAY ALL";
-const DEFAULT_NOTICE_GROUP_NAME = "TRIP NOTICE";
 
 const normalizeName = (name: string) => name.trim().toLowerCase();
+
+const sortNoticeGroups = (groups: NoticeGroupResponse[]) => {
+  return [...groups].sort((a, b) => {
+    if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder;
+    return a.groupId - b.groupId;
+  });
+};
+
+const pickFallbackNoticeGroupId = (
+  groups: NoticeGroupResponse[],
+): number | null => {
+  if (groups.length === 0) return null;
+
+  const defaultGroup = groups.find((group) => group.isDefault);
+  if (defaultGroup) return defaultGroup.groupId;
+
+  return groups[0].groupId;
+};
 
 /* =========================
    Core Hook (Provider 내부 전용)
 ========================= */
 const useWorkspaceCoreInternal = (): WorkspaceCoreState => {
+  const params = useParams<{ tripId: string }>();
+  const tripId = Number(params.tripId);
+
   const [dateLogs, setDateLogs] = useState<string[]>([]);
-  const [noticeGroups, setNoticeGroups] = useState<NoticeGroup[]>([]);
-  const [isLoaded, setIsLoaded] = useState(false);
+  const [noticeGroups, setNoticeGroups] = useState<NoticeGroupResponse[]>([]);
+  const [isDateLoaded, setIsDateLoaded] = useState(false);
+  const [isNoticeGroupsLoading, setIsNoticeGroupsLoading] = useState(false);
 
   const [activeView, setActiveView] = useState<WorkspaceViewType>("timeline");
   const [currentDay, setCurrentDay] = useState<string>(DEFAULT_DAY_LABEL);
-  const [currentNoticeGroup, setCurrentNoticeGroup] = useState<string>(
-    DEFAULT_NOTICE_GROUP_NAME
-  );
+  const [currentNoticeGroupId, setCurrentNoticeGroupId] = useState<
+    number | null
+  >(null);
   const [hideRight, setHideRight] = useState<boolean>(false);
+
+  const currentNoticeStorageKey = useMemo(
+    () =>
+      `${LS_CURRENT_NOTICE_GROUP_ID}_${Number.isFinite(tripId) ? tripId : "unknown"}`,
+    [tripId],
+  );
+
+  const currentNoticeGroup = useMemo(() => {
+    if (currentNoticeGroupId == null) return "";
+    return (
+      noticeGroups.find((group) => group.groupId === currentNoticeGroupId)
+        ?.name ?? ""
+    );
+  }, [noticeGroups, currentNoticeGroupId]);
 
   /* =========================
      1. localStorage 로드
@@ -84,263 +139,276 @@ const useWorkspaceCoreInternal = (): WorkspaceCoreState => {
       }
     }
 
-    const storedNoticeGroups = localStorage.getItem(LS_NOTICE_GROUPS);
-    if (storedNoticeGroups) {
-      try {
-        const parsed = JSON.parse(storedNoticeGroups);
-        if (Array.isArray(parsed)) {
-          setNoticeGroups(parsed);
-        }
-      } catch {
-        // 파싱 실패 시 무시
-      }
-    }
-
-    const storedActiveGroup = localStorage.getItem(LS_CURRENT_NOTICE);
-    if (storedActiveGroup) {
-      setCurrentNoticeGroup(storedActiveGroup);
-    }
-
-    setIsLoaded(true);
+    setIsDateLoaded(true);
   }, []);
 
   /* =========================
-     2. 공지 그룹 정리 + 기본 TRIP NOTICE 보장
-        - 항상 TRIP NOTICE는 정확히 1개만 존재
-        - 이름 공백/대소문자 정리
+     2. date localStorage 저장
   ========================= */
   useEffect(() => {
-    if (!isLoaded) return;
-
-    setNoticeGroups((prev) => {
-      // 1) name, notices 기본 정리
-      const normalized = prev
-        .filter((g) => g && typeof g.name === "string")
-        .map<NoticeGroup>((g) => ({
-          name: g.name.trim(),
-          notices: Array.isArray(g.notices) ? g.notices : [],
-        }));
-
-      // 2) 이름 기준 중복 제거 (일반 그룹)
-      const dedupedByName = normalized.filter((g, index, self) => {
-        const key = normalizeName(g.name);
-        return index === self.findIndex((x) => normalizeName(x.name) === key);
-      });
-
-      const defaultKey = normalizeName(DEFAULT_NOTICE_GROUP_NAME);
-
-      const tripNoticeGroups = dedupedByName.filter(
-        (g) => normalizeName(g.name) === defaultKey
-      );
-      const otherGroups = dedupedByName.filter(
-        (g) => normalizeName(g.name) !== defaultKey
-      );
-
-      // 3) TRIP NOTICE가 하나도 없으면 새로 추가
-      if (tripNoticeGroups.length === 0) {
-        const defaultGroup: NoticeGroup = {
-          name: DEFAULT_NOTICE_GROUP_NAME,
-          notices: [],
-        };
-        return [defaultGroup, ...otherGroups];
-      }
-
-      // 4) 여러 개 있다면 첫 번째만 남기고 나머지는 버림
-      const [primaryTripNotice] = tripNoticeGroups;
-      return [primaryTripNotice, ...otherGroups];
-    });
-
-    // currentNoticeGroup이 이상한 값이면 TRIP NOTICE로 리셋
-    setCurrentNoticeGroup((prev) => {
-      if (!prev) return DEFAULT_NOTICE_GROUP_NAME;
-      return prev;
-    });
-  }, [isLoaded]);
-
-  /* =========================
-     3. localStorage 저장
-  ========================= */
-  useEffect(() => {
-    if (!isLoaded) return;
+    if (!isDateLoaded) return;
     localStorage.setItem(LS_DATE_LOGS, JSON.stringify(dateLogs));
-    localStorage.setItem(LS_NOTICE_GROUPS, JSON.stringify(noticeGroups));
-    localStorage.setItem(LS_CURRENT_NOTICE, currentNoticeGroup);
-  }, [dateLogs, noticeGroups, currentNoticeGroup, isLoaded]);
+  }, [dateLogs, isDateLoaded]);
 
   /* =========================
-     4. 공지 업데이트 (중복 방지 포함)
+     3. 공지 선택값 로드 (trip 별)
   ========================= */
-  const updateNotices = (groupName: string, nextNotices: NoticeItem[]) => {
-    const targetName = groupName.trim();
-    const targetKey = normalizeName(targetName);
+  useEffect(() => {
+    const stored = localStorage.getItem(currentNoticeStorageKey);
+    if (!stored) {
+      setCurrentNoticeGroupId(null);
+      return;
+    }
 
-    setNoticeGroups((prev) => {
-      // 이미 존재하는지 체크 (이름 공백/대소문자 무시)
-      const index = prev.findIndex((g) => normalizeName(g.name) === targetKey);
+    const parsed = Number(stored);
+    setCurrentNoticeGroupId(Number.isFinite(parsed) ? parsed : null);
+  }, [currentNoticeStorageKey]);
 
-      if (index !== -1) {
-        // 기존 그룹의 notices만 교체
-        return prev.map((g, i) =>
-          i === index ? { ...g, name: g.name.trim(), notices: nextNotices } : g
-        );
-      }
+  /* =========================
+     4. 공지 선택값 저장 (trip 별)
+  ========================= */
+  useEffect(() => {
+    if (currentNoticeGroupId == null) {
+      localStorage.removeItem(currentNoticeStorageKey);
+      return;
+    }
 
-      // 새 그룹 추가
-      return [
-        ...prev,
-        { name: targetName || DEFAULT_NOTICE_GROUP_NAME, notices: nextNotices },
-      ];
-    });
+    localStorage.setItem(currentNoticeStorageKey, String(currentNoticeGroupId));
+  }, [currentNoticeGroupId, currentNoticeStorageKey]);
+
+  /* =========================
+     5. 공지 그룹 전체 조회
+  ========================= */
+  const reloadNoticeGroups = async () => {
+    if (!Number.isFinite(tripId) || tripId <= 0) {
+      setNoticeGroups([]);
+      return;
+    }
+
+    setIsNoticeGroupsLoading(true);
+    try {
+      const response = await getNoticeGroups(tripId);
+      const groups = sortNoticeGroups(response.data ?? []);
+      setNoticeGroups(groups);
+    } catch (error) {
+      console.error("공지 그룹 조회 실패:", error);
+      setNoticeGroups([]);
+    } finally {
+      setIsNoticeGroupsLoading(false);
+    }
   };
 
+  useEffect(() => {
+    void reloadNoticeGroups();
+  }, [tripId]);
+
   /* =========================
-     5. 탭 선택
+     6. 공지 그룹 선택 보정
+     - 저장된 groupId가 있으면 유지
+     - 없으면 기본 그룹(isDefault) 우선
+     - 그것도 없으면 첫 번째 그룹
+  ========================= */
+  useEffect(() => {
+    if (noticeGroups.length === 0) {
+      setCurrentNoticeGroupId(null);
+      return;
+    }
+
+    const exists = noticeGroups.some(
+      (group) => group.groupId === currentNoticeGroupId,
+    );
+    if (exists) return;
+
+    setCurrentNoticeGroupId(pickFallbackNoticeGroupId(noticeGroups));
+  }, [noticeGroups, currentNoticeGroupId]);
+
+  /* =========================
+     7. 탭 선택
+     - timeline/expenses/voucher는 기존 유지
+     - notice는 기존 문자열 선택도 잠시 지원
   ========================= */
   const selectTab = (title: string, view: WorkspaceViewType) => {
     setActiveView(view);
+    setHideRight(false);
 
     if (view === "timeline") {
       setCurrentDay(title);
-      setHideRight(false);
       return;
     }
 
     if (view === "notice") {
-      setCurrentNoticeGroup(title || DEFAULT_NOTICE_GROUP_NAME);
-      setHideRight(false);
-      return;
-    }
+      const matched = noticeGroups.find(
+        (group) => normalizeName(group.name) === normalizeName(title),
+      );
 
-    if (view === "expenses" || view === "voucher") {
-      setHideRight(false);
+      if (matched) {
+        setCurrentNoticeGroupId(matched.groupId);
+      } else if (currentNoticeGroupId == null) {
+        setCurrentNoticeGroupId(pickFallbackNoticeGroupId(noticeGroups));
+      }
+
+      return;
     }
   };
 
+  const selectNoticeGroup = (groupId: number) => {
+    setActiveView("notice");
+    setHideRight(false);
+    setCurrentNoticeGroupId(groupId);
+  };
+
   /* =========================
-     6. 일정/공지 그룹 추가
+     8. 일정(date) 로컬 액션
   ========================= */
   const addDateLog = () => {
     const name = prompt(
       "추가할 일정 이름을 입력하세요.",
-      `DAY ${dateLogs.length + 1}`
+      `DAY ${dateLogs.length + 1}`,
     );
     if (!name) return;
+
     const trimmed = name.trim();
     if (!trimmed) return;
 
     setDateLogs((prev) => [...prev, trimmed]);
   };
 
-  const addNoticeGroup = () => {
+  const renameDateLog = (index: number) => {
+    const current = dateLogs[index];
+    if (current == null) return;
+
+    const newName = prompt("이름을 변경하세요:", current);
+    if (!newName || !newName.trim()) return;
+
+    setDateLogs((prev) =>
+      prev.map((day, i) => (i === index ? newName.trim() : day)),
+    );
+  };
+
+  const deleteDateLog = (index: number) => {
+    if (!confirm("정말 삭제하시겠습니까?")) return;
+    setDateLogs((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  /* =========================
+     9. 공지 그룹 CRUD (서버 기반)
+  ========================= */
+  const addNoticeGroup = async () => {
+    if (!Number.isFinite(tripId) || tripId <= 0) return;
+
     let name: string | null = "새 공지사항";
 
     while (true) {
       name = prompt("추가할 공지 그룹 이름을 입력하세요.", name || "");
-      if (name === null) break;
+      if (name === null) return;
 
       const trimmed = name.trim();
-      if (!trimmed) break;
+      if (!trimmed) return;
 
-      const key = normalizeName(trimmed);
-
-      // 중복 체크 (TRIP NOTICE 포함 전체)
-      if (noticeGroups.some((g) => normalizeName(g.name) === key)) {
+      const duplicated = noticeGroups.some(
+        (group) => normalizeName(group.name) === normalizeName(trimmed),
+      );
+      if (duplicated) {
         alert("이미 존재하는 이름입니다.");
         continue;
       }
 
-      setNoticeGroups((prev) => [...prev, { name: trimmed, notices: [] }]);
-      break;
-    }
-  };
+      try {
+        const response = await createNoticeGroupApi(tripId, { name: trimmed });
+        const createdGroup = response.data;
 
-  /* =========================
-     7. 이름 변경
-  ========================= */
-  const renameItem = (type: "date" | "notice", index: number) => {
-    if (type === "date") {
-      const current = dateLogs[index];
-      if (current == null) return;
-
-      const newName = prompt("이름을 변경하세요:", current);
-      if (newName && newName.trim()) {
-        setDateLogs((prev) =>
-          prev.map((d, i) => (i === index ? newName.trim() : d))
-        );
+        await reloadNoticeGroups();
+        setCurrentNoticeGroupId(createdGroup.groupId);
+        setActiveView("notice");
+      } catch (error) {
+        console.error("공지 그룹 생성 실패:", error);
+        alert("공지 그룹 생성에 실패했습니다.");
       }
       return;
     }
+  };
 
-    const oldName = noticeGroups[index]?.name;
-    if (!oldName) return;
+  const renameNoticeGroup = async (groupId: number) => {
+    if (!Number.isFinite(tripId) || tripId <= 0) return;
 
-    const oldKey = normalizeName(oldName);
+    const targetGroup = noticeGroups.find((group) => group.groupId === groupId);
+    if (!targetGroup) return;
 
-    let newName: string | null = oldName;
+    if (targetGroup.isDefault) return;
+
+    let newName: string | null = targetGroup.name;
+
     while (true) {
       newName = prompt("이름을 변경하세요:", newName || "");
-      if (newName === null) break;
+      if (newName === null) return;
 
       const trimmed = newName.trim();
-      if (!trimmed || trimmed === oldName) break;
+      if (!trimmed || trimmed === targetGroup.name) return;
 
-      const newKey = normalizeName(trimmed);
-
-      // 다른 그룹과 중복되는지 검사
-      if (
-        noticeGroups.some(
-          (g, i) => i !== index && normalizeName(g.name) === newKey
-        )
-      ) {
+      const duplicated = noticeGroups.some(
+        (group) =>
+          group.groupId !== groupId &&
+          normalizeName(group.name) === normalizeName(trimmed),
+      );
+      if (duplicated) {
         alert("이미 존재하는 이름입니다.");
         continue;
       }
 
-      // 현재 선택된 그룹 이름도 같이 갱신
-      if (normalizeName(currentNoticeGroup) === oldKey) {
-        setCurrentNoticeGroup(trimmed);
+      try {
+        await renameNoticeGroupApi(tripId, groupId, { name: trimmed });
+        await reloadNoticeGroups();
+      } catch (error) {
+        console.error("공지 그룹 이름 수정 실패:", error);
+        alert("공지 그룹 이름 수정에 실패했습니다.");
       }
+      return;
+    }
+  };
 
-      setNoticeGroups((prev) =>
-        prev.map((g, i) => (i === index ? { ...g, name: trimmed } : g))
-      );
-      break;
+  const deleteNoticeGroup = async (groupId: number) => {
+    if (!Number.isFinite(tripId) || tripId <= 0) return;
+
+    const targetGroup = noticeGroups.find((group) => group.groupId === groupId);
+    if (!targetGroup) return;
+
+    if (targetGroup.isDefault) return;
+    if (!confirm("정말 삭제하시겠습니까?")) return;
+
+    try {
+      await deleteNoticeGroupApi(tripId, groupId);
+      await reloadNoticeGroups();
+    } catch (error) {
+      console.error("공지 그룹 삭제 실패:", error);
+      alert("공지 그룹 삭제에 실패했습니다.");
     }
   };
 
   /* =========================
-     8. 삭제 (TRIP NOTICE 보호)
+     10. 기존 Sidebar 호환용 래퍼
+     - notice 분기는 이제 groupId 기반 함수로 위임
+     - date는 기존처럼 index 사용
   ========================= */
+  const renameItem = (type: "date" | "notice", index: number) => {
+    if (type === "date") {
+      renameDateLog(index);
+      return;
+    }
+
+    const targetGroup = noticeGroups[index];
+    if (!targetGroup) return;
+    void renameNoticeGroup(targetGroup.groupId);
+  };
+
   const deleteItem = (type: "date" | "notice", index: number) => {
-    if (type === "notice") {
-      const targetName = noticeGroups[index]?.name;
-      if (!targetName) return;
-
-      const targetKey = normalizeName(targetName);
-      const defaultKey = normalizeName(DEFAULT_NOTICE_GROUP_NAME);
-
-      // 기본 TRIP NOTICE는 삭제 불가
-      if (targetKey === defaultKey) return;
+    if (type === "date") {
+      deleteDateLog(index);
+      return;
     }
 
-    if (!confirm("정말 삭제하시겠습니까?")) return;
-
-    if (type === "notice") {
-      const targetName = noticeGroups[index]?.name;
-      if (!targetName) return;
-
-      const targetKey = normalizeName(targetName);
-      const defaultKey = normalizeName(DEFAULT_NOTICE_GROUP_NAME);
-
-      // 현재 보고 있는 그룹을 지우면 TRIP NOTICE로 이동
-      if (normalizeName(currentNoticeGroup) === targetKey) {
-        setCurrentNoticeGroup(DEFAULT_NOTICE_GROUP_NAME);
-      }
-
-      setNoticeGroups((prev) => prev.filter((_, i) => i !== index));
-    } else {
-      setDateLogs((prev) => prev.filter((_, i) => i !== index));
-    }
+    const targetGroup = noticeGroups[index];
+    if (!targetGroup) return;
+    void deleteNoticeGroup(targetGroup.groupId);
   };
 
   return {
@@ -348,15 +416,25 @@ const useWorkspaceCoreInternal = (): WorkspaceCoreState => {
     noticeGroups,
     activeView,
     currentDay,
+    currentNoticeGroupId,
     currentNoticeGroup,
     hideRight,
+    isNoticeGroupsLoading,
 
     selectTab,
+    selectNoticeGroup,
+    reloadNoticeGroups,
+
     addDateLog,
+    renameDateLog,
+    deleteDateLog,
+
     addNoticeGroup,
+    renameNoticeGroup,
+    deleteNoticeGroup,
+
     renameItem,
     deleteItem,
-    updateNotices,
 
     setHideRight,
     setActiveView,
@@ -374,7 +452,6 @@ export const WorkspaceCoreProvider = ({
   children: ReactNode;
 }) => {
   const core = useWorkspaceCoreInternal();
-
   const value = useMemo(() => core, [core]);
 
   return (
@@ -388,7 +465,7 @@ export const useWorkspaceCore = (): WorkspaceCoreState => {
   const ctx = useContext(WorkspaceCoreContext);
   if (!ctx) {
     throw new Error(
-      "useWorkspaceCore must be used within WorkspaceCoreProvider"
+      "useWorkspaceCore must be used within WorkspaceCoreProvider",
     );
   }
   return ctx;
