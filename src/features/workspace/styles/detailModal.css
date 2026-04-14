@@ -2,56 +2,51 @@
    SettleDetailModal 
 ========================================================= */
 
-.modal-window {
-  border: 2px solid #000 !important;
-  box-shadow: 7px 7px 0px rgba(0, 0, 0, 0.5);
-  border-radius: 0 !important;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
+/* 모달 크기 보정 */
+.sdm-modal {
+  max-width: 100%;
 }
 
-.modal-header {
-  height: auto !important;
-  padding: 8px 16px !important;
-  background: linear-gradient(#111, #000) !important;
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.mh-title {
-  font-size: 16px;
-  font-weight: 900;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.mh-close {
-  border: 1px solid #fff;
-  background: transparent;
-  color: #fff;
-  padding: 10px 14px;
-  border-radius: 0;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  cursor: pointer;
-}
-
-.mh-close:hover {
-  background-color: #f2f2f2;
-  color: #000;
-}
-
-.mh-close:active {
-  transform: translateY(1px);
-}
-
-.modal-body {
+/* 내부 레이아웃 */
+.sdm-body {
+  padding: 20px;
   background: #fff;
-  font-family: inherit;
+}
+
+/* SUMMARY */
+.sdm-summary {
+  text-align: center;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 2px solid #333;
+}
+
+.sdm-plus {
+  font-size: 24px;
+  font-weight: 900;
+  color: #4caf50;
+}
+
+.sdm-minus {
+  font-size: 24px;
+  font-weight: 900;
+  color: #f44336;
+}
+
+.sdm-zero {
+  font-size: 24px;
+  font-weight: 900;
+  color: #999;
+}
+
+.sdm-label {
+  font-size: 13px;
+}
+
+.sdm-empty {
+  text-align: center;
+  color: #999;
+  padding: 20px;
 }
 
 .settle-log-item {

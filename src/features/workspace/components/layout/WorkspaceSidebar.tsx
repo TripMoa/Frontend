@@ -1,4 +1,4 @@
-//src\features\workspace\components\layout\WorkspaceSidebar.tsx
+// src/features/workspace/components/layout/WorkspaceSidebar.tsx
 import React from "react";
 import "../../styles/sidebar.css";
 import { useWorkspaceCore } from "../../hooks/useWorkspaceCore";
@@ -9,12 +9,16 @@ const WorkspaceSidebar: React.FC = () => {
     noticeGroups,
     activeView,
     currentDay,
-    currentNoticeGroup,
+    currentNoticeGroupId,
     selectTab,
+    selectNoticeGroup,
     addDateLog,
     addNoticeGroup,
-    renameItem,
-    deleteItem,
+    renameDateLog,
+    deleteDateLog,
+    renameNoticeGroup,
+    deleteNoticeGroup,
+    isNoticeGroupsLoading,
   } = useWorkspaceCore();
 
   return (
@@ -71,8 +75,8 @@ const WorkspaceSidebar: React.FC = () => {
               </a>
 
               <div className="ws-item-controls">
-                <span onClick={() => renameItem("date", idx)}>✎</span>
-                <span onClick={() => deleteItem("date", idx)}>🗑</span>
+                <span onClick={() => renameDateLog(idx)}>✎</span>
+                <span onClick={() => deleteDateLog(idx)}>🗑</span>
               </div>
             </div>
           ))}
@@ -115,37 +119,54 @@ const WorkspaceSidebar: React.FC = () => {
           }}
         >
           <span>&gt;&gt; NOTICES</span>
-          <button className="btn-add-mini" onClick={addNoticeGroup}>
+          <button
+            className="btn-add-mini"
+            onClick={() => void addNoticeGroup()}
+          >
             [+]
           </button>
         </div>
 
         <div id="notice-log-list">
-          {noticeGroups.map((group, idx) => (
-            <div
-              key={`${group.name}-${idx}`}
-              className={`ws-item-wrapper ${
-                activeView === "notice" && currentNoticeGroup === group.name
-                  ? "active"
-                  : ""
-              }`}
-            >
-              <a
-                className="ws-item"
-                onClick={() => selectTab(group.name, "notice")}
-              >
-                {group.name}
-              </a>
-
-              {/* 기본 TRIP NOTICE 는 수정/삭제 버튼 숨김 */}
-              {group.name !== "TRIP NOTICE" && (
-                <div className="ws-item-controls">
-                  <span onClick={() => renameItem("notice", idx)}>✎</span>
-                  <span onClick={() => deleteItem("notice", idx)}>🗑</span>
-                </div>
-              )}
+          {isNoticeGroupsLoading ? (
+            <div className="ws-item-wrapper">
+              <span className="ws-item">불러오는 중...</span>
             </div>
-          ))}
+          ) : noticeGroups.length === 0 ? (
+            <div className="ws-item-wrapper">
+              <span className="ws-item">공지 그룹이 없습니다.</span>
+            </div>
+          ) : (
+            noticeGroups.map((group) => (
+              <div
+                key={group.groupId}
+                className={`ws-item-wrapper ${
+                  activeView === "notice" &&
+                  currentNoticeGroupId === group.groupId
+                    ? "active"
+                    : ""
+                }`}
+              >
+                <a
+                  className="ws-item"
+                  onClick={() => selectNoticeGroup(group.groupId)}
+                >
+                  {group.name}
+                </a>
+
+                {!group.isDefault && (
+                  <div className="ws-item-controls">
+                    <span onClick={() => void renameNoticeGroup(group.groupId)}>
+                      ✎
+                    </span>
+                    <span onClick={() => void deleteNoticeGroup(group.groupId)}>
+                      🗑
+                    </span>
+                  </div>
+                )}
+              </div>
+            ))
+          )}
         </div>
       </div>
 

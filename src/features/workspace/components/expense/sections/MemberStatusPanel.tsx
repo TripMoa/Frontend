@@ -1,22 +1,19 @@
 // src/features/workspace/components/expense/sections/MemberStatusPanel.tsx
 import React from "react";
-import type { ExpenseMember } from "../../../hooks/expense.ui.types";
-
-type DepositStatusRow = {
-  mem: ExpenseMember;
-  targetAmount: number;
-  depositedAmount: number;
-  remainingAmount: number;
-  overpaidAmount: number;
-  status: "UNPAID" | "PARTIAL" | "PAID" | "OVERPAID";
-};
+import type {
+  DepositStatusRow,
+  ExpenseMember,
+  ExpenseSettings,
+  MemberStatsRow,
+} from "../../../hooks/expense.ui.types";
+import { STATUS_PAGE_SIZE } from "../../../hooks/expense.ui.types";
 
 interface MemberStatusPanelProps {
-  settings: any;
+  settings: ExpenseSettings;
   memberPanel: "SETTLE" | "STATUS";
   setMemberPanel: (p: "SETTLE" | "STATUS") => void;
 
-  orderedMemberStats: any[];
+  orderedMemberStats: MemberStatsRow[];
 
   orderedDepositStatusRows: DepositStatusRow[];
   pagedDepositStatusRows: DepositStatusRow[];
@@ -28,7 +25,7 @@ interface MemberStatusPanelProps {
 
   activePayer: string;
   setActivePayer: React.Dispatch<React.SetStateAction<string>>;
-  onOpenSettleDetail: (m: string) => void;
+  onOpenSettleDetail: (m: ExpenseMember) => void;
   detailsRef: React.RefObject<HTMLDivElement | null>;
 }
 
@@ -48,8 +45,6 @@ const MemberStatusPanel: React.FC<MemberStatusPanelProps> = ({
   onOpenSettleDetail,
   detailsRef,
 }) => {
-  const STATUS_PAGE_SIZE = 3;
-
   return (
     <div className="stat-box stat-box--members">
       <div className="stat-head stat-head-row">

@@ -1327,6 +1327,71 @@
   overflow-wrap: break-word;
   flex: 1;
 }
+/* pinned card */
+.notice-card.pinned {
+  border-width: 3px;
+  box-shadow: 6px 6px 0px #000;
+}
+
+.notice-card.pinned::after {
+  content: "PINNED";
+  position: absolute;
+  top: 14px;
+  right: 52px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  color: #000;
+  opacity: 0.6;
+}
+
+/* pin button */
+.nc-pin-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 34px;
+  height: 34px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  border: 2px solid #000;
+  background: #fff;
+  color: #666;
+  cursor: pointer;
+
+  transition:
+    transform 0.15s ease,
+    background 0.15s ease,
+    color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.nc-pin-btn:hover {
+  background: #000;
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+.nc-pin-btn.active {
+  background: #000;
+  color: #fff;
+  box-shadow: 2px 2px 0px #000;
+}
+
+.nc-pin-btn i {
+  font-size: 14px;
+  transform: rotate(25deg);
+}
+
+/* pinned 상태일 때 태그가 버튼과 겹치지 않도록 */
+.notice-card .nc-tag {
+  margin-right: 52px;
+}
+
 .nc-controls {
   margin-top: auto;
   display: flex;

@@ -1,7 +1,8 @@
 // src/features/workspace/hooks/useExpenses.ts
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useParams } from "react-router-dom";
+import { getTripMembers } from "../../../api/trip.api";
+import { useTripContext } from "./useTripContext";
 
 import {
   getSettlementPreview,
@@ -9,7 +10,6 @@ import {
   getSettlementSummary,
   updateSettlementSettings,
 } from "../../../api/settlement.api";
-import { getTripDetail, getTripMembers } from "../../../api/trip.api";
 import {
   createExpense as createExpenseApi,
   deleteExpense as deleteExpenseApi,
@@ -77,8 +77,7 @@ import type {
 export type UseExpensesStore = ReturnType<typeof useExpenses>;
 
 export const useExpenses = () => {
-  const params = useParams<{ tripId: string }>();
-  const tripId = Number(params.tripId);
+  const { tripId, ownerUserId, tripDetail } = useTripContext();
 
   const [expenses, setExpenses] = useState<ExpenseItem[]>([]);
   const [filterDate, setFilterDate] = useState<string>("ALL");
@@ -93,7 +92,6 @@ export const useExpenses = () => {
   const settingsRef = useRef<ExpenseSettings | null>(null);
 
   const [members, setMembers] = useState<TripMemberResponse[]>([]);
-  const [ownerUserId, setOwnerUserId] = useState<number | null>(null);
   const [summaryData, setSummaryData] =
     useState<SettlementSummaryResponse | null>(null);
 
@@ -216,9 +214,8 @@ export const useExpenses = () => {
       setBootstrapError(null);
 
       try {
-        const [settingRes, tripRes, membersRes] = await Promise.all([
+        const [settingRes, membersRes] = await Promise.all([
           getSettlementSetting(tripId),
-          getTripDetail(tripId),
           getTripMembers(tripId),
         ]);
 
@@ -228,12 +225,11 @@ export const useExpenses = () => {
         const nextMembers =
           membersRes.data?.length > 0
             ? membersRes.data
-            : (tripRes.data.members ?? []);
+            : (tripDetail?.members ?? []);
 
         setSettings(nextSettings);
         settingsRef.current = nextSettings;
         setMembers(nextMembers);
-        setOwnerUserId(tripRes.data.ownerUserId ?? null);
 
         await Promise.all([loadExpenses(nextMembers), loadSummary()]);
       } catch (error) {
@@ -254,7 +250,7 @@ export const useExpenses = () => {
     return () => {
       cancelled = true;
     };
-  }, [loadExpenses, loadSummary, tripId]);
+  }, [loadExpenses, loadSummary, tripDetail, tripId]);
 
   const updateDraftSettings = useCallback((patch: Partial<ExpenseSettings>) => {
     if (!settingsRef.current) return;
@@ -441,8 +437,6 @@ export const useExpenses = () => {
       autoIncludePayer: involved.includes(payload.payer),
       splitMode: normalizedPayload.splitMode,
       splits,
-      receiptUrl: payload.receipt ?? undefined,
-      receiptFileName: payload.fileName ?? undefined,
     };
   };
 
@@ -450,13 +444,15 @@ export const useExpenses = () => {
     await Promise.all([loadExpenses(members), loadSummary()]);
   }, [loadExpenses, loadSummary, members]);
 
-  const createExpense = async (payload: Omit<ExpenseItem, "id">) => {
+  const createExpense = async (
+    payload: Omit<ExpenseItem, "id">,
+    receiptFile?: File | null,
+  ) => {
     const request = buildExpenseRequest(payload);
     if (!request) return;
 
     try {
-      console.log("지출 생성 요청", request);
-      await createExpenseApi(tripId, request);
+      await createExpenseApi(tripId, request, receiptFile ?? undefined);
       await refreshAfterExpenseChange();
       closeExpenseModal();
     } catch (error: any) {
@@ -470,16 +466,30 @@ export const useExpenses = () => {
     }
   };
 
-  const updateExpense = async (payload: ExpenseItem) => {
+  const updateExpense = async (
+    payload: ExpenseItem,
+    receiptFile?: File | null,
+  ) => {
     const request = buildExpenseRequest(payload);
-    if (!request || !editingId) return;
+    if (!request) return;
 
     try {
-      await updateExpenseApi(tripId, editingId, request);
+      await updateExpenseApi(
+        tripId,
+        payload.id,
+        request,
+        receiptFile ?? undefined,
+      );
       await refreshAfterExpenseChange();
       closeExpenseModal();
-    } catch (error) {
+    } catch (error: any) {
       console.error("지출 수정 실패", error);
+      console.error("응답 바디", error?.response?.data);
+      alert(
+        error?.response?.data?.message ??
+          error?.response?.data?.error ??
+          "지출 수정에 실패했습니다.",
+      );
     }
   };
 

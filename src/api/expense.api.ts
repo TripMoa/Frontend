@@ -22,19 +22,50 @@ export const getExpense = (tripId: number, expenseId: number) => {
 };
 
 // 지출 생성
-export const createExpense = (tripId: number, data: ExpenseCreateRequest) => {
-  return api.post<ExpenseResponse>(`/trips/${tripId}/expenses`, data);
+export const createExpense = (
+  tripId: number,
+  request: ExpenseCreateRequest,
+  file?: File,
+) => {
+  const formData = new FormData();
+
+  formData.append(
+    "request",
+    new Blob([JSON.stringify(request)], {
+      type: "application/json",
+    }),
+  );
+
+  if (file) {
+    formData.append("receiptImage", file);
+  }
+
+  return api.post(`/trips/${tripId}/expenses`, formData);
 };
 
 // 지출 수정
 export const updateExpense = (
   tripId: number,
   expenseId: number,
-  data: ExpenseCreateRequest,
+  request: ExpenseCreateRequest,
+  file?: File,
 ) => {
+  const formData = new FormData();
+
+  formData.append(
+    "request",
+    new Blob([JSON.stringify(request)], {
+      type: "application/json",
+    }),
+  );
+
+  if (file) {
+    formData.append("receiptImage", file);
+  }
+
   return api.put<ExpenseResponse>(
     `/trips/${tripId}/expenses/${expenseId}`,
-    data,
+    formData,
   );
 };
 

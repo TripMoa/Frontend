@@ -1,9 +1,13 @@
 // src/features/workspace/components/expense/sections/CategoryStatsPanel.tsx
 import React from "react";
-import type { PaymentMode } from "../../../hooks/expense.ui.types";
+import type {
+  CategoryDisplayItem,
+  PaymentMode,
+} from "../../../hooks/expense.ui.types";
+import { PERSONAL_REFERENCE_KEY } from "../../../hooks/expense.ui.types";
 
 interface CategoryStatsPanelProps {
-  categoryDisplayList: any[];
+  categoryDisplayList: CategoryDisplayItem[];
   activeCat: string;
   onClickCategory: (cat: string) => void;
   CAT_LABEL: Record<string, string>;
@@ -21,8 +25,6 @@ const CategoryStatsPanel: React.FC<CategoryStatsPanelProps> = ({
   sharedPercent,
   paymentMode,
 }) => {
-  const PERSONAL_REFERENCE_KEY = "PERSONAL_REFERENCE";
-
   const filteredList = categoryDisplayList.filter((c) => {
     if (paymentMode === "POOL" && c.cat === PERSONAL_REFERENCE_KEY) {
       return false;
@@ -43,6 +45,7 @@ const CategoryStatsPanel: React.FC<CategoryStatsPanelProps> = ({
           ) : (
             filteredList.map((c) => {
               const isPersonal = c.cat === PERSONAL_REFERENCE_KEY;
+
               return (
                 <div
                   key={c.cat}
@@ -55,6 +58,7 @@ const CategoryStatsPanel: React.FC<CategoryStatsPanelProps> = ({
                         ? "개인 지출 (참고용)"
                         : (CAT_LABEL[c.cat] ?? c.cat)}
                     </span>
+
                     <span>
                       ₩ {c.amount.toLocaleString()}
                       <span style={{ color: "#888", fontSize: "11px" }}>
@@ -67,6 +71,7 @@ const CategoryStatsPanel: React.FC<CategoryStatsPanelProps> = ({
                       </span>
                     </span>
                   </div>
+
                   <div className="cat-bar-track">
                     <div
                       className={`cat-bar-thumb ${isPersonal ? "cat-bar-thumb--personal" : ""}`}
@@ -79,6 +84,7 @@ const CategoryStatsPanel: React.FC<CategoryStatsPanelProps> = ({
           )}
         </div>
       </div>
+
       {filteredList.length > 0 && (
         <div className="stat-note">
           ※ 카테고리를 클릭하면 필터가 자동으로 적용됩니다.

@@ -1,4 +1,4 @@
-// src\features\workspace\components\layout\WorkspaceCenter.tsx
+// src/features/workspace/components/layout/WorkspaceCenter.tsx
 
 import React, { useState, useEffect } from "react";
 
@@ -11,12 +11,12 @@ import { useTopOption } from "../../hooks/useTopOption";
 import { useExpenses } from "../../hooks/useExpenses";
 import type { ExpenseMember } from "../../hooks/expense.ui.types";
 
-// 수정 후
 import { ExpenseView } from "../expense";
 import { VoucherView } from "../voucher";
+import { NoticeView } from "../notice";
 import { DayAllView, DayDetailView } from "../schedule";
 import WorkspaceModals from "./WorkspaceModals";
-import NoticeModal from "../NoticeItemModal";
+import NoticeModal from "../notice/NoticeItemModal";
 import ExpenseModal from "../expense/modal/ExpenseModal";
 import SettleDetailModal from "../../components/expense/modal/SettleDetailModal";
 import VoucherModal from "../voucher/VoucherModal";
@@ -38,19 +38,17 @@ const WorkspaceCenter: React.FC<Props> = ({
 }) => {
   const { activeView, currentDay } = useWorkspaceCore();
 
-  // currentDay에 따라 useTimeline 호출
   const { nodes, addNode, updateNode } = useTimeline(currentDay);
 
-  // Notice 관련 openEdit은 openNoticeEdit으로 변경
   const {
     notices,
     openAdd,
     openEdit: openNoticeEdit,
     deleteNotice,
     togglePin,
+    isLoading: isNoticeLoading,
   } = noticeStore;
 
-  // Trip 관련 openEdit은 openTripEdit으로 변경
   const {
     open,
     isPrivate,
@@ -75,7 +73,6 @@ const WorkspaceCenter: React.FC<Props> = ({
     endDate: "2025-12-25",
   });
 
-  // 🔥 LocalStorage에서 초기값 로드
   useEffect(() => {
     const saved = localStorage.getItem("tripData");
     if (saved) setTrip(JSON.parse(saved));
@@ -87,7 +84,6 @@ const WorkspaceCenter: React.FC<Props> = ({
 
   return (
     <div className="ws-main">
-      {/* TOP BAR */}
       <div className="ws-top">
         <div className="ws-title-wrap">
           <span id="privacy-badge">
@@ -108,7 +104,6 @@ const WorkspaceCenter: React.FC<Props> = ({
           </button>
 
           <div className={`ws-dropdown ${open ? "active" : ""}`}>
-            {/* 여행 수정 */}
             <div
               className="ws-dd-item"
               onClick={(e) => {
@@ -119,12 +114,10 @@ const WorkspaceCenter: React.FC<Props> = ({
               <i className="fa-solid fa-pen-to-square"></i> 여행 수정
             </div>
 
-            {/* 멤버 관리 */}
             <div className="ws-dd-item">
               <i className="fa-solid fa-users"></i> 멤버 관리
             </div>
 
-            {/* 공개/비공개 전환 */}
             <div className="ws-dd-item" onClick={togglePrivacy}>
               <i
                 className={`fa-solid ${isPrivate ? "fa-lock" : "fa-lock-open"}`}
@@ -132,7 +125,6 @@ const WorkspaceCenter: React.FC<Props> = ({
               <span>{isPrivate ? "공개로 전환" : "비공개로 전환"}</span>
             </div>
 
-            {/* PDF 다운로드 */}
             <div className="ws-dd-item" onClick={downloadPDF}>
               <i className="fa-solid fa-file-pdf"></i> PDF 다운로드
             </div>
@@ -140,11 +132,7 @@ const WorkspaceCenter: React.FC<Props> = ({
         </div>
       </div>
 
-      {/* BODY */}
       <div className="ws-body">
-        {/* ✅ 오른쪽 패널 토글 버튼 제거 (timeline에서는 사용 안함) */}
-
-        {/* ================= TIMELINE VIEW ================= */}
         <div
           id="view-timeline"
           className={`content-view ${
@@ -172,7 +160,6 @@ const WorkspaceCenter: React.FC<Props> = ({
           )}
         </div>
 
-        {/* ===== EXPENSE ===== */}
         <div
           id="view-expenses"
           className={`content-view ${
@@ -180,16 +167,13 @@ const WorkspaceCenter: React.FC<Props> = ({
           }`}
         >
           <div className="ws-inner">
-            {/* ✅ ExpenseView는 화면만 렌더, settleTarget은 Center가 관리 */}
             <ExpenseView
               store={expenseStore}
               onOpenSettleDetail={(m) => setSettleTarget(m)}
             />
 
-            {/* ✅ ExpenseModal은 Center에서만 렌더 (ExpenseView에서 렌더 금지) */}
             <ExpenseModal store={expenseStore} />
 
-            {/* ✅ null guard */}
             {settleTarget && (
               <SettleDetailModal
                 store={expenseStore}
@@ -200,7 +184,6 @@ const WorkspaceCenter: React.FC<Props> = ({
           </div>
         </div>
 
-        {/* ===== VOUCHER ===== */}
         <div
           id="view-voucher"
           className={`content-view ${activeView === "voucher" ? "active" : ""}`}
@@ -216,86 +199,32 @@ const WorkspaceCenter: React.FC<Props> = ({
           {isVoucherModalOpen && (
             <VoucherModal
               onClose={() => setIsVoucherModalOpen(false)}
-              onSave={voucherStore.addVoucher}
+              onSave={(request, file) => {
+                if (!file) {
+                  alert("파일을 첨부해주세요.");
+                  return;
+                }
+                return voucherStore.addVoucher(request, file);
+              }}
             />
           )}
         </div>
 
-        {/* ===== NOTICE (TRIP NOTICE) ===== */}
         <div
           id="view-notice"
           className={`content-view ${activeView === "notice" ? "active" : ""}`}
         >
-          {/* ===== HEADER (원본에 존재) ===== */}
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "flex-end",
-              marginBottom: "20px",
-            }}
-          >
-            <h2
-              style={{
-                fontSize: "24px",
-                fontWeight: 800,
-                margin: 0,
-              }}
-            >
-              TRIP NOTICE
-            </h2>
-
-            <button
-              className="btn-sm"
-              style={{ padding: "8px 15px" }}
-              onClick={openAdd}
-            >
-              + NEW NOTICE
-            </button>
-          </div>
-
-          {/* ===== NOTICE LIST ===== */}
-          <div className="notice-container" id="notice-list-container">
-            {notices.map((n) => (
-              <div
-                key={n.id}
-                className={`notice-card ${n.color} ${
-                  n.isPinned ? "pinned" : ""
-                }`}
-              >
-                {/* ✅ 고정 버튼 (id 전달) */}
-                <div
-                  className={`nc-pin-btn ${n.isPinned ? "active" : ""}`}
-                  onClick={() => togglePin(n.id)}
-                >
-                  <i className="fa-solid fa-thumbtack"></i>
-                </div>
-
-                <div className="nc-tag">{n.tag}</div>
-
-                <div className="nc-title">{n.title}</div>
-
-                <div className="nc-content">{n.content}</div>
-
-                <div className="nc-controls">
-                  <span
-                    className="nc-btn edit"
-                    onClick={() => openNoticeEdit(n.id)}
-                  >
-                    EDIT
-                  </span>
-                  <span
-                    className="nc-btn del"
-                    onClick={() => deleteNotice(n.id)}
-                  >
-                    DELETE
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
+          <NoticeView
+            notices={notices}
+            isLoading={isNoticeLoading}
+            onAdd={openAdd}
+            onEdit={openNoticeEdit}
+            onDelete={deleteNotice}
+            onTogglePin={togglePin}
+          />
         </div>
       </div>
+
       {isEditOpen && (
         <WorkspaceModals
           init={trip}

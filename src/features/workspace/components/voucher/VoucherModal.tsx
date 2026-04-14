@@ -1,144 +1,168 @@
-//src\features\workspace\components\voucher\VoucherModal.tsx
-
 import { useRef, useState } from "react";
 import type { ChangeEvent } from "react";
-import "../../styles/modals.css";
+import "../../styles/voucherModal.css";
+import BaseModal from "../../../../shared/components/BaseModal";
 
-import type { VoucherItem, VoucherType } from "../../hooks/useVouchers";
+import type {
+  VoucherCreateRequest,
+  VoucherResponse,
+  VoucherType,
+} from "../../../../types/voucher.types";
 
 interface Props {
   onClose: () => void;
-  onSave: (item: VoucherItem) => void;
+  onSave: (
+    request: VoucherCreateRequest,
+    file?: File,
+  ) => Promise<VoucherResponse> | void;
+  initialData?: VoucherResponse | null;
+  isEditMode?: boolean;
 }
 
-const VoucherModal: React.FC<Props> = ({ onClose, onSave }) => {
+const VoucherModal: React.FC<Props> = ({
+  onClose,
+  onSave,
+  initialData = null,
+  isEditMode = false,
+}) => {
   const fileRef = useRef<HTMLInputElement | null>(null);
 
-  const [type, setType] = useState<VoucherType>("AIR");
-  const [title, setTitle] = useState("");
-  const [desc, setDesc] = useState("");
-  const [fileData, setFileData] = useState<string | null>(null);
-  const [fileType, setFileType] = useState<"pdf" | "jpg" | "img">("img");
+  const [type, setType] = useState<VoucherType>(initialData?.type ?? "AIR");
+  const [title, setTitle] = useState(initialData?.title ?? "");
+  const [desc, setDesc] = useState(initialData?.description ?? "");
+  const [file, setFile] = useState<File | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const handleFile = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const selectedFile = e.target.files?.[0];
+    if (!selectedFile) return;
 
-    if (file.size > 3 * 1024 * 1024) {
-      alert("파일 크기가 너무 큽니다. (3MB 이하 권장)");
+    if (selectedFile.size > 10 * 1024 * 1024) {
+      alert("파일 크기가 너무 큽니다. (10MB 이하)");
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      setFileData(reader.result as string);
-      setFileType(file.type.includes("pdf") ? "pdf" : "jpg");
-    };
-    reader.readAsDataURL(file);
+    setFile(selectedFile);
   };
 
-  const save = () => {
-    if (!title) {
+  const save = async () => {
+    if (!title.trim()) {
       alert("제목을 입력해주세요.");
       return;
     }
 
-    let icon = "fa-ticket";
-    if (type === "AIR") icon = "fa-plane";
-    if (type === "HTL") icon = "fa-hotel";
+    if (!isEditMode && !file) {
+      alert("파일을 첨부해주세요.");
+      return;
+    }
 
-    const item: VoucherItem = {
-      id: Date.now(),
+    const request: VoucherCreateRequest = {
       type,
-      icon,
-      title,
-      desc,
-      meta: new Date().toLocaleDateString(),
-      fileData,
-      fileType,
+      title: title.trim(),
+      description: desc.trim() || undefined,
     };
 
-    onSave(item);
-    onClose();
+    try {
+      setSaving(true);
+      await onSave(request, file ?? undefined);
+      onClose();
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
-    <div
-      className="modal-overlay active"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
+    <BaseModal
+      open={true}
+      title={isEditMode ? "EDIT DOCUMENT" : "ADD DOCUMENT"}
+      onClose={onClose}
+      className="vm-modal"
+      width="min(560px, 92vw)"
     >
-      <div
-        className="modal-window"
-        style={{ width: "500px" }}
-        onMouseDown={(e) => e.stopPropagation()}
-      >
-        <div className="modal-header">
-          <span className="mh-title">&gt;&gt; ADD DOCUMENT</span>
-          <button className="mh-close" onClick={onClose}>
-            CLOSE [X]
-          </button>
-        </div>
+      <div className="vm-body">
+        {/* FILE */}
+        <div className="vm-field">
+          <label>FILE UPLOAD</label>
 
-        <div
-          className="modal-body"
-          style={{ padding: "20px", background: "#fff" }}
-        >
-          <div className="inp-row">
-            <label>FILE UPLOAD</label>
-            <input
-              ref={fileRef}
-              type="file"
-              style={{ width: "100%" }}
-              onChange={handleFile}
-            />
-          </div>
+          <input
+            ref={fileRef}
+            type="file"
+            className="vm-file-hidden"
+            onChange={handleFile}
+          />
 
-          <div className="inp-row" style={{ marginTop: "10px" }}>
-            <label>TYPE</label>
-            <select
-              value={type}
-              onChange={(e) => setType(e.target.value as VoucherType)}
-              style={{ width: "100%", padding: "8px" }}
+          <div className="vm-file-row">
+            <button
+              type="button"
+              className="vm-file-trigger"
+              onClick={() => fileRef.current?.click()}
             >
-              <option value="AIR">항공권 (Flight)</option>
-              <option value="HTL">숙소 (Hotel)</option>
-              <option value="TKT">입장권/티켓</option>
-              <option value="ETC">기타</option>
-            </select>
-          </div>
+              파일 선택
+            </button>
 
-          <div className="inp-row" style={{ marginTop: "10px" }}>
-            <label>TITLE</label>
-            <input
-              type="text"
-              placeholder="예: 오사카행 항공권"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-            />
+            <div className="vm-file-display">
+              {file
+                ? file.name
+                : initialData?.fileName
+                  ? `현재 파일: ${initialData.fileName}`
+                  : "선택된 파일 없음"}
+            </div>
           </div>
-
-          <div className="inp-row" style={{ marginTop: "10px" }}>
-            <label>DESCRIPTION</label>
-            <input
-              type="text"
-              placeholder="예: 7C1302 / 10:00 AM"
-              value={desc}
-              onChange={(e) => setDesc(e.target.value)}
-            />
-          </div>
-
-          <button
-            className="btn-save-exp"
-            style={{ marginTop: "20px", width: "100%" }}
-            onClick={save}
-          >
-            SAVE DOCUMENT
-          </button>
         </div>
+
+        {/* TYPE */}
+        <div className="vm-field">
+          <label>TYPE</label>
+          <select
+            value={type}
+            onChange={(e) => setType(e.target.value as VoucherType)}
+          >
+            <option value="AIR">항공권 (Flight)</option>
+            <option value="HTL">숙소 (Hotel)</option>
+            <option value="TKT">입장권/티켓</option>
+            <option value="ETC">기타</option>
+          </select>
+        </div>
+
+        {/* TITLE */}
+        <div className="vm-field">
+          <label>TITLE</label>
+          <input
+            type="text"
+            placeholder="예: 오사카행 항공권"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+          />
+        </div>
+
+        {/* DESC */}
+        <div className="vm-field">
+          <label>DESCRIPTION</label>
+          <input
+            type="text"
+            placeholder="예: 7C1302 / 10:00 AM"
+            value={desc}
+            onChange={(e) => setDesc(e.target.value)}
+          />
+        </div>
+
+        {/* SAVE */}
+        <button
+          type="button"
+          className="vm-save"
+          onClick={save}
+          disabled={saving}
+        >
+          {saving
+            ? "SAVING..."
+            : isEditMode
+              ? "UPDATE DOCUMENT"
+              : "SAVE DOCUMENT"}
+        </button>
       </div>
-    </div>
+    </BaseModal>
   );
 };
 
