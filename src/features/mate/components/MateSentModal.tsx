@@ -16,49 +16,83 @@ export function MateSentModal({
   return (
     <div className="modal-overlay active" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="modal-window sent-window" onMouseDown={(e) => e.stopPropagation()}>
-        <div className="modal-header">
+        <div className="modal-header" style={{ marginBottom: "0px"}}>
           <span className="mh-title">&gt;&gt; MY SENT APPLICATIONS</span>
           <button className="mh-close" onClick={onClose}>CLOSE [X]</button>
         </div>
 
-        <div className="modal-body" style={{ background: "white", padding: "32px", paddingTop:"5px" }}>
+        <div className="modal-body" style={{ background: "#f9f9f9", padding: "24px" }}>
           {applications.length === 0 ? (
-            <div className="text-center py-12">
-              <Send className="w-16 h-16 mx-auto mb-4 text-black/30" />
-              <p className="font-bold text-black/60">NO APPLICATIONS YET</p>
-              <p className="text-sm text-black/40 mt-2">// 아직 신청한 여행이 없습니다</p>
+            <div className="flex flex-col items-center justify-center py-20 bg-white border-2 border-dashed border-gray-200 rounded-xl">
+              <Send className="w-12 h-12 mb-3 text-gray-300" />
+              <p className="text-gray-500 font-medium">신청 내역이 없습니다.</p>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="flex flex-col gap-4">
               {applications.map((app) => {
                 const status = getApplicantStatus(app.id);
+                
+                // 상태별 스타일 정의
+                const statusStyles = {
+                  approved: { label: "승인됨", color: "text-green-600", dot: "bg-green-500" },
+                  rejected: { label: "거절됨", color: "text-red-500", dot: "bg-red-500" },
+                  pending: { label: "대기중", color: "text-gray-500", dot: "bg-gray-400" }
+                }[status];
+
                 return (
-                  <div key={app.id} className={`card ${status === "approved" ? "cardApproved" : status === "rejected" ? "cardRejected" : ""}`}>
-                    <div className="bg-white p-4">
-                      <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div key={app.id} className="group bg-white border border-gray-200 rounded-xl overflow-hidden transition-all hover:border-black shadow-sm">
+                    {/* 상단 정보 영역 */}
+                    <div className="p-5">
+                      <div className="flex justify-between items-start mb-3">
                         <div>
-                          <div className="text-lg font-bold text-black">{app.postDestination}</div>
-                          <div className="text-sm text-black/60 font-mono">{app.startDate} ~ {app.endDate}</div>
-                          <div className="text-xs text-black/40 mt-1">by {app.postAuthor.name}</div>
+                          <h4 className="text-lg font-bold text-gray-900 leading-tight mb-1">
+                            {app.postDestination}
+                          </h4>
+                          <p className="text-sm text-gray-500">
+                            {app.startDate} — {app.endDate}
+                          </p>
                         </div>
-                        <span className={`px-3 py-1 text-sm font-bold ${status === "approved" ? "bgGreen" : status === "rejected" ? "bgRed" : "bgBlack"}`}>
-                          {status === "approved" ? "APPROVED" : status === "rejected" ? "REJECTED" : "PENDING"}
-                        </span>
+                        <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gray-50 border border-gray-100 ${statusStyles.color}`}>
+                          <span className={`w-2 h-2 rounded-full ${statusStyles.dot}`} />
+                          <span className="text-xs font-bold uppercase tracking-wider">{statusStyles.label}</span>
+                        </div>
                       </div>
-                    </div>
-                    <div className="p-4">
-                      <div className="p-3 text-sm mb-3 infoBox">{app.applicant.message || "메시지 없음"}</div>
-                      <div className="flex items-center justify-between text-xs text-black/60 flex-wrap gap-2">
-                        <span>신청일: {app.applicant.appliedDate}</span>
-                        <span>예산: {app.applicant.budget}</span>
+
+                      {/* 신청 메시지 */}
+                      <div className="bg-gray-50 rounded-lg p-3 text-sm text-gray-600 italic border border-gray-100 mb-1">
+                        "{app.content || "보낸 메시지가 없습니다."}"
                       </div>
                       
+                      <div className="mt-2 text-[11px] text-gray-400 font-mono">
+                        HOST: {app.postAuthorName}
+                      </div>
+
+                      {/* 승인 시 채팅 안내 */}
                       {status === "approved" && (
-                        <div className="mt-3 px-4 py-2 bg-purple-50 border-2 border-purple-300 rounded-lg text-center">
-                          <span className="text-purple-700 text-sm font-bold">
-                            💬 채팅에 참여할 수 있습니다.
-                          </span>
-                        </div>
+                        <button 
+                          style={{ 
+                            width: "100%", 
+                            marginTop: "16px", 
+                            padding: "12px", 
+                            // 포인트 컬러: 약간 보라색이 섞인 세련된 블루 또는 브랜드 컬러 추천
+                            background: "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)", 
+                            color: "#fff", 
+                            border: "none", 
+                            borderRadius: "8px", 
+                            fontWeight: "bold", 
+                            fontSize: "13px",
+                            cursor: "pointer",
+                            boxShadow: "0 4px 12px rgba(79, 70, 229, 0.2)", // 은은한 그림자 효과
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            gap: "8px"
+                          }}
+                          // onClick={() => {/* 채팅 연결 로직 */}}
+                        >
+                          <span style={{ fontSize: "16px" }}>💬</span>
+                          채팅에 참여할 수 있어요
+                        </button>
                       )}
                     </div>
                   </div>

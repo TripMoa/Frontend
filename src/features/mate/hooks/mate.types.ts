@@ -51,7 +51,8 @@ export interface Applicant {
   age: number;
   gender: string;
   email: string;
-  avatar: string;
+  profileImage: string | null;
+  avatarEmoji: string | null;
   travelStyles: string[];
   message: string;
   appliedDate: string;
@@ -59,15 +60,24 @@ export interface Applicant {
   budget?: string;
 }
 
-// export interface MyApplication {
-//   id: string;
-//   postId: number;
-//   postDestination: string;
-//   startDate: string;
-//   endDate: string;
-//   postAuthor: Author;
-//   applicant: Applicant;
-// }
+export interface MyApplication {
+  id: string;
+  matePostId: number;
+  applicantId: number;
+  applicantName: string;
+  applicantEmail: string;
+  postAuthorName: string;
+  postAuthorEmail: string;
+  postAuthorAvatar: string | null;
+  postDestination: string;
+  startDate: string;
+  endDate: string;
+  content: string;
+  status: "approved" | "rejected" | "pending";
+  gender: string;
+  age: number;
+  avatar: string | null;
+}
 
 // export interface ReceivedApplication {
 //   id: string;
@@ -112,7 +122,9 @@ export interface ApplicationResponse {
   content: string;
   matePostId: number;
   postDestination: string;
+  profileImage: string | null;
   avatar: string | null;
+  travelStyles: string[];
   age: number;
   gender: string;
 }
@@ -128,7 +140,7 @@ export interface User {
   age: number | null;
 }
 
-export type ApplyStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+export type ApplyStatus = 'pending' | 'approved' | 'rejected';
 
 export interface LikeResponse {
   liked: boolean;
