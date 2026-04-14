@@ -17,6 +17,7 @@ import {
   MatePagination,
   MateWriteModal,
   MateReceivedModal,
+  MateSentModal,
 } from "../components";
 
 import "../styles/Mate.css";
@@ -27,8 +28,8 @@ export default function Mate() {
 
   const [writeError, setWriteError] = useState<string | null>(null);
   const [showWriteModal, setShowWriteModal] = useState(false);
-  const [showApplicantsModal, setShowApplicantsModal] = useState(false);
   const [showReceivedModal, setShowReceivedModal] = useState(false);
+  const [showSentModal, setShowSentModal] = useState(false);
   const [showSortDropdown, setShowSortDropdown] = useState(false);
 
   const [startDate, setStartDate] = useState<Date | null>(null);
@@ -82,6 +83,12 @@ export default function Mate() {
       fetchReceivedApplications();
     }
   }, [showReceivedModal]);
+
+  useEffect(() => {
+    if (showSentModal) {
+      fetchSentApplications();
+    }
+  }, [showSentModal]);
 
   const handleCardClick = (post: any) => {
     navigate(`/mate/${post.id}`);
@@ -179,7 +186,7 @@ export default function Mate() {
         <div style={{ marginBottom: "35px" }}>
           <MateHeader
             onWriteClick={() => setShowWriteModal(true)}
-            onMySentClick={() => setShowApplicantsModal(true)}
+            onMySentClick={() => setShowSentModal(true)}
             onReceivedClick={() => setShowReceivedModal(true)}
             onChatListClick={() => {}}
             mySentCount={0}
@@ -335,6 +342,16 @@ export default function Mate() {
           setSelectedAgeGroup={setSelectedAgeGroup}
           selectedGender={selectedGender}
           setSelectedGender={setSelectedGender}
+        />
+      )}
+      {showSentModal && (
+        <MateSentModal
+         applications={applications}
+         getApplicantStatus={(id) => {
+          const app = applications.find(a => a.id === id);
+          return app?.status || "pending";
+         }}
+         onClose={() => setShowSentModal(false)}
         />
       )}
 
