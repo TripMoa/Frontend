@@ -120,9 +120,9 @@ export default function Mate() {
       currentParticipant: parseInt(formData.get("currentParticipant") as string),
       maxParticipant: parseInt(formData.get("maxParticipant") as string),
       budget,
-      transport: TRANSPORT_MAP[selectedTransport], 
-      genderPreference: selectedGender ? GENDER_PREFERENCE_MAP[selectedGender] : "any",
-      ageGroup: selectedAgeGroup ? AGE_GROUP_MAP[selectedAgeGroup] : "all",
+      transport: selectedTransport, 
+      genderPreference: selectedGender || "무관",
+      ageGroup: selectedAgeGroup ?? "전체",
       content: formData.get("content") as string,
     };
 

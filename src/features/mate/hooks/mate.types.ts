@@ -7,7 +7,7 @@ export interface Author {
   profileImage: string | null;
   avatarEmoji: string | null;
   avatarColor: string | null;
-  gender: string | null;
+  gender: string;
   age: number | null;
   travelStyles: string[] | null;
 }
@@ -22,8 +22,8 @@ export interface Post {
   maxParticipant: number;
   budget: number;
   transport: string;
-  genderPreference: string | null;
-  ageGroup: string | null;
+  genderPreference: string;
+  ageGroup: string;
   likesCount: number;
   viewsCount: number;
   createdAt: string;
@@ -42,8 +42,8 @@ export interface MateCreateRequest {
   maxParticipant: number;
   budget: number;
   transport: string;
-  genderPreference: string | null;
-  ageGroup: string | null;
+  genderPreference: string;
+  ageGroup: string;
 }
 
 export interface Applicant {
