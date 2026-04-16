@@ -2,7 +2,6 @@ import type { MouseEvent } from "react";
 import { Heart, X, Eye, RotateCcw, Trash2 } from "lucide-react";
 import type { Post } from "../hooks/mate.types";
 import { 
-  getAirportDisplay, 
   getCurrentUserId,
   TRANSPORT_REVERSE_MAP,
   GENDER_PREFERENCE_REVERSE_MAP,
@@ -63,7 +62,7 @@ export function MatePostCard({
       >
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-4">
-            <div className="text-2xl text-black/60 mx-2">✈</div>
+            {/* <div className="text-2xl text-black/60 mx-2">✈</div> */}
 
             <div className="text-left">
               <div className="text-xs text-black/50 uppercase font-bold mb-1">To</div>

@@ -52,8 +52,8 @@ export function useMate() {
     maxParticipant: number;
     budget: number;
     transport: string;
-    genderPreference?: string;
-    ageGroup?: string;
+    genderPreference: string;
+    ageGroup: string;
     content: string;
   }): Promise<Post | null> => {
     setLoading(true);
@@ -75,12 +75,8 @@ export function useMate() {
         maxParticipant: formData.maxParticipant,
         budget: formData.budget,
         transport: TRANSPORT_MAP[formData.transport] || formData.transport,
-        genderPreference: formData.genderPreference 
-          ? GENDER_PREFERENCE_MAP[formData.genderPreference] || null
-          : null,
-        ageGroup: formData.ageGroup 
-          ? AGE_GROUP_MAP[formData.ageGroup] || null
-          : null,
+        genderPreference: GENDER_PREFERENCE_MAP[formData.genderPreference] ?? "any",
+        ageGroup: AGE_GROUP_MAP[formData.ageGroup] ?? "all",
         content: formData.content,
       };
 

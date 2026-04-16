@@ -11,7 +11,7 @@ export const GENDER_OPTIONS = ["남성", "여성", "무관"];
 export const AGE_OPTIONS = ["전체", "20대", "30대", "40대", "50대+"];
 export const TRANSPORT_OPTIONS = ["비행기", "버스", "기차", "자차", "도보", "렌트카", "택시"];
 export const TRAVEL_TYPE_OPTIONS = ["맛집탐방", "액티비티", "힐링", "문화탐방", "쇼핑", "자연", "사진", "야경"];
-export const AGE_GROUP_OPTIONS = ["20대", "30대", "40대", "50대+"];
+export const AGE_GROUP_OPTIONS = ["전체", "20대", "30대", "40대", "50대+"];
 
 // 백엔드 enum 매핑 (한글 -> 영문 enum)
 export const TRANSPORT_MAP: { [key: string]: string } = {
@@ -38,40 +38,55 @@ export const AGE_GROUP_MAP: { [key: string]: string } = {
   "50대+": "50s+"
 };
 
-// 역매핑 (영문 enum -> 한글)
+// 역매핑 (서버의 소문자 enum -> 한글)
 export const TRANSPORT_REVERSE_MAP: { [key: string]: string } = {
-  "AIRPLANE": "비행기",
-  "BUS": "버스",
-  "TRAIN": "기차",
-  "CAR": "자차",
-  "WALK": "도보"
+  "airplane": "비행기",
+  "bus": "버스",
+  "train": "기차",
+  "mycar": "자차",
+  "walk": "도보",
+  "rentalcar": "렌트카",
+  "taxi": "택시"
 };
 
 export const GENDER_PREFERENCE_REVERSE_MAP: { [key: string]: string } = {
-  "MALE": "남성",
-  "FEMALE": "여성",
-  "ANY": "무관"
+  "male": "남성",
+  "female": "여성",
+  "any": "무관"
 };
 
 export const AGE_GROUP_REVERSE_MAP: { [key: string]: string } = {
-  "TWENTIES": "20대",
-  "THIRTIES": "30대",
-  "FORTIES": "40대",
-  "FIFTIES_PLUS": "50대+"
+  "20s": "20대",
+  "30s": "30대",
+  "40s": "40대",
+  "50s+": "50대+",
+  "all": "전체"
 };
 
-// 공항 코드 매핑 (필요한 경우 사용)
-export const AIRPORT_MAP: { [key: string]: string } = {
-  ICN: "인천",
-  GMP: "김포",
-  PUS: "부산",
-  CJU: "제주",
-  SEL: "서울",
+export const getTransportLabel = (value: string): string => {
+  return TRANSPORT_REVERSE_MAP[value] || value || "정보 없음";
 };
 
-export const getAirportDisplay = (code: string): string => {
-  return AIRPORT_MAP[code] || code;
+export const getGenderPreferenceLabel = (value: string): string => {
+  return GENDER_PREFERENCE_REVERSE_MAP[value] || value || "무관";
 };
+
+export const getAgeGroupLabel = (value: string): string => {
+  return AGE_GROUP_REVERSE_MAP[value] || value || "전체";
+};
+
+// // 공항 코드 매핑 (필요한 경우 사용)
+// export const AIRPORT_MAP: { [key: string]: string } = {
+//   ICN: "인천",
+//   GMP: "김포",
+//   PUS: "부산",
+//   CJU: "제주",
+//   SEL: "서울",
+// };
+
+// export const getAirportDisplay = (code: string): string => {
+//   return AIRPORT_MAP[code] || code;
+// };
 
 // 현재 사용자 정보 가져오기 (API에서 가져오는 것으로 변경 필요)
 export const getCurrentUserId = (): number => {
