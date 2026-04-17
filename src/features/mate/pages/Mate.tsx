@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowUpDown, User, ChevronDown } from "lucide-react";
 
@@ -8,7 +8,8 @@ import { ChatFAB } from "../../chat/components/ChatFAB";
 import { ChatSlideModal } from "../../chat/components/ChatSlideModal";
 import { useMateFilters } from "../hooks/useMateFilters";
 import { usePagination } from "../hooks/usePagination";
-import { SORT_OPTIONS, getSortLabel, POSTS_PER_PAGE, TRANSPORT_MAP, GENDER_PREFERENCE_MAP, AGE_GROUP_MAP } from "../hooks/mate.constants";
+import { SORT_OPTIONS, getSortLabel, POSTS_PER_PAGE } from "../hooks/mate.constants";
+import { useCurrentUser } from "../../chat/hooks/useCurrentUser";
 
 import {
   MateHeader,
@@ -18,10 +19,13 @@ import {
   MateWriteModal,
   MateReceivedModal,
   MateSentModal,
+  MateTabs,
 } from "../components";
 
 import "../styles/Mate.css";
 import "../../chat/styles/ChatFAB.css";
+import type { MateTabKey } from "../components/MateTabs";
+import { isPostExpired } from "../hooks/mate.util";
 
 export default function Mate() {
   const navigate = useNavigate();
@@ -38,11 +42,20 @@ export default function Mate() {
   const [selectedGender, setSelectedGender] = useState("");
   const [selectedAgeGroup, setSelectedAgeGroup] = useState("");
   const [showChatModal, setShowChatModal] = useState(false);
+
+  const [activeTab, setActiveTab] = useState<MateTabKey>('all');
   
   const { chatRooms, createRoom, sendMessage, refreshRooms, markAsRead, leaveRoom } = useChat();
 
-  const { posts, loading, error, fetchPosts, createPost, deletePost, toggleLike,
-    applications, receivedApplications, fetchSentApplications, fetchReceivedApplications, handleApplicationStatus, getApplicantStatus
+  const { posts, loading, error, 
+    fetchPosts, createPost, deletePost, 
+    toggleLike,
+    applications, receivedApplications, 
+    fetchSentApplications, fetchReceivedApplications, 
+    handleApplicationStatus, 
+    fetchPassedPosts, fetchExpiredPosts,
+    passPost, unpassPost,
+    passedPosts, expiredPosts,
    } = useMate();
 
   const {
@@ -59,18 +72,48 @@ export default function Mate() {
     sortBy,
     setSortBy,
     filteredPosts,
-    removedPosts,
-    isLikedOnlyMode,
-    isRemovedOnlyMode,
-    isAppliedOnlyMode,
     hasActiveFilters,
     handleResetAll,
-    handleRemove,
-    handleRestore,
   } = useMateFilters(posts);
 
+  const currentUser = useCurrentUser();
+  const currentUserId = currentUser?.id;
+
+  const passedIdSet = useMemo(
+    () => new Set(passedPosts.map(p => p.id)),
+    [passedPosts]
+  );
+
+  const todayStr = new Date().toISOString().slice(0, 10);
+
+  const displayedPosts = useMemo(() => {
+    switch (activeTab) {
+      case 'passed':
+        return passedPosts;
+      case 'expired':
+        return expiredPosts;
+      case 'liked':
+        return filteredPosts.filter(p => p.liked);
+      case 'my':
+        return posts.filter(p => p.author.id === currentUserId);
+      case 'all':
+      default:
+        return filteredPosts.filter(p =>
+          !passedIdSet.has(p.id) && !isPostExpired(p)
+        );
+    }
+  }, [activeTab, filteredPosts, passedPosts, expiredPosts, passedIdSet, todayStr]);
+
+  const counts = {
+    all: filteredPosts.filter(p => !passedIdSet.has(p.id) && p.endDate >= todayStr).length,
+    passed: passedPosts.length,
+    expired: expiredPosts.length,
+    liked: posts.filter(p => p.liked).length,
+    my: posts.filter(p => p.author.id === currentUserId).length,
+  };
+
   const { currentPage, setCurrentPage, totalPages, visiblePosts } = usePagination(
-    filteredPosts,
+    displayedPosts,
     POSTS_PER_PAGE
   );
 
@@ -89,6 +132,16 @@ export default function Mate() {
       fetchSentApplications();
     }
   }, [showSentModal]);
+
+  // 탭 진입 시 데이터 로드
+  useEffect(() => {
+    if (activeTab === 'passed') fetchPassedPosts();
+    else if (activeTab === 'expired') fetchExpiredPosts();
+  }, [activeTab, fetchPassedPosts, fetchExpiredPosts]);
+
+  // 페이지 첫 진입 시에도 passed 목록은 받아둬야 ALL 탭에서 필터 가능
+  useEffect(() => { fetchPassedPosts(); }, [fetchPassedPosts]);
+  useEffect(() => { fetchExpiredPosts(); }, [fetchExpiredPosts]);
 
   const handleCardClick = (post: any) => {
     navigate(`/mate/${post.id}`);
@@ -153,32 +206,30 @@ export default function Mate() {
     }
   };
 
-  // if (loading) {
-  //   return (
-  //     <section className="page-section">
-  //       <div className="container" style={{ paddingTop: "100px", textAlign: "center" }}>
-  //         <div className="text-xl font-bold">메이트 목록을 불러오는 중...</div>
-  //       </div>
-  //     </section>
-  //   );
-  // }
+  const handlePass = useCallback(
+      async (postId: number, e: React.MouseEvent<HTMLButtonElement>) => {
+      e.stopPropagation();
+      await passPost(postId);
+    },
+    [passPost]
+  );
 
-  // if (error) {
-  //   return (
-  //     <section className="page-section">
-  //       <div className="container" style={{ paddingTop: "100px", textAlign: "center" }}>
-  //         <div className="text-xl font-bold text-red-600 mb-4">오류가 발생했습니다</div>
-  //         <p className="text-black/60 mb-6">{error}</p>
-  //         <button
-  //           onClick={() => window.location.reload()}
-  //           className="px-6 py-3 bg-black text-white font-bold border-2 border-black hover:bg-white hover:text-black transition-all"
-  //         >
-  //           새로고침
-  //         </button>
-  //       </div>
-  //     </section>
-  //   );
-  // }
+  const handleUnpass = useCallback(
+    async (postId: number, e: React.MouseEvent<HTMLButtonElement>) => {
+      e.stopPropagation();
+      await unpassPost(postId);
+    },
+    [unpassPost]
+  );
+
+  const handleLike = useCallback(
+    (postId: number, e: React.MouseEvent<HTMLButtonElement>) => {
+      e.stopPropagation();
+      toggleLike(postId);
+    },
+    [toggleLike]
+  );
+
 
   return (
     <section className="page-section">
@@ -194,25 +245,59 @@ export default function Mate() {
             unreadChatCount={0}
           />
         </div>
-
-        <div style={{ marginBottom: "30px" }}>
-          <MateFilters
-            locationFilter={locationFilter}
-            setLocationFilter={setLocationFilter}
-            dateFilter={dateFilter}
-            setDateFilter={setDateFilter}
-            genderFilter={genderFilter}
-            setGenderFilter={setGenderFilter}
-            ageFilter={ageFilter}
-            setAgeFilter={setAgeFilter}
-            selectedTags={selectedTags}
-            toggleTag={toggleTag}
-            setCurrentPage={setCurrentPage}
+        
+        <div className="mate-management-board">
+          <MateTabs
+            active={activeTab}
+            onChange={setActiveTab}
+            counts={counts}
           />
+
+          <div className="filter-wrapper">
+            {activeTab === 'all' ? (
+              <MateFilters
+                locationFilter={locationFilter}
+                setLocationFilter={setLocationFilter}
+                dateFilter={dateFilter}
+                setDateFilter={setDateFilter}
+                genderFilter={genderFilter}
+                setGenderFilter={setGenderFilter}
+                ageFilter={ageFilter}
+                setAgeFilter={setAgeFilter}
+                selectedTags={selectedTags}
+                toggleTag={toggleTag}
+                setCurrentPage={setCurrentPage}
+              />
+            ) : (
+            <div className="tab-status-banner">
+              <div className="banner-icon">
+                {activeTab === 'passed' && '📁'}
+                {activeTab === 'expired' && '⏳'}
+                {activeTab === 'liked' && '💖'}
+                {activeTab === 'my' && '👤'}
+              </div>
+              <div className="banner-content">
+                <span className="banner-title">
+                  {activeTab === 'passed' && '>> PASSED ARCHIVE'}
+                  {activeTab === 'expired' && '>> EXPIRED POSTS'}
+                  {activeTab === 'liked' && '>> MY WISHLIST'}
+                  {activeTab === 'my' && '>> MY OWN POSTS'}
+                </span>
+                <p className="banner-desc">
+                  {activeTab === 'passed' && "관심 없음으로 분류한 게시글들입니다. 복원 버튼으로 다시 리스트에 넣을 수 있습니다."}
+                  {activeTab === 'expired' && "이미 모집 기간이 종료된 게시글입니다. 정보 확인만 가능합니다."}
+                  {activeTab === 'liked' && "내가 찜한 게시글 모음입니다. 관심 있는 파티원에게 신청서를 보내보세요!"}
+                  {activeTab === 'my' && "내가 작성한 모집글입니다. 지원자 현황과 상세 내용을 관리하세요."}
+                </p>
+              </div>
+            </div>
+            )
+            }
+          </div>
         </div>
 
         <div
-          style={{ marginBottom: "30px" }}
+          style={{ marginBottom: "30px", marginTop: "30px" }}
           className="flex items-center justify-between flex-wrap gap-4"
         >
           <div className="flex items-center gap-3">
@@ -274,7 +359,7 @@ export default function Mate() {
           </div>
 
           <div className="flex items-center gap-4">
-            <span className="text-sm text-black/70">{filteredPosts?.length ?? 0} posts found</span>
+            <span className="text-sm text-black/70">{displayedPosts.length} posts found</span>
             {hasActiveFilters && (
               <button
                 onClick={handleResetAll}
@@ -284,7 +369,7 @@ export default function Mate() {
               </button>
             )}
           </div>
-        </div>
+        </div>  
 
         {loading && posts.length === 0 ? (
           <div className="bg-white p-20 text-center font-mono font-bold animate-pulse border-2 border-black">
@@ -293,7 +378,12 @@ export default function Mate() {
         ) : !visiblePosts || visiblePosts.length === 0 ? (
           <div className="bg-white p-12 text-center emptyState">
             <User className="w-16 h-16 mx-auto mb-4 text-black/30" />
-            <p className="text-black/60 text-lg font-bold uppercase">NO POSTS FOUND</p>
+            <p className="text-black/60 text-lg font-bold uppercase">
+              {activeTab === 'passed' ? 'ARCHIVE IS EMPTY' 
+              : activeTab === 'expired' ? 'NO EXPIRED POSTS' 
+              : activeTab === 'liked' ? 'NO LIKED POSTS'
+              : 'NO POSTS FOUND'}
+            </p>
           </div>
         ) : (
           <div
@@ -303,17 +393,15 @@ export default function Mate() {
               <MatePostCard
                 key={post.id}
                 post={post}
-                isLiked={post.isLiked ?? false}
-                isRemoved={removedPosts?.includes(post.id) ?? false}
-                isRemovedMode={isRemovedOnlyMode}
+                isLiked={post.liked ?? false}
+                isRemoved={activeTab === 'passed'}
+                isRemovedMode={activeTab === 'passed'}
+                isExpiredMode={activeTab === 'expired'}
                 onDelete={handleDeletePost}
                 onCardClick={handleCardClick}
-                onLike={(postId, e) => {
-                  e.stopPropagation();
-                  toggleLike(postId);
-                }}
-                onRemove={handleRemove}
-                onRestore={handleRestore}
+                onLike={handleLike}
+                onRemove={handlePass}
+                onRestore={handleUnpass}
               />
             ))}
           </div>
@@ -330,7 +418,6 @@ export default function Mate() {
           }}
           // 전역 error보다는 관리 중인 writeError를 넘겨주는 게 더 정확할 수 있습니다.
           writeError={writeError} 
-          loading={loading}
           onSubmit={handlePostSubmit}
           startDate={startDate}
           endDate={endDate}

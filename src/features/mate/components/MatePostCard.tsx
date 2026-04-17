@@ -14,6 +14,7 @@ interface MatePostCardProps {
   isLiked: boolean;
   isRemoved: boolean;
   isRemovedMode?: boolean;
+  isExpiredMode?: boolean;
   onCardClick: (post: Post) => void;
   onLike: (postId: number, e: MouseEvent<HTMLButtonElement>) => void;
   onRemove: (postId: number, e: MouseEvent<HTMLButtonElement>) => void;
@@ -26,6 +27,7 @@ export function MatePostCard({
   isLiked,
   isRemoved,
   isRemovedMode,
+  isExpiredMode,
   onCardClick,
   onLike,
   onRemove,
@@ -187,7 +189,14 @@ export function MatePostCard({
         {/* hover: 액션 버튼 */}
         <div className="absolute inset-0 flex flex-col gap-4 items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity p-4">
 
-          {isAuthor ? (
+          {isExpiredMode ? (
+            <>
+              <div className="text-xs font-bold text-black/40 text-center">
+                모집이 종료된<br />게시글입니다
+              </div>
+            </>
+          )          
+          : isAuthor ? (
             <>
               <button
                 onClick={(e) => onDelete?.(post.id, e)}

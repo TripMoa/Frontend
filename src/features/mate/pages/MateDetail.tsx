@@ -3,9 +3,10 @@ import { useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft, Heart, Calendar, Users, Wallet, Eye
 } from "lucide-react";
-import type { Post, ApplicationRequest, ApplicationResponse } from "../hooks/mate.types";
+import type { Post, ApplicationRequest } from "../hooks/mate.types";
 import { getCurrentUserId, calculateDuration, getAgeGroupLabel, getGenderPreferenceLabel, getTransportLabel } from "../hooks/mate.constants";
 import { useMate } from "../hooks/useMate";
+import { isPostExpired } from "../hooks/mate.util";
 import "../styles/MateDetail.css";
 
 export default function MateDetail() {
@@ -61,13 +62,13 @@ export default function MateDetail() {
     e.stopPropagation();
     if (!postId || !post) return;
 
-    const prevLiked = post.isLiked;
+    const prevLiked = post.liked;
     const prevCount = post.likesCount;
 
     setPost(prev => prev ? {
       ...prev,
-      isLiked: !prev.isLiked,
-      likesCount: prev.isLiked ? prev.likesCount - 1 : prev.likesCount + 1
+      isLiked: !prev.liked,
+      likesCount: prev.liked ? prev.likesCount - 1 : prev.likesCount + 1
     } : null);
 
     const result = await toggleLike(post.id);
@@ -144,8 +145,9 @@ export default function MateDetail() {
     );
   }
 
-  const isLiked = post.isLiked || false;
+  const isLiked = post.liked || false;
   const hasApplied = post.hasApplied || false;
+  const isExpire = isPostExpired(post);
 
   return (
     <div className="mate-detail">
@@ -314,10 +316,18 @@ export default function MateDetail() {
 
             {/* 5. 신청하기 섹션 */}
             <div className="apply-card">
-              {isAuthor ? (
-                <div className="text-center py-4 font-black uppercase italic text-xl border-4 border-black bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-                  My Post
-                </div>
+              {isExpire ? (
+                <>
+                  <div className="text-center py-4 font-black uppercase italic text-xl border-4 border-black bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                    모집 종료
+                  </div>
+                </>
+              ) : isAuthor ? (
+                <>
+                  <div className="text-center py-4 font-black uppercase italic text-xl border-4 border-black bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                    My Post
+                  </div>
+                </>
               ) : !showApplyForm ? (
                 <button
                   disabled={hasApplied || post.currentParticipant >= post.maxParticipant}
