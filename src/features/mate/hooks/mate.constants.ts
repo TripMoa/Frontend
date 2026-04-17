@@ -1,7 +1,4 @@
 // mate.constants.ts
-
-import type { Author, Post, ApplicationResponse } from "./mate.types";
-
 export const POSTS_PER_PAGE = 5;
 
 export const ALL_TAGS = ["맛집탐방", "액티비티", "힐링", "문화탐방", "쇼핑", "자연", "사진", "야경"];
@@ -172,12 +169,7 @@ export const SORT_OPTIONS = [
     { value: "budget-low", label: "예산 낮은 순" },
     { value: "views", label: "조회수 높은 순" },
     { value: "likes", label: "좋아요 많은 순" },
-  ]},
-  { group: "나의 활동", options: [
-    { value: "liked-only", label: "좋아요 누른 항목" },
-    { value: "applied-only", label: "내가 신청한 항목" },
-    { value: "removed-only", label: "패스한 항목" },
-  ]},
+  ]}
 ];
 
 export const getSortLabel = (value: string): string => {

@@ -5,7 +5,6 @@ import {
   GENDER_PREFERENCE_MAP,
   AGE_GROUP_MAP
 } from "./mate.constants";
-import { useChat } from "../../chat/hooks/useChat";
 
 const API_BASE_URL = "http://localhost:8080/api";
 
@@ -15,9 +14,9 @@ export function useMate() {
   const [applications, setApplications] = useState<any[]>([]);
   const [receivedApplications, setReceivedApplications] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [passedPosts, setPassedPosts] = useState<Post[]>([]);
+  const [expiredPosts, setExpiredPosts] = useState<Post[]>([]);
   const token = localStorage.getItem("accessToken");
-
-  const { createRoom } = useChat();
 
   const fetchPosts = useCallback(async () => {
     setLoading(true);
@@ -181,7 +180,7 @@ export function useMate() {
             ? { 
                 ...post, 
                 likesCount: likeResponse.count,
-                isLiked: likeResponse.liked 
+                liked: likeResponse.liked 
               }
             : post
         )
@@ -190,7 +189,7 @@ export function useMate() {
       return likeResponse;
     } catch (err) {
       setError(err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다.");
-      return false;
+      return null;
     }
   }, []);
 
@@ -250,6 +249,78 @@ export function useMate() {
     }
   }, []);
 
+  const passPost = useCallback(async (postId: number) => {
+    const target = posts.find(p => p.id === postId);
+    if (target) setPassedPosts(prev => [target, ...prev.filter(p => p.id !== postId)]);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/mate/posts/${postId}/pass`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+      });
+      if (!response.ok) throw new Error("PASS 처리에 실패했습니다.");
+    } catch (err) {
+      setPassedPosts(prev => prev.filter(p => p.id !== postId));
+      setError(err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다.");
+    }
+  }, [posts, token]);
+
+  const unpassPost = useCallback(async (postId: number) => {
+    const snapshot = passedPosts;
+    setPassedPosts(prev => prev.filter(p => p.id !== postId));
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/mate/posts/${postId}/pass`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+      });
+      if (!response.ok) throw new Error("UNPASS 처리에 실패했습니다.");
+    } catch (err) {
+      setPassedPosts(snapshot);
+      setError(err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다.");
+    }
+  }, [passedPosts, token]);
+
+  const fetchPassedPosts = useCallback(async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/mate/posts/passed`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+      });
+      if (!response.ok) throw new Error("PASSED 목록을 불러오는데 실패했습니다.");
+      const data: Post[] = await response.json();
+      setPassedPosts(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다.");
+    }
+  }, [token]);
+
+  const fetchExpiredPosts = useCallback(async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/mate/posts/expired`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+      });
+      if (!response.ok) throw new Error("EXPIRED 목록을 불러오는데 실패했습니다.");
+      const data: Post[] = await response.json();
+      setExpiredPosts(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다.");
+    }
+  }, [token]);
+
   return {
     posts,
     loading,
@@ -258,6 +329,12 @@ export function useMate() {
     createPost,
     fetchPostDetail,
     deletePost,
+    passPost,
+    unpassPost,
+    passedPosts,
+    expiredPosts,
+    fetchPassedPosts,
+    fetchExpiredPosts,
     toggleLike,
     applications,
     fetchReceivedApplications,

@@ -14,17 +14,6 @@ export function useMateFilters(posts: Post[]) {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState("default");
 
-  // 좋아요, 삭제 등의 로컬 상태
-  const [likedPostIds, setLikedPostIds] = useState<number[]>(() => {
-    const stored = localStorage.getItem("mate_likedPosts");
-    return stored ? JSON.parse(stored) : [];
-  });
-
-  const [removedPosts, setRemovedPosts] = useState<number[]>(() => {
-    const stored = localStorage.getItem("mate_removedPosts");
-    return stored ? JSON.parse(stored) : [];
-  });
-
   // 필터링 로직
   const filteredPosts = useMemo(() => {
     let result = [...posts];
@@ -88,9 +77,6 @@ export function useMateFilters(posts: Post[]) {
       case "applied-only":
         // TODO: 신청한 항목 필터링 (myApplications 필요)
         break;
-      case "removed-only":
-        result = result.filter((p) => removedPosts.includes(p.id));
-        break;
       default:
         // 기본 순서 유지
         break;
@@ -105,8 +91,6 @@ export function useMateFilters(posts: Post[]) {
     ageFilter,
     selectedTags,
     sortBy,
-    likedPostIds,
-    removedPosts,
   ]);
 
   // 태그 토글
@@ -137,28 +121,8 @@ export function useMateFilters(posts: Post[]) {
 
   // 모드 체크
   const isLikedOnlyMode = sortBy === "liked-only";
-  const isRemovedOnlyMode = sortBy === "removed-only";
   const isAppliedOnlyMode = sortBy === "applied-only";
 
-  // 삭제(Pass) 처리
-  const handleRemove = (postId: number, e: React.MouseEvent<HTMLButtonElement>) => {
-    e.stopPropagation();
-    setRemovedPosts((prev) => {
-      const newRemovedPosts = [...prev, postId];
-      localStorage.setItem("mate_removedPosts", JSON.stringify(newRemovedPosts));
-      return newRemovedPosts;
-    });
-  };
-
-  // 복원 처리
-  const handleRestore = (postId: number, e: React.MouseEvent<HTMLButtonElement>) => {
-    e.stopPropagation();
-    setRemovedPosts((prev) => {
-      const newRemovedPosts = prev.filter((id) => id !== postId);
-      localStorage.setItem("mate_removedPosts", JSON.stringify(newRemovedPosts));
-      return newRemovedPosts;
-    });
-  };
 
   return {
     // 필터 상태
@@ -177,17 +141,13 @@ export function useMateFilters(posts: Post[]) {
 
     // 필터링된 데이터
     filteredPosts,
-    removedPosts,
 
     // 모드 체크
     isLikedOnlyMode,
-    isRemovedOnlyMode,
     isAppliedOnlyMode,
     hasActiveFilters,
 
     // 액션
-    handleResetAll,
-    handleRemove,
-    handleRestore,
+    handleResetAll
   };
 }

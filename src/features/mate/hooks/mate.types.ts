@@ -29,7 +29,7 @@ export interface Post {
   createdAt: string;
   author: Author;
   duration?: string;
-  isLiked?: boolean;
+  liked?: boolean;
   hasApplied?: boolean;
 }
 
