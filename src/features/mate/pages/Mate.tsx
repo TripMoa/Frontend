@@ -25,7 +25,7 @@ import {
 import "../styles/Mate.css";
 import "../../chat/styles/ChatFAB.css";
 import type { MateTabKey } from "../components/MateTabs";
-import { isPostExpired } from "../hooks/mate.util";
+import { getTodayKST, isPostExpired } from "../hooks/mate.util";
 
 export default function Mate() {
   const navigate = useNavigate();
@@ -84,8 +84,6 @@ export default function Mate() {
     [passedPosts]
   );
 
-  const todayStr = new Date().toISOString().slice(0, 10);
-
   const displayedPosts = useMemo(() => {
     switch (activeTab) {
       case 'passed':
@@ -102,10 +100,10 @@ export default function Mate() {
           !passedIdSet.has(p.id) && !isPostExpired(p)
         );
     }
-  }, [activeTab, filteredPosts, passedPosts, expiredPosts, passedIdSet, todayStr]);
+  }, [activeTab, filteredPosts, passedPosts, expiredPosts, passedIdSet, getTodayKST()]);
 
   const counts = {
-    all: filteredPosts.filter(p => !passedIdSet.has(p.id) && p.endDate >= todayStr).length,
+    all: filteredPosts.filter(p => !passedIdSet.has(p.id) && p.endDate >= getTodayKST()).length,
     passed: passedPosts.length,
     expired: expiredPosts.length,
     liked: posts.filter(p => p.liked).length,
