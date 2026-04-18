@@ -1,6 +1,7 @@
 // hooks/useMateFilters.ts
 import { useState, useMemo } from "react";
 import type { Post } from "./mate.types";
+import { toLocalDateString } from "./mate.util";
 import {
   GENDER_PREFERENCE_MAP,
   AGE_GROUP_MAP,
@@ -27,7 +28,7 @@ export function useMateFilters(posts: Post[]) {
 
     // 날짜 필터
     if (dateFilter) {
-      const filterDate = dateFilter.toISOString().split("T")[0];
+      const filterDate = toLocalDateString(dateFilter);
       result = result.filter((p) => {
         return p.startDate <= filterDate && p.endDate >= filterDate;
       });
@@ -71,12 +72,6 @@ export function useMateFilters(posts: Post[]) {
       case "likes":
         result.sort((a, b) => b.likesCount - a.likesCount);
         break;
-      case "liked-only":
-        result = result.filter((p) => p.isLiked);
-        break;
-      case "applied-only":
-        // TODO: 신청한 항목 필터링 (myApplications 필요)
-        break;
       default:
         // 기본 순서 유지
         break;
@@ -119,10 +114,6 @@ export function useMateFilters(posts: Post[]) {
     selectedTags.length > 0 ||
     sortBy !== "default";
 
-  // 모드 체크
-  const isLikedOnlyMode = sortBy === "liked-only";
-  const isAppliedOnlyMode = sortBy === "applied-only";
-
 
   return {
     // 필터 상태
@@ -143,8 +134,6 @@ export function useMateFilters(posts: Post[]) {
     filteredPosts,
 
     // 모드 체크
-    isLikedOnlyMode,
-    isAppliedOnlyMode,
     hasActiveFilters,
 
     // 액션
