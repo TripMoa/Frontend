@@ -56,7 +56,8 @@ export default function Mate() {
     fetchPassedPosts, fetchExpiredPosts,
     passPost, unpassPost,
     passedPosts, expiredPosts,
-    deleteSentApplication
+    deleteSentApplication,
+    deleteReceivedApplication,
    } = useMate();
 
   const {
@@ -452,6 +453,7 @@ export default function Mate() {
           onApprove={(id, postId, applicantId) => handleApplicationStatus(id, 'approve')}
           onReject={(id) => handleApplicationStatus(id, 'reject')}
           onClose={() => setShowReceivedModal(false)}
+          onDeleteReceived={(applyId) => deleteReceivedApplication(applyId)}
         />
       )}
 

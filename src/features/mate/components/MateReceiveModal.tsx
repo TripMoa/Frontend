@@ -1,8 +1,8 @@
-import { Send, Check, XCircle, ArrowLeft, MessageSquare } from "lucide-react";
+import { Send, Check, XCircle, ArrowLeft, MessageSquare, Trash2 } from "lucide-react";
 import { useState } from "react";
 import "../styles/MateModals.css";
 import type { ApplicationResponse, SelectedApplicant } from "../hooks/mate.types";
-import { getApplicantAvatar } from "../hooks/mate.util.ts";
+import { getApplicantAvatar, isPostExpired } from "../hooks/mate.util.ts";
 
 interface ReceivedModalProps {
   applications: ApplicationResponse[];
@@ -10,6 +10,7 @@ interface ReceivedModalProps {
   onApprove: (id: string, postId: number, applicantId: number, e?: React.MouseEvent<HTMLButtonElement>) => void;
   onReject: (id: string, e?: React.MouseEvent<HTMLButtonElement>) => void;
   onClose: () => void;
+  onDeleteReceived?: (applyId: string) => void;
 }
 
 function AvatarDisplay({ profileImage, avatarEmoji, className }: {
@@ -31,6 +32,7 @@ export function MateReceivedModal({
   onApprove, 
   onReject,
   onClose,
+  onDeleteReceived,
 }: ReceivedModalProps){
   const [selectedApplicant, setSelectedApplicant] = useState<SelectedApplicant | null>(null);
 
@@ -189,6 +191,29 @@ export function MateReceivedModal({
                             <MessageSquare className="w-3 h-3" /> 채팅 가능
                           </span>
                         )}
+                        {isPostExpired(data) && onDeleteReceived && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (window.confirm("이 신청을 삭제하시겠습니까?")) {
+                                  onDeleteReceived(String(data.id));
+                                }
+                              }}
+                              title="신청 삭제"
+                              style={{
+                                padding: "6px",
+                                background: "transparent",
+                                border: "none",
+                                cursor: "pointer",
+                                color: "#9ca3af",
+                                transition: "color 0.15s",
+                              }}
+                              onMouseEnter={(e) => (e.currentTarget.style.color = "#dc2626")}
+                              onMouseLeave={(e) => (e.currentTarget.style.color = "#9ca3af")}
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          )}
                       </div>
                     </div>
 

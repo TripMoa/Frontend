@@ -269,6 +269,26 @@ export function useMate() {
     }
   }, [token, fetchSentApplications]);
 
+// 5. 받은 신청서 삭제하기
+  const deleteReceivedApplication = useCallback(async (applyId: string): Promise<boolean> => {
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/mate/applications/${applyId}/received`, {
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${token}`}
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "신청서 삭제에 실패했습니다.");
+      }
+      await fetchReceivedApplications();
+      return true;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "신청서 삭제에 실패했습니다.");
+      return false;
+    }
+  }, [token, fetchReceivedApplications]);
+
   const passPost = useCallback(async (postId: number) => {
     const target = posts.find(p => p.id === postId);
     if (target) setPassedPosts(prev => [target, ...prev.filter(p => p.id !== postId)]);
@@ -365,6 +385,7 @@ export function useMate() {
       const app = receivedApplications.find(a => String(a.id) === String(id));
       return app?.status || "pending"; 
     },
-    deleteSentApplication
+    deleteSentApplication,
+    deleteReceivedApplication,
   };
 }
