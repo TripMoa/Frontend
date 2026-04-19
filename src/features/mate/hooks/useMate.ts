@@ -240,14 +240,34 @@ export function useMate() {
   const fetchSentApplications = useCallback(async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/mate/applications/sent`, {
-        headers: { "Authorization": `Bearer ${localStorage.getItem("accessToken")}`}
+        headers: { "Authorization": `Bearer ${token}`}
       });
       if(!response.ok) throw new Error("데이터 로딩 실패");
       const data = await response.json();
       setApplications(data);
     } catch (err) {
     }
-  }, []);
+  }, [token]);
+
+  // 4. 보낸 신청서 삭제하기(만료된 게시글)
+  const deleteSentApplication = useCallback(async (applyId: string): Promise<boolean> => {
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/mate/applications/${applyId}/sent`, {
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${token}`}
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "신청서 삭제에 실패했습니다.");
+      }
+      await fetchSentApplications();
+      return true;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "신청서 삭제에 실패했습니다.");
+      return false;
+    }
+  }, [token, fetchSentApplications]);
 
   const passPost = useCallback(async (postId: number) => {
     const target = posts.find(p => p.id === postId);
@@ -344,6 +364,7 @@ export function useMate() {
     getApplicantStatus: (id: string) => {
       const app = receivedApplications.find(a => String(a.id) === String(id));
       return app?.status || "pending"; 
-    }
+    },
+    deleteSentApplication
   };
 }

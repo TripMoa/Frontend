@@ -1,17 +1,20 @@
-import { Send } from "lucide-react";
+import { Send, Trash2 } from "lucide-react";
 import "../styles/MateModals.css";
 import type { MyApplication } from "../hooks/mate.types";
+import { isPostExpired } from "../hooks/mate.util";
 
 interface MateSentModalProps {
   applications: MyApplication[];
   getApplicantStatus: (id: string) => "approved" | "rejected" | "pending";
   onClose: () => void;
+  onDeleteSent?: (applyId: string) => void;
 }
 
 export function MateSentModal({ 
   applications, 
   getApplicantStatus, 
   onClose,
+  onDeleteSent,
 }: MateSentModalProps){
   return (
     <div className="modal-overlay active" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
@@ -52,9 +55,34 @@ export function MateSentModal({
                             {app.startDate} — {app.endDate}
                           </p>
                         </div>
-                        <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gray-50 border border-gray-100 ${statusStyles.color}`}>
-                          <span className={`w-2 h-2 rounded-full ${statusStyles.dot}`} />
-                          <span className="text-xs font-bold uppercase tracking-wider">{statusStyles.label}</span>
+                        <div className="flex items-center gap-2">
+                          <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gray-50 border border-gray-100 ${statusStyles.color}`}>
+                            <span className={`w-2 h-2 rounded-full ${statusStyles.dot}`} />
+                            <span className="text-xs font-bold uppercase tracking-wider">{statusStyles.label}</span>
+                          </div>
+                          {isPostExpired(app) && onDeleteSent && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (window.confirm("이 신청을 삭제하시겠습니까?")) {
+                                  onDeleteSent(String(app.id));
+                                }
+                              }}
+                              title="신청 삭제"
+                              style={{
+                                padding: "6px",
+                                background: "transparent",
+                                border: "none",
+                                cursor: "pointer",
+                                color: "#9ca3af",
+                                transition: "color 0.15s",
+                              }}
+                              onMouseEnter={(e) => (e.currentTarget.style.color = "#dc2626")}
+                              onMouseLeave={(e) => (e.currentTarget.style.color = "#9ca3af")}
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          )}
                         </div>
                       </div>
 
