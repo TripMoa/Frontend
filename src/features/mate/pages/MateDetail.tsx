@@ -24,7 +24,7 @@ export default function MateDetail() {
   const hasLoadedRef = useRef(false);
 
   const currentUserId = getCurrentUserId();
-  const isAuthor = post?.author.id === currentUserId;
+  const isAuthor = post?.author?.id === currentUserId;
   const token = localStorage.getItem("accessToken");
 
   const { withLoginCheck } = useAuthGuard();
