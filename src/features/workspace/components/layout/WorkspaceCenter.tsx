@@ -1,6 +1,6 @@
 // src/features/workspace/components/layout/WorkspaceCenter.tsx
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 
 import "../../styles/center.css";
 import "../../styles/layout.css";
@@ -27,18 +27,21 @@ import type { UseNoticesStore } from "../../hooks/useNotices";
 
 interface Props {
   noticeStore: UseNoticesStore;
-  rightOpen: boolean;
-  setRightOpen: (v: boolean) => void;
 }
 
-const WorkspaceCenter: React.FC<Props> = ({
-  noticeStore,
-  rightOpen,
-  setRightOpen,
-}) => {
-  const { activeView, currentDay } = useWorkspaceCore();
+const WorkspaceCenter: React.FC<Props> = ({ noticeStore }) => {
+  const { activeView, currentDay, trip, updateTripData } = useWorkspaceCore();
 
-  const { nodes, addNode, updateNode } = useTimeline(currentDay);
+  const { nodes, addNode, updateNode, deleteNode, reorderNodes, moveNodeToDay, loadFromExternal } = useTimeline(currentDay);
+
+  const dayKeys: string[] = useMemo(() => {
+    try {
+      const saved = localStorage.getItem("tripmoa_timeline_data");
+      return saved ? Object.keys(JSON.parse(saved)) : [];
+    } catch {
+      return [];
+    }
+  }, [nodes]);
 
   const {
     notices,
@@ -66,21 +69,6 @@ const WorkspaceCenter: React.FC<Props> = ({
 
   const voucherStore = useVouchers();
   const [isVoucherModalOpen, setIsVoucherModalOpen] = useState(false);
-
-  const [trip, setTrip] = useState({
-    title: "OSAKA X-MAS 🎄",
-    startDate: "2025-12-24",
-    endDate: "2025-12-25",
-  });
-
-  useEffect(() => {
-    const saved = localStorage.getItem("tripData");
-    if (saved) setTrip(JSON.parse(saved));
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem("tripData", JSON.stringify(trip));
-  }, [trip]);
 
   return (
     <div className="ws-main">
@@ -144,6 +132,8 @@ const WorkspaceCenter: React.FC<Props> = ({
               tripTitle={trip.title}
               startDate={trip.startDate}
               endDate={trip.endDate}
+              //추가
+              onScheduleGenerated={loadFromExternal}
             />
           ) : (
             <DayDetailView
@@ -152,10 +142,12 @@ const WorkspaceCenter: React.FC<Props> = ({
               startDate={trip.startDate}
               endDate={trip.endDate}
               nodes={nodes}
+              dayKeys={dayKeys}
               addNode={addNode}
               updateNode={updateNode}
-              rightOpen={rightOpen}
-              setRightOpen={setRightOpen}
+              deleteNode={deleteNode}
+              reorderNodes={reorderNodes}
+              moveNodeToDay={moveNodeToDay}
             />
           )}
         </div>
@@ -230,7 +222,7 @@ const WorkspaceCenter: React.FC<Props> = ({
           init={trip}
           onClose={closeEdit}
           onSave={(data) => {
-            setTrip(data);
+            void updateTripData(data);
             closeEdit();
           }}
         />
