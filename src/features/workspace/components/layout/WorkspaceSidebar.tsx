@@ -19,7 +19,27 @@ const WorkspaceSidebar: React.FC = () => {
     renameNoticeGroup,
     deleteNoticeGroup,
     isNoticeGroupsLoading,
+    trip,
+    tripMembers,
   } = useWorkspaceCore();
+
+  const formatDateRange = (start: string, end: string) => {
+    if (!start || !end) return "-";
+    const s = new Date(start);
+    const e = new Date(end);
+    const sm = String(s.getMonth() + 1).padStart(2, "0");
+    const sd = String(s.getDate()).padStart(2, "0");
+    const em = String(e.getMonth() + 1).padStart(2, "0");
+    const ed = String(e.getDate()).padStart(2, "0");
+    return `${s.getFullYear()}.${sm}.${sd} - ${em}.${ed}`;
+  };
+
+  const calcNightsDays = (start: string, end: string) => {
+    if (!start || !end) return "-";
+    const diff = Math.round((new Date(end).getTime() - new Date(start).getTime()) / 86400000);
+    if (diff <= 0) return "당일치기";
+    return `${diff}박 ${diff + 1}일`;
+  };
 
   return (
     <div className="ws-panel">
@@ -173,17 +193,23 @@ const WorkspaceSidebar: React.FC = () => {
       <div className="ws-info-area">
         <div className="info-group">
           <div className="info-label">TRIP DURATION</div>
-          <div className="info-val">2025.12.24 - 12.25</div>
-          <div className="info-sub">1박 2일</div>
+          <div className="info-val">{formatDateRange(trip.startDate, trip.endDate)}</div>
+          <div className="info-sub">{calcNightsDays(trip.startDate, trip.endDate)}</div>
         </div>
 
         <div className="info-group">
-          <div className="info-label">MEMBERS (4)</div>
+          <div className="info-label">MEMBERS ({tripMembers.length})</div>
           <div className="member-row">
-            <div className="mem-icon owner">ME</div>
-            <div className="mem-icon">J</div>
-            <div className="mem-icon">K</div>
-            <div className="mem-icon">M</div>
+            {tripMembers.map((m) => (
+              <div
+                key={m.memberId}
+                className="mem-icon"
+                style={m.avatarColor ? { background: m.avatarColor } : undefined}
+                title={m.nickname}
+              >
+                {m.avatarEmoji || m.nickname.charAt(0).toUpperCase()}
+              </div>
+            ))}
           </div>
         </div>
 
