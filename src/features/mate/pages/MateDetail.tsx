@@ -7,6 +7,7 @@ import { getCurrentUserId, calculateDuration, getAgeGroupLabel, getGenderPrefere
 import { useMate } from "../hooks/useMate";
 import { isPostExpired } from "../hooks/mate.util";
 import { useAuthGuard } from "../hooks/useAuthGuard";
+import { ProfileIncompleteModal } from "../components/ProfileIncompleteModal";
 import "../styles/MateDetail.css";
 
 export default function MateDetail() {
@@ -26,7 +27,10 @@ export default function MateDetail() {
   const isAuthor = post?.author?.id === currentUserId;
   const token = localStorage.getItem("accessToken");
 
-  const { withLoginCheck, showLoginModal, closeLoginModal, goToLogin } = useAuthGuard();
+  const {
+    withLoginCheck, showLoginModal, closeLoginModal, goToLogin,
+    withProfileCheck, showProfileModal, closeProfileModal, goToProfileEdit,
+  } = useAuthGuard();
 
   useEffect(() => {
     const loadPost = async () => {
@@ -334,7 +338,7 @@ export default function MateDetail() {
               ) : !showApplyForm ? (
                 <button
                   disabled={hasApplied || post.currentParticipant >= post.maxParticipant}
-                  onClick={() => withLoginCheck(() => setShowApplyForm(true))}
+                  onClick={() => withProfileCheck(() => setShowApplyForm(true))}
                   className="apply-button"
                 >
                   {hasApplied ? "Applied" : post.currentParticipant >= post.maxParticipant ? "Full" : "Apply Now"}
@@ -378,6 +382,13 @@ export default function MateDetail() {
       </div>
     </div>
 
+    {showProfileModal && (
+      <ProfileIncompleteModal
+        onClose={closeProfileModal}
+        onGoToEdit={goToProfileEdit}
+      />
+    )}
+    
     {showLoginModal && (
       <LoginPromptModal onClose={closeLoginModal} onLogin={goToLogin} />
     )}
