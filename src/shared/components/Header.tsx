@@ -1,42 +1,95 @@
-import { useNavigate } from "react-router-dom";
-import { useUserProfile } from "../../features/user/hooks/useUserSetting";
-import { logout } from "../../api/auth.api";
+// src/shared/components/Header.tsx
 
-export default function Header() {
+import { useNavigate } from "react-router-dom";
+import { logout } from "../../api/auth.api";
+import { useAuth } from "../../features/user/pages/AuthContext";
+import { useUserProfile } from "../../features/user/hooks/useUserSetting";
+
+function HeaderProfileMenu() {
   const navigate = useNavigate();
   const { profile } = useUserProfile();
 
-  // 로그인 상태 확인
-  const isLoggedIn = !!localStorage.getItem("accessToken");
+  const fallbackProfile = {
+    avatarEmoji: "😊",
+    avatarColor: "#FFE5E5",
+    profileImage: null,
+  };
+
+  const displayProfile = profile ?? fallbackProfile;
+
+  const handleLogout = async () => {
+    await logout();
+    navigate("/", { replace: true });
+  };
+
+  const handleSettingsClick = () => {
+    navigate("/setting");
+  };
+
+  return (
+    <>
+      <button className="nav-item btn-profile" type="button">
+        <div
+          className="profile-circle"
+          style={{
+            background: displayProfile.profileImage
+              ? "transparent"
+              : displayProfile.avatarColor,
+            overflow: "hidden",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          {displayProfile.profileImage ? (
+            <img
+              src={displayProfile.profileImage}
+              alt="Profile"
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+              }}
+            />
+          ) : (
+            <span style={{ fontSize: "1.2rem" }}>
+              {displayProfile.avatarEmoji}
+            </span>
+          )}
+        </div>
+      </button>
+
+      <div className="dropdown-menu dropdown-right">
+        <button onClick={handleSettingsClick} className="dropdown-item-btn">
+          {">>"} SETTINGS
+        </button>
+        <button onClick={handleLogout} className="dropdown-item-btn">
+          {">>"} LOGOUT
+        </button>
+      </div>
+    </>
+  );
+}
+
+export default function Header() {
+  const navigate = useNavigate();
+  const { isAuthenticated, authReady } = useAuth();
 
   const handleLogoClick = () => navigate("/");
 
-  // MY PLAN 클릭 핸들러
   const handlePlanClick = () => {
-    if (!isLoggedIn) {
-      // 비로그인 시 알림창을 띄우고 로그인 페이지로 이동
-      alert("로그인 이후 이용 가능합니다.");
-      navigate("/login");
-    } else {
-      // 로그인 상태면 마이트립 페이지로 이동
-      navigate("/mytrips");
+    if (!isAuthenticated) {
+      navigate("/login", {
+        state: { message: "로그인 이후 이용 가능합니다.", from: "/mytrips" },
+      });
+      return;
     }
+
+    navigate("/mytrips");
   };
 
-  // 로그인 핸들러
   const handleLogin = () => {
     navigate("/login");
-  };
-
-  // 로그아웃 핸들러
-  const handleLogout = async () => {
-    await logout();
-    window.location.href = "/";
-  };
-
-  // 설정 버튼 클릭 핸들러
-  const handleSettingsClick = () => {
-    navigate("/setting");
   };
 
   return (
@@ -47,7 +100,6 @@ export default function Header() {
 
       <nav>
         <ul>
-          {/* MY PLAN */}
           <li className="nav-group">
             <button
               className="nav-item"
@@ -58,7 +110,6 @@ export default function Header() {
             </button>
           </li>
 
-          {/* COMMUNITY */}
           <li className="nav-group">
             <button className="nav-item" type="button">
               COMMUNITY ▼
@@ -69,62 +120,15 @@ export default function Header() {
             </div>
           </li>
 
-          {/* LOGIN / PROFILE */}
           <li className="nav-group">
-            {!isLoggedIn ? (
+            {!authReady ? (
+              <div style={{ width: "80px", height: "40px" }} />
+            ) : !isAuthenticated ? (
               <button className="btn-login" type="button" onClick={handleLogin}>
                 LOGIN
               </button>
             ) : (
-              isLoggedIn &&
-              profile && (
-                <>
-                  <button className="nav-item btn-profile" type="button">
-                    <div
-                      className="profile-circle"
-                      style={{
-                        background: profile.profileImage
-                          ? "transparent"
-                          : profile.avatarColor,
-                        overflow: "hidden",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      {profile.profileImage ? (
-                        <img
-                          src={profile.profileImage}
-                          alt="Profile"
-                          style={{
-                            width: "100%",
-                            height: "100%",
-                            objectFit: "cover",
-                          }}
-                        />
-                      ) : (
-                        <span style={{ fontSize: "1.2rem" }}>
-                          {profile.avatarEmoji}
-                        </span>
-                      )}
-                    </div>
-                  </button>
-                  <div className="dropdown-menu dropdown-right">
-                    <button
-                      onClick={handleSettingsClick}
-                      className="dropdown-item-btn"
-                    >
-                      {">>"} SETTINGS
-                    </button>
-                    <button
-                      onClick={handleLogout}
-                      className="dropdown-item-btn"
-                    >
-                      {">>"} LOGOUT
-                    </button>
-                  </div>
-                </>
-              )
+              <HeaderProfileMenu />
             )}
           </li>
         </ul>

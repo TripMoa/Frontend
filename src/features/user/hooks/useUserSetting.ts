@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { generateRandomAvatar } from "../components/User.constant";
 import { MBTI_TYPES } from "../components/User.constant";
 import { getMyInfo, updateMyInfo, withdraw } from "../../../api/auth.api";
+import { useAuth } from "../pages/AuthContext";
 
 export interface UserProfile {
   // 기본 필드
@@ -45,16 +46,16 @@ export interface UserProfile {
 export function useUserProfile() {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { isAuthenticated, authReady, clearAuth } = useAuth();
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  // 로컬 저장소에서 로그인 여부 확인
-  const isLoggedIn = !!localStorage.getItem("accessToken");
-
   useEffect(() => {
-    if (!isLoggedIn) {
+    if (!authReady) return;
+
+    if (!isAuthenticated) {
       setProfile(null);
       return;
     }
@@ -69,10 +70,10 @@ export function useUserProfile() {
         setProfile(data);
       })
       .catch(() => {
-        localStorage.removeItem("accessToken");
-        navigate("/login");
+        clearAuth();
+        navigate("/login", { replace: true });
       });
-  }, [isLoggedIn]);
+  }, [authReady, isAuthenticated, navigate, clearAuth]);
 
   // 나이 계산
   const calculateAge = (birthDate: string): number => {

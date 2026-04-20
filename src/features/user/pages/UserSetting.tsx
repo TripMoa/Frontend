@@ -13,6 +13,7 @@ import { useUserProfile } from "../hooks/useUserSetting";
 import type { UserProfile } from "../hooks/useUserSetting";
 import { TRAVEL_STYLES, MODAL_MESSAGES } from "../components/User.constant";
 import styles from "../styles/UserSetting.module.css";
+import { API_BASE_URL } from "../../../shared/config/env";
 
 export default function UserSettings() {
   const navigate = useNavigate();
@@ -114,11 +115,18 @@ export default function UserSettings() {
 
   // 계정 탈퇴 핸들러
   const handleDeleteAccount = async () => {
-    const success = await deleteAccount(); // 비동기 호출 대기
+    try {
+      await deleteAccount();
 
-    if (success) {
       alert(MODAL_MESSAGES.DELETE.SUCCESS);
       setShowDeleteModal(false);
+      navigate("/login", { replace: true });
+    } catch (error: any) {
+      const message =
+        error?.response?.data?.message ||
+        "회원 탈퇴에 실패했습니다. 잠시 후 다시 시도해주세요.";
+
+      alert(message);
     }
   };
 
