@@ -1,6 +1,6 @@
 // src\features\workspace\pages\Workspace.tsx
 
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import "../styles/layout.css";
 import {
   WorkspaceCoreProvider,
@@ -10,21 +10,17 @@ import {
 import WorkspaceLayout from "../components/layout/WorkspaceLayout";
 import WorkspaceSidebar from "../components/layout/WorkspaceSidebar";
 import WorkspaceCenter from "../components/layout/WorkspaceCenter";
-import WorkspaceRight from "../components/layout/WorkspaceRight";
 import { useNotices } from "../hooks/useNotices";
 
 /* =========================
    Provider 내부 실제 UI
 ========================= */
 const WorkspaceContent: React.FC = () => {
-  const { activeView, currentDay } = useWorkspaceCore();
-  const [rightOpen, setRightOpen] = useState(true);
+  const { activeView } = useWorkspaceCore();
 
-  // 2열로 써야 하는 화면
-  // timeline은 DAY ALL일 때만 2열, DAY 1/DAY 2 등은 rightOpen 상태에 따라
+  // timeline 포함 모든 뷰가 2열 (오른쪽 사이드바 미사용)
   const isTwoColumn =
-    !rightOpen ||
-    (activeView === "timeline" && currentDay === "DAY ALL") || // ✅ DAY ALL만 무조건 2열
+    activeView === "timeline" ||
     activeView === "expenses" ||
     activeView === "voucher" ||
     activeView === "notice";
@@ -36,7 +32,7 @@ const WorkspaceContent: React.FC = () => {
       <WorkspaceLayout>
         <WorkspaceSidebar />
 
-        {/* 🔥 핵심: 2열 화면일 때 center가 오른쪽 칸까지 먹음 */}
+        {/* 핵심: 2열 화면일 때 center가 오른쪽 칸까지 먹음 */}
         <div
           style={
             isTwoColumn
@@ -44,15 +40,10 @@ const WorkspaceContent: React.FC = () => {
               : undefined
           }
         >
-          <WorkspaceCenter
-            noticeStore={noticeStore}
-            rightOpen={rightOpen}
-            setRightOpen={setRightOpen}
-          />
+          <WorkspaceCenter noticeStore={noticeStore} />
         </div>
 
-        {/* 3열 화면에서만 Right 렌더 */}
-        {!isTwoColumn && rightOpen && <WorkspaceRight />}
+        {/* WorkspaceRight 미사용 */}
       </WorkspaceLayout>
     </>
   );
