@@ -1,6 +1,8 @@
 //src\features\workspace\components\schedule\modal\PlaceDetailModal.tsx
 import React from "react";
 import "../../../styles/modals.css";
+import "../../../styles/placedetailmodal.css";
+import { CATEGORY_COLOR, getCategoryIcon } from "../../../hooks/schedule.constants";
 
 interface PlaceInfo {
   name: string;
@@ -16,37 +18,32 @@ interface PlaceInfo {
 interface PlaceDetailModalProps {
   placeInfo: PlaceInfo;
   onClose: () => void;
+  onViewOnMap?: () => void;
 }
 
-const PlaceDetailModal: React.FC<PlaceDetailModalProps> = ({
-  placeInfo,
-  onClose,
-}) => {
-  // 카테고리별 아이콘
-  const getCategoryIcon = (cat?: string) => {
-    const icons: { [key: string]: string } = {
-      맛집: "🍴",
-      카페: "☕",
-      관광: "🏛️",
-      쇼핑: "🛍️",
-      숙소: "🏨",
-    };
-    return cat ? icons[cat] || "📍" : "📍";
-  };
+
+
+const PlaceDetailModal: React.FC<PlaceDetailModalProps> = ({ placeInfo, onClose, onViewOnMap }) => {
+  const color = CATEGORY_COLOR[placeInfo.category ?? ""] || "#333";
+  const icon = placeInfo.category ? getCategoryIcon(placeInfo.category) : "📍";
+
+  const stars = placeInfo.rating
+    ? Array.from({ length: 5 }, (_, i) =>
+        i < Math.round(placeInfo.rating!) ? "★" : "☆"
+      ).join("")
+    : null;
 
   return (
     <div
       className="modal-overlay active"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div
         className="modal-window"
-        style={{ width: "90%", maxWidth: "600px", maxHeight: "85vh" }}
+        style={{ width: "90%", maxWidth: "580px", maxHeight: "88vh" }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* 헤더 */}
+        {/* 헤더 — 기존 AddPlaceModal/AiScheduleModal과 동일한 스타일 */}
         <div className="modal-header">
           <span className="mh-title">&gt;&gt; 장소 상세 정보</span>
           <button className="mh-close" onClick={onClose}>
@@ -54,218 +51,173 @@ const PlaceDetailModal: React.FC<PlaceDetailModalProps> = ({
           </button>
         </div>
 
+        {/* 이미지 */}
+        {placeInfo.imageUrl ? (
+          <img
+            src={placeInfo.imageUrl}
+            alt={placeInfo.name}
+            style={{ width: "100%", height: "220px", objectFit: "cover", display: "block" }}
+          />
+        ) : (
+          <div style={{
+            width: "100%",
+            height: "120px",
+            background: "#f5f5f5",
+            borderBottom: "2px solid #eee",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: "40px",
+          }}>
+            {icon}
+          </div>
+        )}
+
         {/* 바디 */}
         <div
           className="modal-body"
           style={{
-            padding: "0",
+            padding: "24px 28px",
             overflowY: "auto",
-            maxHeight: "calc(85vh - 80px)",
+            maxHeight: "calc(88vh - 200px)",
+            display: "flex",
+            flexDirection: "column",
+            gap: "18px",
           }}
         >
-          {/* 이미지 */}
-          {placeInfo.imageUrl && (
-            <div
-              style={{
-                width: "100%",
-                height: "300px",
-                overflow: "hidden",
-                // background: "#f0f0f0",
-              }}
-            >
-              <img
-                src={placeInfo.imageUrl}
-                alt={placeInfo.name}
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "cover",
-                }}
-              />
+          {/* 카테고리 배지 + 시간 */}
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+            {placeInfo.category && (
+              <span style={{
+                background: color,
+                color: "#fff",
+                padding: "3px 10px",
+                fontSize: "12px",
+                fontWeight: "bold",
+                borderRadius: "4px",
+              }}>
+                {icon} {placeInfo.category}
+              </span>
+            )}
+            {placeInfo.time && (
+              <span style={{
+                fontSize: "12px",
+                color: "#999",
+                fontFamily: "var(--font-mono)",
+              }}>
+                🕐 {placeInfo.time}
+              </span>
+            )}
+            {stars && (
+              <span style={{ fontSize: "13px", color: "#ff9800", fontWeight: "bold", marginLeft: "auto" }}>
+                {stars} {placeInfo.rating}
+              </span>
+            )}
+          </div>
+
+          {/* 장소명 */}
+          <h2 style={{
+            fontSize: "20px",
+            fontWeight: 800,
+            margin: 0,
+            color: "#000",
+            lineHeight: 1.3,
+          }}>
+            {placeInfo.name}
+          </h2>
+
+          {/* 주소 */}
+          {placeInfo.address && (
+            <div style={{
+              padding: "12px 16px",
+              background: "#f5f5f5",
+              border: "2px solid #eee",
+              borderLeft: `4px solid ${color}`,
+            }}>
+              <p style={{ fontSize: "11px", fontWeight: "bold", color: "#999", margin: "0 0 4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                📍 주소
+              </p>
+              <p style={{ fontSize: "13px", color: "#333", margin: 0 }}>
+                {placeInfo.address}
+              </p>
             </div>
           )}
 
-          {/* 정보 섹션 */}
-          <div style={{ padding: "30px" }}>
-            {/* 카테고리 & 평점 */}
-            <div
-              style={{
-                display: "flex",
-                gap: "10px",
-                marginBottom: "15px",
-                alignItems: "center",
-              }}
-            >
-              {placeInfo.category && (
-                <span
-                  style={{
-                    display: "inline-block",
-                    padding: "5px 12px",
-                    background: "#000",
-                    color: "#fff",
-                    fontSize: "13px",
-                    fontWeight: "bold",
-                    borderRadius: "6px",
-                  }}
-                >
-                  {getCategoryIcon(placeInfo.category)} {placeInfo.category}
-                </span>
-              )}
-
-              {placeInfo.rating && (
-                <span
-                  style={{
-                    fontSize: "15px",
-                    color: "#ff9800",
-                    fontWeight: "bold",
-                  }}
-                >
-                  ⭐ {placeInfo.rating}
-                </span>
-              )}
+          {/* 설명 */}
+          {placeInfo.description && (
+            <div>
+              <p style={{ fontSize: "11px", fontWeight: "bold", color: "#999", margin: "0 0 6px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                ℹ️ 설명
+              </p>
+              <p style={{ fontSize: "13px", color: "#555", margin: 0, lineHeight: 1.7 }}>
+                {placeInfo.description}
+              </p>
             </div>
+          )}
 
-            {/* 장소명 */}
-            <h2
-              style={{
-                fontSize: "24px",
-                fontWeight: "bold",
-                margin: "0 0 10px 0",
-                color: "#000",
-              }}
-            >
-              {placeInfo.name}
-            </h2>
-
-            {/* 시간 */}
-            {placeInfo.time && (
-              <div
-                style={{
-                  fontSize: "14px",
-                  color: "#666",
-                  marginBottom: "15px",
-                  fontFamily: "var(--font-mono)",
-                }}
-              >
-                🕐 {placeInfo.time}
-              </div>
-            )}
-
-            {/* 주소 */}
-            {placeInfo.address && (
-              <div
-                style={{
-                  padding: "15px",
-                  background: "#f8f8f8",
-                  borderRadius: "8px",
-                  marginBottom: "20px",
-                  border: "1px solid #e0e0e0",
-                }}
-              >
-                <div
-                  style={{
-                    fontSize: "12px",
-                    fontWeight: "bold",
-                    color: "#999",
-                    marginBottom: "5px",
-                  }}
-                >
-                  📍 주소
-                </div>
-                <div
-                  style={{
-                    fontSize: "14px",
-                    color: "#333",
-                  }}
-                >
-                  {placeInfo.address}
-                </div>
-              </div>
-            )}
-
-            {/* 설명 */}
-            {placeInfo.description && (
-              <div style={{ marginBottom: "20px" }}>
-                <div
-                  style={{
-                    fontSize: "13px",
-                    fontWeight: "bold",
-                    color: "#333",
-                    marginBottom: "8px",
-                  }}
-                >
-                  ℹ️ 설명
-                </div>
-                <div
-                  style={{
-                    fontSize: "14px",
-                    color: "#555",
-                    lineHeight: "1.6",
-                  }}
-                >
-                  {placeInfo.description}
-                </div>
-              </div>
-            )}
-
-            {/* 메모 */}
-            {placeInfo.memo && (
-              <div
-                style={{
-                  padding: "15px",
-                  background: "#fffbea",
-                  borderRadius: "8px",
-                  border: "2px solid #ffd700",
-                }}
-              >
-                <div
-                  style={{
-                    fontSize: "13px",
-                    fontWeight: "bold",
-                    color: "#333",
-                    marginBottom: "8px",
-                  }}
-                >
-                  💭 메모
-                </div>
-                <div
-                  style={{
-                    fontSize: "14px",
-                    color: "#555",
-                    lineHeight: "1.6",
-                    whiteSpace: "pre-wrap",
-                  }}
-                >
-                  {placeInfo.memo}
-                </div>
-              </div>
-            )}
-          </div>
+          {/* 메모 */}
+          {placeInfo.memo && (
+            <div style={{
+              padding: "12px 16px",
+              background: "#fffbea",
+              border: "2px solid #ffd700",
+              borderRadius: "0",
+            }}>
+              <p style={{ fontSize: "11px", fontWeight: "bold", color: "#999", margin: "0 0 6px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                💭 메모
+              </p>
+              <p style={{ fontSize: "13px", color: "#555", margin: 0, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>
+                {placeInfo.memo}
+              </p>
+            </div>
+          )}
         </div>
 
         {/* 푸터 */}
-        <div
-          style={{
-            padding: "15px 30px",
-            borderTop: "2px solid #eee",
-            display: "flex",
-            justifyContent: "flex-end",
-          }}
-        >
+        <div style={{
+          padding: "16px 28px",
+          borderTop: "2px solid #eee",
+          display: "flex",
+          justifyContent: "flex-end",
+          gap: "10px",
+        }}>
           <button
             onClick={onClose}
             style={{
-              padding: "10px 25px",
-              background: "#000",
-              color: "#fff",
+              padding: "10px 24px",
+              background: "#fff",
+              color: "#000",
               border: "2px solid #000",
-              borderRadius: "6px",
               fontWeight: "bold",
               fontSize: "14px",
               cursor: "pointer",
+              borderRadius: "4px",
+              transition: "all 0.15s",
             }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = "#f0f0f0"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "#fff"; }}
           >
             닫기
+          </button>
+          <button
+            onClick={onViewOnMap ?? undefined}
+            disabled={!onViewOnMap}
+            title={!onViewOnMap ? "지도 연동이 지원되지 않는 장소입니다" : undefined}
+            style={{
+              padding: "10px 24px",
+              background: onViewOnMap ? "#000" : "#f5f5f5",
+              color: onViewOnMap ? "#fff" : "#bbb",
+              border: `2px solid ${onViewOnMap ? "#000" : "#ddd"}`,
+              fontWeight: "bold",
+              fontSize: "14px",
+              cursor: onViewOnMap ? "pointer" : "not-allowed",
+              borderRadius: "4px",
+              transition: "all 0.15s",
+            }}
+            onMouseEnter={(e) => { if (onViewOnMap) e.currentTarget.style.background = "#333"; }}
+            onMouseLeave={(e) => { if (onViewOnMap) e.currentTarget.style.background = "#000"; }}
+          >
+            지도에서 보기
           </button>
         </div>
       </div>
