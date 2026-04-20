@@ -230,6 +230,7 @@ export default function Mate() {
     [toggleLike]
   );
 
+  const token = localStorage.getItem("accessToken");
 
   return (
     <section className="page-section">
@@ -457,6 +458,7 @@ export default function Mate() {
         />
       )}
 
+      {token && (
       <ChatFAB 
         onClick={() => {
           refreshRooms();
@@ -464,8 +466,8 @@ export default function Mate() {
           fetchReceivedApplications();
           setShowChatModal(true);
         }}
-        unreadCount={0}
       />
+      )}
 
       {showChatModal && (
         <ChatSlideModal

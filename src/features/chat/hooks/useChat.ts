@@ -255,6 +255,8 @@ export function useChat(): UseChatReturn {
   // ─────────────────────────────────────────
 
   useEffect(() => {
+    const token = localStorage.getItem("accessToken");
+    if (!token) return;
     refreshRooms();
   }, [refreshRooms]);
 

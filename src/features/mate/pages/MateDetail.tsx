@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import {
-  ArrowLeft, Heart, Calendar, Users, Wallet, Eye
-} from "lucide-react";
+import { ArrowLeft, Heart, Calendar, Users, Wallet, Eye } from "lucide-react";
+import { LoginPromptModal } from "../components/LoginPromptModal";
 import type { Post, ApplicationRequest } from "../hooks/mate.types";
 import { getCurrentUserId, calculateDuration, getAgeGroupLabel, getGenderPreferenceLabel, getTransportLabel } from "../hooks/mate.constants";
 import { useMate } from "../hooks/useMate";
 import { isPostExpired } from "../hooks/mate.util";
+import { useAuthGuard } from "../hooks/useAuthGuard";
 import "../styles/MateDetail.css";
 
 export default function MateDetail() {
@@ -23,8 +23,10 @@ export default function MateDetail() {
   const hasLoadedRef = useRef(false);
 
   const currentUserId = getCurrentUserId();
-  const isAuthor = post?.author.id === currentUserId;
+  const isAuthor = post?.author?.id === currentUserId;
   const token = localStorage.getItem("accessToken");
+
+  const { withLoginCheck, showLoginModal, closeLoginModal, goToLogin } = useAuthGuard();
 
   useEffect(() => {
     const loadPost = async () => {
@@ -150,6 +152,7 @@ export default function MateDetail() {
   const isExpire = isPostExpired(post);
 
   return (
+    <>
     <div className="mate-detail">
       <div className="max-w-4xl mx-auto px-6 py-16">
         
@@ -177,7 +180,7 @@ export default function MateDetail() {
 
             {/* 좋아요 버튼 (활성화 시 빨간색) */}
             <button
-              onClick={onLikeClick}
+              onClick={() => withLoginCheck(() => onLikeClick)}
               className={`stat-box btn-like ${isLiked ? "active" : ""}`}
             >
               <Heart 
@@ -331,7 +334,7 @@ export default function MateDetail() {
               ) : !showApplyForm ? (
                 <button
                   disabled={hasApplied || post.currentParticipant >= post.maxParticipant}
-                  onClick={() => setShowApplyForm(true)}
+                  onClick={() => withLoginCheck(() => setShowApplyForm(true))}
                   className="apply-button"
                 >
                   {hasApplied ? "Applied" : post.currentParticipant >= post.maxParticipant ? "Full" : "Apply Now"}
@@ -374,5 +377,10 @@ export default function MateDetail() {
         <div className="py-12"></div>
       </div>
     </div>
+
+    {showLoginModal && (
+      <LoginPromptModal onClose={closeLoginModal} onLogin={goToLogin} />
+    )}
+    </>
   );
 }

@@ -36,6 +36,7 @@ export function MatePostCard({
 }: MatePostCardProps){
   const currentUserId = getCurrentUserId();
   const isAuthor = post.author.id === currentUserId;
+  const token = localStorage.getItem("accessToken");
 
   // 날짜 포맷팅 (YYYY-MM-DD -> MM-DD)
   const formatDate = (dateString: string) => {
@@ -64,8 +65,6 @@ export function MatePostCard({
       >
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-4">
-            {/* <div className="text-2xl text-black/60 mx-2">✈</div> */}
-
             <div className="text-left">
               <div className="text-xs text-black/50 uppercase font-bold mb-1">To</div>
               <div className="text-2xl font-bold text-black">{post.destination}</div>
@@ -196,6 +195,13 @@ export function MatePostCard({
               </div>
             </>
           )          
+          : !token ? (
+            <>
+              <div className="text-xs font-bold text-black/40 text-center">
+                회원 전용<br />서비스 입니다
+              </div>
+            </>
+          )
           : isAuthor ? (
             <>
               <button

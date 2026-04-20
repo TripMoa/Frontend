@@ -22,12 +22,16 @@ export function useMate() {
     setLoading(true);
     setError(null);
     try {
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
       const response = await fetch(`${API_BASE_URL}/mate/`, {
         method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
+        headers,
       });
 
       if (!response.ok) {
@@ -109,12 +113,16 @@ export function useMate() {
     setError(null);
 
     try {
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
       const response = await fetch(`${API_BASE_URL}/mate/${postId}`, {
         method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
+        headers,
       });
 
       if (!response.ok) {
@@ -329,6 +337,7 @@ export function useMate() {
 
   const fetchPassedPosts = useCallback(async () => {
     try {
+      if(!token) return;
       const response = await fetch(`${API_BASE_URL}/mate/posts/passed`, {
         method: "GET",
         headers: {
@@ -346,13 +355,18 @@ export function useMate() {
 
   const fetchExpiredPosts = useCallback(async () => {
     try {
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
       const response = await fetch(`${API_BASE_URL}/mate/posts/expired`, {
         method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
-        },
+        headers,
       });
+
       if (!response.ok) throw new Error("EXPIRED 목록을 불러오는데 실패했습니다.");
       const data: Post[] = await response.json();
       setExpiredPosts(data);
