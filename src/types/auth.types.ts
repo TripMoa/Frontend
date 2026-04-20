@@ -8,6 +8,11 @@ export type Gender = "MALE" | "FEMALE" | "OTHER" | null;
 
 export type ProfileType = "CUSTOM" | "AVATAR";
 
+export type RefreshTokenResponse = {
+  accessToken?: string;
+  authenticated?: boolean;
+};
+
 // ===================
 // Request DTO
 // ===================
@@ -33,11 +38,6 @@ export interface UserUpdateRequestDto {
 // ===================
 // Response DTO
 // ===================
-
-export interface RefreshTokenResponse {
-  accessToken: string;
-  refreshToken: string;
-}
 
 export interface CheckEmailResponse {
   exists: boolean;

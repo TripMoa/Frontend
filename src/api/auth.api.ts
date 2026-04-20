@@ -1,12 +1,14 @@
 // src/api/auth.api.ts
 
-import { api } from "./api";
+import { api, clearAuthState, notifyAuthLogout } from "./api";
 import type {
   CheckEmailRequest,
   CheckEmailResponse,
   UserResponse,
   UserUpdateRequestDto,
 } from "../types/auth.types";
+
+const LOGOUT_SYNC_KEY = "logout-event";
 
 // 로그인된 사용자 정보 조회
 export const getMyInfo = () => {
@@ -23,6 +25,17 @@ export const updateMyInfo = (data: UserUpdateRequestDto) => {
   return api.patch<void>("/users/me", data);
 };
 
+// 로그아웃 상태를 다른 탭에도 동기화
+const broadcastLogoutToOtherTabs = (reason: "manual" | "withdraw") => {
+  localStorage.setItem(
+    LOGOUT_SYNC_KEY,
+    JSON.stringify({
+      reason,
+      timestamp: Date.now(),
+    }),
+  );
+};
+
 // 로그아웃
 export const logout = async () => {
   try {
@@ -30,21 +43,21 @@ export const logout = async () => {
   } catch (error) {
     console.error("서버 로그아웃 처리 실패:", error);
   } finally {
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("refreshToken");
-    localStorage.removeItem("userId");
-    // localStorage.clear();
+    clearAuthState();
+    broadcastLogoutToOtherTabs("manual");
+    notifyAuthLogout("manual");
   }
 };
 
 // 회원 탈퇴
 export const withdraw = async () => {
-  const response = await api.delete<void>("/users/me");
-
-  localStorage.removeItem("accessToken");
-  localStorage.removeItem("refreshToken");
-  localStorage.removeItem("userId");
-  // localStorage.clear();
-
-  return response;
+  try {
+    await api.delete("/users/me");
+    clearAuthState();
+    broadcastLogoutToOtherTabs("withdraw");
+    notifyAuthLogout("withdraw");
+  } catch (error) {
+    console.error("회원 탈퇴 실패:", error);
+    throw error;
+  }
 };
