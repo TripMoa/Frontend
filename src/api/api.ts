@@ -9,10 +9,46 @@ type RetryableConfig = {
   url?: string;
 };
 
-// Axios 인스턴스 생성
+export type AuthLogoutReason =
+  | "manual"
+  | "withdraw"
+  | "refresh-expired"
+  | "remote-tab";
+
+// refreshToken 쿠키 자동 전송
 export const api = axios.create({
   baseURL: "/api",
+  withCredentials: true,
 });
+
+// accessToken 메모리 관리
+let accessTokenMemory: string | null = null;
+
+export const getAccessToken = () => accessTokenMemory;
+
+export const setAccessToken = (token: string) => {
+  accessTokenMemory = token;
+};
+export const clearAccessToken = () => {
+  accessTokenMemory = null;
+};
+
+// 인증 관련 클라이언트 상태 초기화
+export const clearAuthState = () => {
+  clearAccessToken();
+};
+
+// 인증 상태 변경 이벤트 발행
+export const notifyAuthLogout = (reason: AuthLogoutReason = "manual") => {
+  window.dispatchEvent(
+    new CustomEvent("auth:logout", {
+      detail: { reason },
+    }),
+  );
+};
+
+// 공유 Promise : 동시에 여러 401 발생 -> refresh 중복 방지
+let refreshPromise: Promise<RefreshTokenResponse> | null = null;
 
 /**
  * 요청 인터셉터
@@ -20,7 +56,7 @@ export const api = axios.create({
  */
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem("accessToken");
+    const token = getAccessToken();
 
     if (token) {
       config.headers = config.headers ?? {};
@@ -33,9 +69,57 @@ api.interceptors.request.use(
 );
 
 /**
+ * refresh 요청은 반드시 여기서만 수행
+ * - 토큰 저장/정리까지만 담당
+ * - 전역 로그아웃 이벤트는 여기서 발행하지 않음
+ */
+const refreshTokens = async (): Promise<RefreshTokenResponse> => {
+  if (!refreshPromise) {
+    refreshPromise = axios
+      .post<RefreshTokenResponse>(
+        "/api/auth/refresh",
+        {},
+        { withCredentials: true },
+      )
+      .then((res) => {
+        const { accessToken, authenticated } = res.data;
+
+        if (!accessToken || authenticated === false) {
+          clearAuthState();
+          throw new Error("Unauthenticated");
+        }
+
+        setAccessToken(accessToken);
+        return res.data;
+      })
+      .catch((error) => {
+        clearAuthState();
+        throw error;
+      })
+      .finally(() => {
+        refreshPromise = null;
+      });
+  }
+
+  return refreshPromise;
+};
+
+/**
+ * 앱 시작 시 명시적으로 1회 인증 복구가 필요할 때 사용할 함수
+ * bootstrap 경로에서는 실패해도 이벤트 발행하지 않음
+ */
+export const tryRefreshAuth = async (): Promise<boolean> => {
+  try {
+    await refreshTokens();
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+/**
  * 응답 인터셉터
  * 인증 만료 시 토큰 재발급 후 재시도
- * 자동 로그아웃 & 기타 에러 처리
  */
 api.interceptors.response.use(
   (response) => response,
@@ -50,56 +134,25 @@ api.interceptors.response.use(
 
     const isRefreshRequest = originalRequest.url?.includes("/auth/refresh");
 
-    // 401 에러: 토큰 만료 시 재발급 시도
     if (status === 401 && !originalRequest._retry && !isRefreshRequest) {
       originalRequest._retry = true;
 
       try {
-        const refreshToken = localStorage.getItem("refreshToken");
-
-        if (!refreshToken) {
-          throw new Error("refreshToken 없음");
-        }
-
-        // 리프레시 토큰으로 새 토큰 발급 요청 (주의: api 인스턴스가 아닌 axios를 직접 사용하여 무한 루프 방지)
-        const res = await axios.post<RefreshTokenResponse>(
-          "/api/auth/refresh",
-          { refreshToken },
-        );
-
-        const { accessToken, refreshToken: newRefreshToken } = res.data;
-
-        // 새 토큰들 저장
-        localStorage.setItem("accessToken", accessToken);
-        localStorage.setItem("refreshToken", newRefreshToken);
+        const { accessToken } = await refreshTokens();
 
         const headers = (originalRequest.headers ?? {}) as Record<
           string,
           string
         >;
-
-        // 실패했던 기존 요청의 헤더를 새 토큰으로 교체 후 재시도
         headers.Authorization = `Bearer ${accessToken}`;
         originalRequest.headers = headers;
 
         return api(originalRequest);
       } catch (refreshError) {
-        // 리프레시 토큰도 만료되었거나 오류 발생 시 로그아웃
-        localStorage.removeItem("accessToken");
-        localStorage.removeItem("refreshToken");
-        localStorage.removeItem("userId");
-        // localStorage.clear();
-
-        window.location.href = "/login";
+        clearAuthState();
+        notifyAuthLogout("refresh-expired");
         return Promise.reject(refreshError);
       }
-    }
-
-    // 기타 에러 처리
-    if (status === 403) {
-      alert("접근 권한이 없습니다.");
-    } else if (status && status >= 500) {
-      alert("서버 오류가 발생했습니다.");
     }
 
     return Promise.reject(error);
