@@ -1,6 +1,7 @@
 import { PenSquare, Inbox, User } from "lucide-react";
 import { useAuthGuard } from "../hooks/useAuthGuard";
 import { LoginPromptModal } from "./LoginPromptModal";
+import { ProfileIncompleteModal } from "./ProfileIncompleteModal";
 import "../styles/MateHeader.css";
 
 interface MateHeaderProps {
@@ -21,7 +22,10 @@ export function MateHeader({
   receivedPendingCount,
 }: MateHeaderProps){
 
-  const { withLoginCheck, showLoginModal, closeLoginModal, goToLogin } = useAuthGuard();
+  const {
+    withLoginCheck, showLoginModal, closeLoginModal, goToLogin,
+    withProfileCheck, showProfileModal, closeProfileModal, goToProfileEdit,
+  } = useAuthGuard();
 
   return (
     <>
@@ -34,7 +38,7 @@ export function MateHeader({
         <div className="flex gap-3">
           <button 
             className="flex items-center gap-2 bg-white text-black px-5 py-2.5 transition-colors font-bold text-sm uppercase tracking-wide button"
-            onClick={() => withLoginCheck(onWriteClick)}
+            onClick={() => withProfileCheck(onWriteClick)}
           >
             <PenSquare className="w-4 h-4" />
             WRITE
@@ -68,6 +72,13 @@ export function MateHeader({
         </div>
       </div>
     </div>
+
+    {showProfileModal && (
+      <ProfileIncompleteModal
+        onClose={closeProfileModal}
+        onGoToEdit={goToProfileEdit}
+      />
+    )}
 
     {showLoginModal && (
       <LoginPromptModal onClose={closeLoginModal} onLogin={goToLogin} />
