@@ -1,9 +1,12 @@
 //src\features\workspace\components\schedule\DayAllView.tsx
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import AddPlaceModal from "../schedule/modal/AddPlaceModal";
 import AiScheduleModal from "../schedule/modal/AiScheduleModal";
+import type { TimelineNode } from "../schedule/modal/AiScheduleModal";
 import { useWorkspaceCore } from "../../hooks/useWorkspaceCore";
+import { useNaverMap } from "../../hooks/useNaverMap";
+import { CATEGORY_COLOR, CATEGORY_LIST, getCategoryIcon } from "../../hooks/schedule.constants";
 import "../../styles/center.css";
 import "../../styles/modals.css";
 
@@ -24,408 +27,263 @@ interface DayAllViewProps {
   tripTitle: string;
   startDate: string;
   endDate: string;
+  onScheduleGenerated: (allDaysData: Record<string, TimelineNode[]>) => void;
 }
+
+
 
 const DayAllView: React.FC<DayAllViewProps> = ({
   tripTitle,
   startDate,
   endDate,
+  onScheduleGenerated,
 }) => {
   const { selectTab } = useWorkspaceCore();
-  
-  // 한국 여행지 기본 데이터
-  const defaultKoreaPlaces: Place[] = [
-    {
-      id: "korea_1",
-      name: "경복궁",
-      category: "관광",
-      address: "서울특별시 종로구 사직로 161",
-      imageUrl: "https://www.kh.or.kr/jnrepo/namo/img/images/000045/20230405103334542_MPZHA77B.jpg",
-      rating: 4.7,
-      description: "조선시대 대표 궁궐, 한복 입고 관람 추천",
-      memo: "한복 대여 가능, 오전 방문 추천"
-    },
-    {
-      id: "korea_2",
-      name: "광장시장",
-      category: "맛집",
-      address: "서울특별시 종로구 창경궁로 88",
-      imageUrl: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTf1w8-0coGKyUXGRJdiV0oRCkLJEKaHfFeww&s",
-      rating: 4.6,
-      description: "서울의 대표 전통 시장, 빈대떡과 마약김밥 필수",
-      memo: "빈대떡, 마약김밥, 육회 꼭 먹기"
-    },
-    {
-      id: "korea_3",
-      name: "북촌한옥마을",
-      category: "관광",
-      address: "서울특별시 종로구 계동길 37",
-      imageUrl: "https://i.namu.wiki/i/DEvKxYg-TEz6O53jeZyS9kndJSgSQnFysm3T-R70yXIyWi9-HknJZXoK1ghHFMwB365TyyMj7MlIebAKMrLSFA.webp",
-      rating: 4.5,
-      description: "전통 한옥이 보존된 마을, 사진 명소",
-      memo: ""
-    },
-    {
-      id: "korea_4",
-      name: "을지로 원조노가리",
-      category: "맛집",
-      address: "서울특별시 중구 을지로13길 12",
-      imageUrl: "https://pds.joongang.co.kr/news/component/htmlphoto_mmdata/201904/20/72822356-9226-428d-bd7b-c449f49de69c.jpg",
-      rating: 4.5,
-      description: "노가리와 맥주로 유명한 을지로 대표 포장마차 거리 맛집",
-      memo: "저녁 시간대 방문 추천, 웨이팅 잦음"
-    },
-    {
-      id: "korea_5",
-      name: "테일러커피 연남점",
-      category: "카페",
-      address: "서울특별시 마포구 연남로1길 17",
-      imageUrl: "https://d12zq4w4guyljn.cloudfront.net/750_750_20251128083337890_photo_16116f4f550e.webp",
-      rating: 4.8,
-      description: "스페셜티 커피로 유명한 연남동 대표 카페, 원두 선택 가능",
-      memo: "오후 시간대 방문 추천, 디저트도 괜찮음"
-    },
-    {
-      id: "korea_6",
-      name: "명동 쇼핑거리",
-      category: "쇼핑",
-      address: "서울특별시 중구 명동길",
-      imageUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/3/32/%EB%AA%85%EB%8F%998%EA%B8%B8_%EA%B1%B0%EB%A6%AC_%282020.03%29.jpg/1200px-%EB%AA%85%EB%8F%998%EA%B8%B8_%EA%B1%B0%EB%A6%AC_%282020.03%29.jpg",
-      rating: 4.3,
-      description: "한국 화장품과 패션 쇼핑의 메카",
-      memo: "화장품 세일 많음"
-    },
-    {
-      id: "korea_7",
-      name: "N서울타워",
-      category: "관광",
-      address: "서울특별시 용산구 남산공원길 105",
-      imageUrl: "https://i.namu.wiki/i/DK-BcaE6wDCM-N9UJbeQTn0SD9eWgsX9YKWK827rqjbrzDz0-CxW-JFOCiAsUL3CBZ4zE0UDR-p4sLaYPiUjww.webp",
-      rating: 4.6,
-      description: "서울 야경 명소, 남산케이블카 탑승 가능",
-      memo: "석양 시간대 방문 추천"
-    }
-  ];
+  const { mapLoaded, mapKey } = useNaverMap();
 
+
+
+  // ── 상태 ───────────────────────────────────────────────────
   const [savedPlaces, setSavedPlaces] = useState<Place[]>([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
   const [category, setCategory] = useState("all");
+  const [viewTab, setViewTab] = useState<"list" | "map">("list");
+  const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+  const [confirmTargetId, setConfirmTargetId] = useState<string | null>(null);
 
-  // LocalStorage에서 저장된 장소 불러오기 (없으면 기본값 사용)
+  // ── 지도 refs ──────────────────────────────────────────────
+  const mapRef = useRef<HTMLDivElement>(null);
+  const mapInstanceRef = useRef<any>(null);
+  const markersRef = useRef<any[]>([]);
+  const infoWindowRef = useRef<any>(null);
+
+  // ── localStorage 로드 ──────────────────────────────────────
+  const [isLoaded, setIsLoaded] = useState(false);
+
   useEffect(() => {
     const saved = localStorage.getItem("saved_places");
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        // 빈 배열이면 기본값 사용
-        if (Array.isArray(parsed) && parsed.length > 0) {
+        if (Array.isArray(parsed)) {
           setSavedPlaces(parsed);
-        } else {
-          setSavedPlaces(defaultKoreaPlaces);
-          localStorage.setItem("saved_places", JSON.stringify(defaultKoreaPlaces));
         }
-      } catch (e) {
-        console.error("Failed to load saved places:", e);
-        setSavedPlaces(defaultKoreaPlaces);
-        localStorage.setItem("saved_places", JSON.stringify(defaultKoreaPlaces));
+      } catch {
+        // 파싱 실패 시 빈 배열 유지
       }
-    } else {
-      // localStorage에 아무것도 없으면 기본값 설정
-      setSavedPlaces(defaultKoreaPlaces);
-      localStorage.setItem("saved_places", JSON.stringify(defaultKoreaPlaces));
     }
+    setIsLoaded(true);
   }, []);
 
-  // 저장된 장소 변경 시 LocalStorage 업데이트
+  // 로드 완료 후에만 저장 — 초기 빈 배열이 localStorage를 덮어쓰는 것을 방지
   useEffect(() => {
+    if (!isLoaded) return;
     localStorage.setItem("saved_places", JSON.stringify(savedPlaces));
-  }, [savedPlaces]);
+  }, [savedPlaces, isLoaded]);
 
-  // 장소 추가 (모달에서 호출)
+  // ── 지도 초기화 ──────────────────────────────────────────
+  useEffect(() => {
+    if (!mapLoaded || !mapRef.current) return;
+
+    const current = category === "all" ? savedPlaces : savedPlaces.filter((p) => p.category === category);
+
+    if (mapInstanceRef.current) {
+      drawMarkers(current);
+      return;
+    }
+
+    const validAll = savedPlaces.filter((p) => p.lat != null && p.lng != null);
+    const initialCenter = validAll.length > 0
+      ? new window.naver.maps.LatLng(validAll[0].lat!, validAll[0].lng!)
+      : new window.naver.maps.LatLng(37.5665, 126.978);
+
+    const map = new window.naver.maps.Map(mapRef.current, {
+      center: initialCenter,
+      zoom: 12,
+      mapTypeControl: false,
+      scaleControl: false,
+      logoControl: false,
+      mapDataControl: false,
+    });
+
+    infoWindowRef.current = new window.naver.maps.InfoWindow({
+      anchorSkew: true,
+      backgroundColor: "#fff",
+      borderColor: "#000",
+      borderWidth: 2,
+      pixelOffset: new window.naver.maps.Point(0, -10),
+    });
+
+    mapInstanceRef.current = map;
+    drawMarkers(current);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapLoaded, savedPlaces, category]);
+
+  // ── 필터 변경 시 마커 갱신 ────────────────────────────────
+  useEffect(() => {
+    if (!mapInstanceRef.current) return;
+    const current = category === "all" ? savedPlaces : savedPlaces.filter((p) => p.category === category);
+    drawMarkers(current);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [category, savedPlaces]);
+
+  // ── 마커 초기화 ────────────────────────────────────────────
+  const clearMarkers = () => {
+    markersRef.current.forEach((m) => m.setMap(null));
+    markersRef.current = [];
+    infoWindowRef.current?.close();
+  };
+
+  // ── 마커 그리기 ────────────────────────────────────────────
+  const drawMarkers = (places: Place[]) => {
+    if (!mapInstanceRef.current || !window.naver) return;
+    clearMarkers();
+
+    const validPlaces = places.filter((p) => p.lat != null && p.lng != null);
+    if (!validPlaces.length) return;
+
+    const bounds = new window.naver.maps.LatLngBounds();
+
+    validPlaces.forEach((place, idx) => {
+      const pos = new window.naver.maps.LatLng(place.lat!, place.lng!);
+      const color = CATEGORY_COLOR[place.category] || "#333";
+
+      const marker = new window.naver.maps.Marker({
+        position: pos,
+        map: mapInstanceRef.current,
+        icon: {
+          content: `
+            <div style="
+              background:${color};color:#fff;
+              border:2px solid #fff;border-radius:50% 50% 50% 0;
+              transform:rotate(-45deg);width:30px;height:30px;
+              display:flex;align-items:center;justify-content:center;
+              box-shadow:0 2px 6px rgba(0,0,0,0.35);cursor:pointer;
+              font-size:11px;font-weight:bold;">
+              <span style="transform:rotate(45deg)">${idx + 1}</span>
+            </div>`,
+          anchor: new window.naver.maps.Point(15, 30),
+        },
+        zIndex: 100,
+      });
+
+      window.naver.maps.Event.addListener(marker, "click", () => {
+        infoWindowRef.current.setContent(`
+          <div style="padding:12px 16px;min-width:180px;max-width:240px;font-family:inherit">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+              <span style="background:${color};color:#fff;padding:2px 7px;border-radius:3px;font-size:11px;font-weight:bold">
+                ${getCategoryIcon(place.category)} ${place.category}
+              </span>
+              ${place.rating ? `<span style="font-size:12px;color:#ff9800;font-weight:bold">⭐ ${place.rating}</span>` : ""}
+            </div>
+            <div style="font-weight:bold;font-size:14px;margin-bottom:4px">${place.name}</div>
+            <div style="font-size:11px;color:#666">${place.address || ""}</div>
+          </div>
+        `);
+        infoWindowRef.current.open(mapInstanceRef.current, marker);
+        setSelectedPlace(place);
+      });
+
+      bounds.extend(pos);
+      markersRef.current.push(marker);
+    });
+
+    if (validPlaces.length === 1) {
+      mapInstanceRef.current.setCenter(new window.naver.maps.LatLng(validPlaces[0].lat!, validPlaces[0].lng!));
+      mapInstanceRef.current.setZoom(15);
+    } else {
+      mapInstanceRef.current.fitBounds(bounds, { top: 60, right: 40, bottom: 80, left: 40 });
+    }
+  };
+
+  // ── 토스트 ─────────────────────────────────────────────────
+  const showToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 2500);
+  };
+
+  // ── CRUD ───────────────────────────────────────────────────
   const handleAddPlace = (place: Place) => {
     if (savedPlaces.some((p) => p.id === place.id)) {
-      alert("이미 추가된 장소입니다!");
+      showToast("이미 추가된 장소입니다.");
       return;
     }
     setSavedPlaces([...savedPlaces, place]);
+    showToast(`${place.name} 추가됨`);
   };
 
-  // 장소 삭제
   const removePlace = (placeId: string) => {
-    if (confirm("이 장소를 삭제하시겠습니까?")) {
-      setSavedPlaces(savedPlaces.filter((p) => p.id !== placeId));
-    }
+    setConfirmTargetId(placeId);
   };
 
-  // 메모 수정
+  const confirmRemove = () => {
+    if (!confirmTargetId) return;
+    setSavedPlaces(savedPlaces.filter((p) => p.id !== confirmTargetId));
+    setConfirmTargetId(null);
+    setExpandedId(null);
+  };
+
+  const updateCategory = (placeId: string, category: string) => {
+    setSavedPlaces(savedPlaces.map((p) => (p.id === placeId ? { ...p, category } : p)));
+  };
+
   const updateMemo = (placeId: string, memo: string) => {
-    setSavedPlaces(
-      savedPlaces.map((p) => (p.id === placeId ? { ...p, memo } : p))
-    );
+    setSavedPlaces(savedPlaces.map((p) => (p.id === placeId ? { ...p, memo } : p)));
   };
 
-  // AI 일정 생성 버튼 클릭
   const handleOpenAiModal = () => {
-    if (savedPlaces.length === 0) {
-      alert("장소를 먼저 추가해주세요!");
-      return;
-    }
+    if (savedPlaces.length === 0) { showToast("장소를 먼저 추가해주세요."); return; }
     setIsAiModalOpen(true);
   };
 
-  // AI 일정 생성 실행
-  const handleGenerateSchedule = (settings: any) => {
-    console.log("AI 일정 생성 설정:", settings);
-    console.log("선택된 장소:", savedPlaces);
-    
-    // 타임라인 노드 타입 (장소 정보 포함)
-    interface TimelineNode {
-      time: string;
-      title: string;
-      desc: string;
-      placeInfo?: {
-        name: string;
-        imageUrl?: string;
-        address?: string;
-        rating?: number;
-        category?: string;
-        description?: string;
-        memo?: string;
-      };
-    }
-    
-    // 임시로 AI 생성된 일정 데이터 (실제로는 API에서 받아옴)
-    const generatedSchedule: Record<string, TimelineNode[]> = {
-      "DAY 1": [
-        { 
-          time: "09:00", 
-          title: savedPlaces[0]?.name || "경복궁", 
-          desc: savedPlaces[0]?.description || "조선시대 대표 궁궐 관람",
-          placeInfo: savedPlaces[0] ? {
-            name: savedPlaces[0].name,
-            imageUrl: savedPlaces[0].imageUrl,
-            address: savedPlaces[0].address,
-            rating: savedPlaces[0].rating,
-            category: savedPlaces[0].category,
-            description: savedPlaces[0].description,
-            memo: savedPlaces[0].memo,
-          } : undefined
-        },
-        { 
-          time: "11:30", 
-          title: savedPlaces[1]?.name || "광장시장", 
-          desc: savedPlaces[1]?.description || "빈대떡과 마약김밥 점심",
-          placeInfo: savedPlaces[1] ? {
-            name: savedPlaces[1].name,
-            imageUrl: savedPlaces[1].imageUrl,
-            address: savedPlaces[1].address,
-            rating: savedPlaces[1].rating,
-            category: savedPlaces[1].category,
-            description: savedPlaces[1].description,
-            memo: savedPlaces[1].memo,
-          } : undefined
-        },
-        { 
-          time: "14:00", 
-          title: savedPlaces[2]?.name || "북촌한옥마을", 
-          desc: savedPlaces[2]?.description || "전통 한옥 마을 산책",
-          placeInfo: savedPlaces[2] ? {
-            name: savedPlaces[2].name,
-            imageUrl: savedPlaces[2].imageUrl,
-            address: savedPlaces[2].address,
-            rating: savedPlaces[2].rating,
-            category: savedPlaces[2].category,
-            description: savedPlaces[2].description,
-            memo: savedPlaces[2].memo,
-          } : undefined
-        },
-        { 
-          time: "16:00", 
-          title: savedPlaces[4]?.name || "카페 온지음", 
-          desc: savedPlaces[4]?.description || "한옥 카페에서 휴식",
-          placeInfo: savedPlaces[4] ? {
-            name: savedPlaces[4].name,
-            imageUrl: savedPlaces[4].imageUrl,
-            address: savedPlaces[4].address,
-            rating: savedPlaces[4].rating,
-            category: savedPlaces[4].category,
-            description: savedPlaces[4].description,
-            memo: savedPlaces[4].memo,
-          } : undefined
-        },
-        { 
-          time: "18:30", 
-          title: "저녁 식사", 
-          desc: "명동에서 맛집 탐방" 
-        },
-      ],
-      "DAY 2": [
-        { 
-          time: "10:00", 
-          title: savedPlaces[3]?.name || "통인시장", 
-          desc: savedPlaces[3]?.description || "도시락카페에서 아침",
-          placeInfo: savedPlaces[3] ? {
-            name: savedPlaces[3].name,
-            imageUrl: savedPlaces[3].imageUrl,
-            address: savedPlaces[3].address,
-            rating: savedPlaces[3].rating,
-            category: savedPlaces[3].category,
-            description: savedPlaces[3].description,
-            memo: savedPlaces[3].memo,
-          } : undefined
-        },
-        { 
-          time: "12:30", 
-          title: savedPlaces[5]?.name || "명동 쇼핑거리", 
-          desc: savedPlaces[5]?.description || "화장품 쇼핑",
-          placeInfo: savedPlaces[5] ? {
-            name: savedPlaces[5].name,
-            imageUrl: savedPlaces[5].imageUrl,
-            address: savedPlaces[5].address,
-            rating: savedPlaces[5].rating,
-            category: savedPlaces[5].category,
-            description: savedPlaces[5].description,
-            memo: savedPlaces[5].memo,
-          } : undefined
-        },
-        { 
-          time: "15:00", 
-          title: "카페 타임", 
-          desc: "명동 주변 카페에서 휴식" 
-        },
-        { 
-          time: "17:30", 
-          title: savedPlaces[6]?.name || "N서울타워", 
-          desc: savedPlaces[6]?.description || "석양과 야경 감상",
-          placeInfo: savedPlaces[6] ? {
-            name: savedPlaces[6].name,
-            imageUrl: savedPlaces[6].imageUrl,
-            address: savedPlaces[6].address,
-            rating: savedPlaces[6].rating,
-            category: savedPlaces[6].category,
-            description: savedPlaces[6].description,
-            memo: savedPlaces[6].memo,
-          } : undefined
-        },
-        { 
-          time: "20:00", 
-          title: "여행 마무리", 
-          desc: "남산 근처에서 저녁 식사" 
-        },
-      ]
-    };
-    
-    // localStorage의 timeline 데이터 가져오기
-    const existingData = localStorage.getItem("tripmoa_timeline_data");
-    let timelineData: Record<string, TimelineNode[]> = existingData ? JSON.parse(existingData) : {};
-    
-    // 생성된 일정을 localStorage에 저장
-    Object.keys(generatedSchedule).forEach(dayKey => {
-      timelineData[dayKey] = generatedSchedule[dayKey];
-    });
-    
-    localStorage.setItem("tripmoa_timeline_data", JSON.stringify(timelineData));
-    
-    // dateLogs에 DAY 1, DAY 2가 없으면 추가
-    const existingDateLogs = localStorage.getItem("tripmoa_date_logs");
-    let dateLogs = existingDateLogs ? JSON.parse(existingDateLogs) : [];
-    
-    ["DAY 1", "DAY 2"].forEach(day => {
-      if (!dateLogs.includes(day)) {
-        dateLogs.push(day);
-      }
-    });
-    
-    localStorage.setItem("tripmoa_date_logs", JSON.stringify(dateLogs));
-    
-    alert("AI 일정이 생성되었습니다! DAY 1 탭에서 확인하세요.");
+  // AiScheduleModal이 API 응답을 localStorage에 직접 저장 후 onGenerate 호출.
+  // loadFromExternal로 현재 탭 nodes 상태를 즉시 업데이트한다.
+  const handleGenerateSchedule = (
+    _settings: any,
+    generatedSchedule: Record<string, TimelineNode[]>,
+    dayKeys: string[]
+  ) => {
+    onScheduleGenerated(generatedSchedule);
     setIsAiModalOpen(false);
-    
-    // 페이지 새로고침하여 사이드바에 DAY 1, DAY 2 표시
-    window.location.reload();
+    // 생성된 첫 번째 DAY로 자동 이동
+    const firstDay = dayKeys[0] ?? "DAY 1";
+    selectTab(firstDay, "timeline");
   };
 
-  // 카테고리 필터링
-  const filteredPlaces =
-    category === "all"
-      ? savedPlaces
-      : savedPlaces.filter((p) => p.category === category);
+  // ── 필터된 장소 ────────────────────────────────────────────
+  const filteredPlaces = category === "all"
+    ? savedPlaces
+    : savedPlaces.filter((p) => p.category === category);
 
-  // 카테고리별 아이콘
-  const getCategoryIcon = (cat: string) => {
-    const icons: { [key: string]: string } = {
-      맛집: "🍴",
-      카페: "☕",
-      관광: "🏛️",
-      쇼핑: "🛍️",
-      숙소: "🏨",
-    };
-    return icons[cat] || "📍";
-  };
+  const mapablePlaces = filteredPlaces.filter((p) => p.lat != null && p.lng != null);
 
+  // ── 렌더 ───────────────────────────────────────────────────
   return (
     <>
-      <div className="my-places-view">
-        {/* 헤더 */}
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: "20px",
-          }}
-        >
+      <div style={{ display: "flex", flexDirection: "column", height: "calc(100vh - 120px)", minHeight: 0 }}>
+
+        {/* ── 헤더 ── */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", flexShrink: 0 }}>
           <div>
-            <h2 style={{ fontSize: "24px", fontWeight: 800, margin: 0 }}>
-              MY SAVED PLACES ({savedPlaces.length})
-            </h2>
-            <p
-              style={{
-                color: "#666",
-                marginTop: "5px",
-                fontFamily: "var(--font-mono)",
-                fontSize: "14px",
-              }}
-            >
-              {startDate} - {endDate}
+            <h2 style={{ fontSize: "24px", fontWeight: 800, margin: 0 }}>MY SAVED PLACES</h2>
+            <p style={{ color: "#999", marginTop: "4px", fontFamily: "var(--font-mono)", fontSize: "12px" }}>
+              {startDate} — {endDate} · {savedPlaces.length}개
             </p>
           </div>
-
-          {/* 버튼 그룹 */}
-          <div style={{ display: "flex", gap: "15px", alignItems: "center" }}>
+          <div style={{ display: "flex", gap: "10px" }}>
             <button
-              style={{
-                padding: "10px 20px",
-                background: "#fff",
-                color: "#000",
-                border: "2px solid #000",
-                fontWeight: "bold",
-                fontSize: "14px",
-                cursor: "pointer",
-                transition: "0.2s",
-                borderRadius: "4px",
-              }}
               onClick={() => setIsAddModalOpen(true)}
+              style={{ padding: "10px 20px", background: "#fff", color: "#000", border: "2px solid #000", fontWeight: "bold", fontSize: "14px", cursor: "pointer", borderRadius: "4px" }}
             >
               + 새 장소 추가
             </button>
-
             {savedPlaces.length > 0 && (
               <button
-                className="btn-generate-schedule"
                 onClick={handleOpenAiModal}
-                style={{
-                  padding: "10px 20px",
-                  background: "#000",
-                  color: "#fff",
-                  border: "2px solid #000",
-                  borderRadius: "4px",
-                  fontWeight: "bold",
-                  fontSize: "14px",
-                  cursor: "pointer",
-                  transition: "0.2s",
-                }}
+                style={{ padding: "10px 20px", background: "#000", color: "#fff", border: "2px solid #000", borderRadius: "4px", fontWeight: "bold", fontSize: "14px", cursor: "pointer" }}
               >
                 ✨ AI 일정 생성
               </button>
@@ -433,194 +291,242 @@ const DayAllView: React.FC<DayAllViewProps> = ({
           </div>
         </div>
 
-        {/* 카테고리 필터 */}
-        <div
-          className="filter-group"
-          style={{ marginBottom: "20px", gap: "8px" }}
-        >
-          {["all", "맛집", "카페", "관광", "쇼핑", "숙소"].map((cat) => (
-            <button
-              key={cat}
-              className={`filter-tag ${category === cat ? "active" : ""}`}
-              onClick={() => setCategory(cat)}
-            >
-              {cat === "all" ? "전체" : cat}
-            </button>
-          ))}
-        </div>
+        {/* ── 바디: 리스트 + 지도 ── */}
+        <div style={{ display: "flex", gap: "16px", flex: 1, minHeight: 0 }}>
 
-        {/* 장소 리스트 */}
-        {filteredPlaces.length === 0 ? (
-          <div
-            style={{
-              textAlign: "center",
-              padding: "60px 20px",
-              color: "#999",
-            }}
-          >
-            <p style={{ fontSize: "16px", marginBottom: "10px" }}>
-              📍 아직 추가된 장소가 없습니다
-            </p>
-            <p style={{ fontSize: "14px" }}>
-              '새 장소 추가' 버튼을 눌러 여행지를 추가해보세요!
-            </p>
-          </div>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
-            {filteredPlaces.map((place) => (
-              <div
-                key={place.id}
-                className="tl-box"
-                style={{
-                  padding: "20px",
-                  display: "flex",
-                  gap: "15px",
-                  alignItems: "flex-start",
-                }}
-              >
-                {/* 이미지 */}
-                {place.imageUrl && (
-                  <div
+          {/* ── 왼쪽: 카드 리스트 ── */}
+          <div style={{ width: "420px", flexShrink: 0, display: "flex", flexDirection: "column", minHeight: 0 }}>
+
+            {/* 카테고리 필터 */}
+            <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginBottom: "12px", flexShrink: 0 }}>
+              {["all", ...CATEGORY_LIST].map((cat) => {
+                const active = category === cat;
+                const color = CATEGORY_COLOR[cat] || "#000";
+                return (
+                  <button
+                    key={cat}
+                    onClick={() => setCategory(cat)}
                     style={{
-                      width: "100px",
-                      height: "100px",
-                      borderRadius: "8px",
-                      overflow: "hidden",
-                      flexShrink: 0,
-                      background: "#eee",
+                      padding: "4px 12px", borderRadius: "12px", fontSize: "12px", fontWeight: "bold",
+                      border: `1.5px solid ${active ? (cat === "all" ? "#000" : color) : "#ddd"}`,
+                      background: active ? (cat === "all" ? "#000" : color) : "#fff",
+                      color: active ? "#fff" : "#888",
+                      cursor: "pointer", transition: "all 0.15s",
                     }}
                   >
-                    <img
-                      src={place.imageUrl}
-                      alt={place.name}
-                      style={{
-                        width: "100%",
-                        height: "100%",
-                        objectFit: "cover",
-                      }}
-                    />
-                  </div>
-                )}
+                    {cat === "all" ? "전체" : `${getCategoryIcon(cat)} ${cat}`}
+                  </button>
+                );
+              })}
+            </div>
 
-                {/* 정보 */}
-                <div style={{ flex: 1 }}>
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "10px",
-                      marginBottom: "8px",
-                    }}
-                  >
-                    <span
-                      style={{
-                        background: "#000",
-                        color: "#fff",
-                        padding: "3px 10px",
-                        fontSize: "12px",
-                        fontWeight: "bold",
-                        borderRadius: "4px",
-                      }}
-                    >
-                      {getCategoryIcon(place.category)} {place.category}
-                    </span>
-                    {place.rating && (
-                      <span
+            {/* 카드 목록 */}
+            <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: "6px" }}>
+              {filteredPlaces.length === 0 ? (
+                <div style={{ textAlign: "center", padding: "60px 20px", color: "#bbb" }}>
+                  <p style={{ fontSize: "28px", marginBottom: "8px" }}>📍</p>
+                  <p style={{ fontSize: "13px" }}>아직 추가된 장소가 없습니다</p>
+                </div>
+              ) : (
+                filteredPlaces.map((place) => {
+                  const color = CATEGORY_COLOR[place.category] || "#333";
+                  const isExpanded = expandedId === place.id;
+                  return (
+                    <div key={place.id} style={{ flexShrink: 0 }}>
+                      {/* ── 카드 행 ── */}
+                      <div
+                        className="tl-box"
+                        onClick={() => setExpandedId(isExpanded ? null : place.id)}
                         style={{
-                          fontSize: "13px",
-                          color: "#ff9800",
-                          fontWeight: "bold",
+                          padding: "12px 16px",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "12px",
+                          borderLeft: `4px solid ${color}`,
+                          cursor: "pointer",
+                          background: isExpanded ? "#fafafa" : "#fff",
+                          transition: "background 0.15s",
                         }}
                       >
-                        ⭐ {place.rating}
-                      </span>
-                    )}
+                        <span style={{ fontSize: "16px", flexShrink: 0 }}>
+                          {getCategoryIcon(place.category)}
+                        </span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                            <h3 style={{ fontSize: "14px", fontWeight: "bold", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              {place.name}
+                            </h3>
+                            {place.rating && (
+                              <span style={{ fontSize: "11px", color: "#ff9800", flexShrink: 0 }}>⭐ {place.rating}</span>
+                            )}
+                          </div>
+                          <p style={{ fontSize: "12px", color: "#999", margin: "2px 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {place.address || "주소 없음"}
+                          </p>
+                          {!isExpanded && place.memo && (
+                            <p style={{ fontSize: "11px", color: "#bbb", margin: "3px 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontStyle: "italic" }}>
+                              💭 {place.memo}
+                            </p>
+                          )}
+                        </div>
+                        <span style={{ fontSize: "11px", fontWeight: "bold", flexShrink: 0, color: color, padding: "2px 8px", border: `1.5px solid ${color}`, borderRadius: "10px" }}>
+                          {place.category}
+                        </span>
+                        <span style={{ fontSize: "11px", color: "#bbb", flexShrink: 0, transition: "transform 0.15s", display: "inline-block", transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)" }}>▼</span>
+                      </div>
+
+                      {/* ── 인라인 펼침 패널 ── */}
+                      {isExpanded && (
+                        <div style={{
+                          padding: "14px 16px 16px",
+                          background: "#fafafa",
+                          borderLeft: `4px solid ${color}`,
+                          borderTop: "1px solid #eee",
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: "12px",
+                        }}>
+
+                          {/* 카테고리 변경 */}
+                          <div>
+                            <p style={{ fontSize: "11px", fontWeight: "bold", color: "#999", margin: "0 0 6px", textTransform: "uppercase", letterSpacing: "0.5px" }}>카테고리</p>
+                            <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                              {CATEGORY_LIST.map((cat) => {
+                                const catColor = CATEGORY_COLOR[cat] || "#333";
+                                const isActive = place.category === cat;
+                                return (
+                                  <button
+                                    key={cat}
+                                    onClick={(e) => { e.stopPropagation(); updateCategory(place.id, cat); }}
+                                    style={{
+                                      padding: "4px 12px", borderRadius: "12px", fontSize: "12px", fontWeight: "bold",
+                                      border: `1.5px solid ${isActive ? catColor : "#ddd"}`,
+                                      background: isActive ? catColor : "#fff",
+                                      color: isActive ? "#fff" : "#aaa",
+                                      cursor: "pointer", transition: "all 0.15s",
+                                    }}
+                                  >
+                                    {getCategoryIcon(cat)} {cat}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          {/* 메모 */}
+                          <div>
+                            <p style={{ fontSize: "11px", fontWeight: "bold", color: "#999", margin: "0 0 6px", textTransform: "uppercase", letterSpacing: "0.5px" }}>메모</p>
+                            <textarea
+                              value={place.memo || ""}
+                              onChange={(e) => { e.stopPropagation(); updateMemo(place.id, e.target.value); }}
+                              onClick={(e) => e.stopPropagation()}
+                              placeholder="이 장소에 대한 메모를 남겨보세요..."
+                              style={{
+                                width: "100%", minHeight: "70px",
+                                padding: "10px 12px",
+                                border: "2px solid #e0e0e0", borderRadius: "6px",
+                                fontSize: "13px", resize: "vertical",
+                                fontFamily: "inherit", outline: "none",
+                                background: "#fff", boxSizing: "border-box",
+                                transition: "border-color 0.15s",
+                              }}
+                              onFocus={(e) => { e.currentTarget.style.borderColor = "#000"; }}
+                              onBlur={(e) => { e.currentTarget.style.borderColor = "#e0e0e0"; }}
+                            />
+                          </div>
+
+                          {/* 삭제 */}
+                          <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                            {confirmTargetId === place.id ? (
+                              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                <span style={{ fontSize: "12px", color: "#555" }}>정말 삭제할까요?</span>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); confirmRemove(); }}
+                                  style={{ padding: "5px 12px", background: "#e53935", color: "#fff", border: "none", borderRadius: "4px", fontWeight: "bold", fontSize: "12px", cursor: "pointer" }}
+                                >
+                                  삭제
+                                </button>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); setConfirmTargetId(null); }}
+                                  style={{ padding: "5px 12px", background: "#fff", color: "#555", border: "1.5px solid #ddd", borderRadius: "4px", fontSize: "12px", cursor: "pointer" }}
+                                >
+                                  취소
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); removePlace(place.id); }}
+                                style={{ padding: "6px 14px", background: "#fff", color: "#e53935", border: "1.5px solid #e53935", borderRadius: "5px", fontWeight: "bold", fontSize: "12px", cursor: "pointer" }}
+                                onMouseOver={(e) => { e.currentTarget.style.background = "#e53935"; e.currentTarget.style.color = "#fff"; }}
+                                onMouseOut={(e) => { e.currentTarget.style.background = "#fff"; e.currentTarget.style.color = "#e53935"; }}
+                              >
+                                🗑 삭제
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
+          {/* ── 오른쪽: 지도 ── */}
+          <div style={{
+            flex: 1,
+            position: "relative",
+            border: "2px solid #000",
+            borderRadius: "8px",
+            overflow: "hidden",
+            minHeight: 0,
+          }}>
+            <div ref={mapRef} style={{ width: "100%", height: "100%" }} />
+
+            {!mapLoaded && (
+              <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "#f5f5f5", color: "#999" }}>
+                <p style={{ fontSize: "28px", marginBottom: "8px" }}>🗺️</p>
+                <p style={{ fontSize: "13px" }}>{mapKey ? "지도 로딩 중..." : "지도 키가 설정되지 않았습니다"}</p>
+              </div>
+            )}
+
+            {mapLoaded && mapablePlaces.length < filteredPlaces.length && filteredPlaces.length > 0 && (
+              <div style={{ position: "absolute", top: "12px", left: "50%", transform: "translateX(-50%)", background: "rgba(0,0,0,0.65)", color: "#fff", padding: "5px 14px", borderRadius: "14px", fontSize: "11px", pointerEvents: "none", whiteSpace: "nowrap" }}>
+                📍 {mapablePlaces.length}/{filteredPlaces.length}개 표시 중
+              </div>
+            )}
+
+            {mapLoaded && mapablePlaces.length === 0 && (
+              <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "rgba(255,255,255,0.9)", color: "#bbb" }}>
+                <p style={{ fontSize: "32px", marginBottom: "10px" }}>🗺️</p>
+                <p style={{ fontSize: "13px" }}>표시할 장소가 없습니다</p>
+              </div>
+            )}
+
+            {selectedPlace && (
+              <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "#fff", borderTop: "2px solid #000", padding: "12px 20px", display: "flex", alignItems: "center", gap: "12px" }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "3px" }}>
+                    <span style={{ fontSize: "13px", fontWeight: "bold", color: CATEGORY_COLOR[selectedPlace.category] || "#333" }}>
+                      {getCategoryIcon(selectedPlace.category)} {selectedPlace.category}
+                    </span>
+                    <span style={{ fontWeight: "bold", fontSize: "14px" }}>{selectedPlace.name}</span>
                   </div>
-
-                  <h3
-                    style={{
-                      fontSize: "18px",
-                      fontWeight: "bold",
-                      margin: "0 0 6px 0",
-                    }}
-                  >
-                    {place.name}
-                  </h3>
-
-                  <p
-                    style={{
-                      fontSize: "13px",
-                      color: "#666",
-                      margin: "0 0 10px 0",
-                    }}
-                  >
-                    📍 {place.address}
-                  </p>
-
-                  {place.description && (
-                    <p
-                      style={{
-                        fontSize: "13px",
-                        color: "#888",
-                        margin: "0 0 10px 0",
-                      }}
-                    >
-                      {place.description}
-                    </p>
-                  )}
-
-                  {/* 메모 영역 */}
-                  <div style={{ marginTop: "10px" }}>
-                    <textarea
-                      placeholder="💭 메모를 작성하세요..."
-                      value={place.memo || ""}
-                      onChange={(e) => updateMemo(place.id, e.target.value)}
-                      style={{
-                        width: "100%",
-                        minHeight: "60px",
-                        padding: "10px",
-                        border: "2px solid #eee",
-                        borderRadius: "6px",
-                        fontSize: "13px",
-                        resize: "vertical",
-                        fontFamily: "inherit",
-                      }}
-                    />
-                  </div>
+                  <p style={{ fontSize: "12px", color: "#888", margin: 0 }}>📍 {selectedPlace.address}</p>
                 </div>
-
-                {/* 삭제 버튼 */}
                 <button
-                  onClick={() => removePlace(place.id)}
-                  style={{
-                    padding: "8px 15px",
-                    background: "#fff",
-                    color: "#ff5252",
-                    border: "2px solid #ff5252",
-                    borderRadius: "6px",
-                    fontWeight: "bold",
-                    fontSize: "13px",
-                    cursor: "pointer",
-                    transition: "0.2s",
-                  }}
-                  onMouseOver={(e) => {
-                    e.currentTarget.style.background = "#ff5252";
-                    e.currentTarget.style.color = "#fff";
-                  }}
-                  onMouseOut={(e) => {
-                    e.currentTarget.style.background = "#fff";
-                    e.currentTarget.style.color = "#ff5252";
-                  }}
+                  onClick={() => setSelectedPlace(null)}
+                  style={{ padding: "6px 14px", background: "#fff", color: "#000", border: "2px solid #000", borderRadius: "5px", fontWeight: "bold", fontSize: "12px", cursor: "pointer", flexShrink: 0 }}
                 >
-                  삭제
+                  닫기
                 </button>
               </div>
-            ))}
+            )}
           </div>
-        )}
+        </div>
       </div>
 
-      {/* 장소 추가 모달 */}
       {isAddModalOpen && (
         <AddPlaceModal
           onClose={() => setIsAddModalOpen(false)}
@@ -628,19 +534,33 @@ const DayAllView: React.FC<DayAllViewProps> = ({
           existingPlaces={savedPlaces}
         />
       )}
-
-      {/* AI 일정 생성 모달 */}
       {isAiModalOpen && (
         <AiScheduleModal
           onClose={() => setIsAiModalOpen(false)}
           onGenerate={handleGenerateSchedule}
+          onAddPlace={handleAddPlace}
           savedPlaces={savedPlaces}
           startDate={startDate}
           endDate={endDate}
         />
       )}
+
+      {toast && (
+        <div style={{
+          position: "fixed", bottom: "32px", left: "50%",
+          transform: "translateX(-50%)",
+          background: "#222", color: "#fff",
+          padding: "10px 22px", borderRadius: "20px",
+          fontSize: "13px", fontWeight: "bold",
+          boxShadow: "0 4px 16px rgba(0,0,0,0.18)",
+          zIndex: 9999, pointerEvents: "none",
+          animation: "fadeInUp 0.2s ease",
+        }}>
+          {toast}
+        </div>
+      )}
+      <style>{`@keyframes fadeInUp { from { opacity:0; transform:translateX(-50%) translateY(8px); } to { opacity:1; transform:translateX(-50%) translateY(0); } }`}</style>
     </>
   );
 };
-
 export default DayAllView;
