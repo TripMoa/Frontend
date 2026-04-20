@@ -12,35 +12,38 @@ import Login from "./features/user/pages/Login";
 import UserSettings from "./features/user/pages/UserSetting";
 import OAuthSuccess from "./features/user/pages/OAuthSuccess";
 import ProtectedRoute from "./features/user/pages/ProtectedRoute";
+import { AuthProvider } from "./features/user/pages/AuthContext";
 
 export default function App() {
   return (
-    <Routes>
-      {/* 레이아웃 없는 페이지 */}
-      <Route path="/login" element={<Login />} />
-      <Route path="/oauth2/redirect" element={<OAuthSuccess />} />
-
-      {/* 보호된 라우트: 설정 페이지 */}
-      <Route element={<ProtectedRoute />}>
-        <Route path="/setting" element={<UserSettings />} />
-      </Route>
-
-      {/* 레이아웃 있는 페이지 */}
-      <Route element={<Layout />}>
-        <Route path="/" element={<Home />} />
-        <Route path="/mate" element={<Mate />} />
-        <Route path="/mate/:postId" element={<MateDetail />} />
-        <Route path="/travelstory" element={<TravelStory />} />
+    <AuthProvider>
+      <Routes>
+        {/* 레이아웃 없는 페이지 */}
+        <Route path="/login" element={<Login />} />
+        <Route path="/oauth2/redirect" element={<OAuthSuccess />} />
 
         {/* 보호된 라우트: 설정 페이지 */}
         <Route element={<ProtectedRoute />}>
-          <Route path="/mytrips" element={<MyTrips />} />
-          <Route path="/workspace" element={<Workspace />} />
-          <Route path="/workspace/:tripId" element={<Workspace />} />
+          <Route path="/setting" element={<UserSettings />} />
         </Route>
 
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Route>
-    </Routes>
+        {/* 레이아웃 있는 페이지 */}
+        <Route element={<Layout />}>
+          <Route path="/" element={<Home />} />
+          <Route path="/mate" element={<Mate />} />
+          <Route path="/mate/:postId" element={<MateDetail />} />
+          <Route path="/travelstory" element={<TravelStory />} />
+
+          {/* 보호된 라우트: 설정 페이지 */}
+          <Route element={<ProtectedRoute />}>
+            <Route path="/mytrips" element={<MyTrips />} />
+            <Route path="/workspace" element={<Workspace />} />
+            <Route path="/workspace/:tripId" element={<Workspace />} />
+          </Route>
+
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Route>
+      </Routes>
+    </AuthProvider>
   );
 }
