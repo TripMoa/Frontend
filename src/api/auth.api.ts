@@ -40,8 +40,8 @@ const broadcastLogoutToOtherTabs = (reason: "manual" | "withdraw") => {
 export const logout = async () => {
   try {
     await api.post<void>("/logout");
-  } catch (error) {
-    console.error("서버 로그아웃 처리 실패:", error);
+  } catch {
+    // 서버 로그아웃 실패해도 클라이언트 상태는 초기화
   } finally {
     clearAuthState();
     broadcastLogoutToOtherTabs("manual");
@@ -51,13 +51,8 @@ export const logout = async () => {
 
 // 회원 탈퇴
 export const withdraw = async () => {
-  try {
-    await api.delete("/users/me");
-    clearAuthState();
-    broadcastLogoutToOtherTabs("withdraw");
-    notifyAuthLogout("withdraw");
-  } catch (error) {
-    console.error("회원 탈퇴 실패:", error);
-    throw error;
-  }
+  await api.delete("/users/me");
+  clearAuthState();
+  broadcastLogoutToOtherTabs("withdraw");
+  notifyAuthLogout("withdraw");
 };
