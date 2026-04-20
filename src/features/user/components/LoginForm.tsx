@@ -1,5 +1,8 @@
+// src/features/user/components/LoginForm.tsx
+
 import React, { useState, useEffect } from "react";
 import styles from "../styles/LoginForm.module.css";
+import { API_BASE_URL } from "../../../shared/config/env";
 
 export const LoginForm: React.FC = () => {
   // 상태 선언 (초기값 null)
@@ -29,8 +32,7 @@ export const LoginForm: React.FC = () => {
             <button
               type="button"
               onClick={() => {
-                window.location.href =
-                  "http://localhost:8080/oauth2/authorization/google";
+                window.location.href = `${API_BASE_URL}/oauth2/authorization/google`;
               }}
               className={styles.socialButton}
             >
@@ -66,8 +68,7 @@ export const LoginForm: React.FC = () => {
             <button
               type="button"
               onClick={() => {
-                window.location.href =
-                  "http://localhost:8080/oauth2/authorization/kakao";
+                window.location.href = `${API_BASE_URL}/oauth2/authorization/kakao`;
               }}
               className={`${styles.socialButton} ${styles.kakao}`}
             >
@@ -88,8 +89,7 @@ export const LoginForm: React.FC = () => {
             <button
               type="button"
               onClick={() => {
-                window.location.href =
-                  "http://localhost:8080/oauth2/authorization/naver";
+                window.location.href = `${API_BASE_URL}/oauth2/authorization/naver`;
               }}
               className={`${styles.socialButton} ${styles.naver}`}
             >
