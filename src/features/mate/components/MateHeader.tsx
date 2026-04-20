@@ -1,5 +1,6 @@
-import { PenSquare, Inbox, User, MessageSquare } from "lucide-react";
+import { PenSquare, Inbox, User } from "lucide-react";
 import { useAuthGuard } from "../hooks/useAuthGuard";
+import { LoginPromptModal } from "./LoginPromptModal";
 import "../styles/MateHeader.css";
 
 interface MateHeaderProps {
@@ -20,9 +21,10 @@ export function MateHeader({
   receivedPendingCount,
 }: MateHeaderProps){
 
-  const { withLoginCheck } = useAuthGuard();
+  const { withLoginCheck, showLoginModal, closeLoginModal, goToLogin } = useAuthGuard();
 
   return (
+    <>
     <div className="header">
       <div className="flex items-center justify-between flex-wrap gap-4">
         <h1 className="text-[32px] font-black font-mono uppercase tracking-wide leading-tight">
@@ -66,5 +68,10 @@ export function MateHeader({
         </div>
       </div>
     </div>
+
+    {showLoginModal && (
+      <LoginPromptModal onClose={closeLoginModal} onLogin={goToLogin} />
+    )}
+    </>
   );
 }
