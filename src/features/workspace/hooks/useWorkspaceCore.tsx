@@ -10,10 +10,18 @@ import {
   renameNoticeGroup as renameNoticeGroupApi,
 } from "../../../api/notice.api";
 
+import { getTripDetail, updateTrip as updateTripApi } from "../../../api/trip.api";
+import type { TripMemberResponse } from "../../../types/trip.types";
 import type { NoticeGroupResponse } from "../../../types/notice.types";
 
 export type WorkspaceViewType = "timeline" | "expenses" | "voucher" | "notice";
 export type NoticeColor = "white" | "yellow" | "blue" | "green";
+
+export interface TripInfo {
+  title: string;
+  startDate: string;
+  endDate: string;
+}
 
 /**
  * [참고]
@@ -41,6 +49,11 @@ interface WorkspaceCoreState {
   hideRight: boolean;
   isNoticeGroupsLoading: boolean;
 
+  trip: TripInfo;
+  tripMembers: TripMemberResponse[];
+  isTripLoading: boolean;
+  updateTripData: (data: TripInfo) => Promise<void>;
+
   /* actions */
   selectTab: (title: string, view: WorkspaceViewType) => void;
   selectNoticeGroup: (groupId: number) => void;
@@ -67,6 +80,7 @@ interface WorkspaceCoreState {
    상수
 ========================= */
 const LS_DATE_LOGS = "tripmoa_date_logs";
+const LS_TRIP_DATA = "tripData";
 const LS_CURRENT_NOTICE_GROUP_ID = "tripmoa_current_notice_group_id";
 const DEFAULT_DAY_LABEL = "DAY ALL";
 
@@ -108,6 +122,17 @@ const useWorkspaceCoreInternal = (): WorkspaceCoreState => {
     number | null
   >(null);
   const [hideRight, setHideRight] = useState<boolean>(false);
+
+  // ── 여행 기본 정보 ──────────────────────────────────────────
+  const [trip, setTrip] = useState<TripInfo>(() => {
+    try {
+      const saved = localStorage.getItem(LS_TRIP_DATA);
+      if (saved) return JSON.parse(saved) as TripInfo;
+    } catch { /* 파싱 실패 무시 */ }
+    return { title: "", startDate: "", endDate: "" };
+  });
+  const [tripMembers, setTripMembers] = useState<TripMemberResponse[]>([]);
+  const [isTripLoading, setIsTripLoading] = useState(false);
 
   const currentNoticeStorageKey = useMemo(
     () =>
@@ -177,7 +202,46 @@ const useWorkspaceCoreInternal = (): WorkspaceCoreState => {
   }, [currentNoticeGroupId, currentNoticeStorageKey]);
 
   /* =========================
-     5. 공지 그룹 전체 조회
+     5. 여행 정보 API 조회
+  ========================= */
+  useEffect(() => {
+    if (!Number.isFinite(tripId) || tripId <= 0) return;
+
+    setIsTripLoading(true);
+    getTripDetail(tripId)
+      .then((res) => {
+        const d = res.data;
+        const t: TripInfo = {
+          title: d.title,
+          startDate: d.tripStartDate,
+          endDate: d.tripEndDate,
+        };
+        setTrip(t);
+        setTripMembers(d.members ?? []);
+        localStorage.setItem(LS_TRIP_DATA, JSON.stringify(t));
+      })
+      .catch(() => { /* localStorage fallback 유지 */ })
+      .finally(() => setIsTripLoading(false));
+  }, [tripId]);
+
+  const updateTripData = async (data: TripInfo): Promise<void> => {
+    setTrip(data);
+    localStorage.setItem(LS_TRIP_DATA, JSON.stringify(data));
+    if (Number.isFinite(tripId) && tripId > 0) {
+      try {
+        await updateTripApi(tripId, {
+          title: data.title,
+          tripStartDate: data.startDate,
+          tripEndDate: data.endDate,
+        });
+      } catch (e) {
+        console.error("여행 정보 업데이트 실패:", e);
+      }
+    }
+  };
+
+  /* =========================
+     6. 공지 그룹 전체 조회
   ========================= */
   const reloadNoticeGroups = async () => {
     if (!Number.isFinite(tripId) || tripId <= 0) {
@@ -420,6 +484,11 @@ const useWorkspaceCoreInternal = (): WorkspaceCoreState => {
     currentNoticeGroup,
     hideRight,
     isNoticeGroupsLoading,
+
+    trip,
+    tripMembers,
+    isTripLoading,
+    updateTripData,
 
     selectTab,
     selectNoticeGroup,
