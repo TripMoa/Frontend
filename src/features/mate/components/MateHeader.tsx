@@ -1,4 +1,5 @@
 import { PenSquare, Inbox, User, MessageSquare } from "lucide-react";
+import { useAuthGuard } from "../hooks/useAuthGuard";
 import "../styles/MateHeader.css";
 
 interface MateHeaderProps {
@@ -15,11 +16,12 @@ export function MateHeader({
   onWriteClick, 
   onMySentClick, 
   onReceivedClick, 
-  onChatListClick,
   mySentCount, 
   receivedPendingCount,
-  unreadChatCount = 0, 
 }: MateHeaderProps){
+
+  const { withLoginCheck } = useAuthGuard();
+
   return (
     <div className="header">
       <div className="flex items-center justify-between flex-wrap gap-4">
@@ -30,7 +32,7 @@ export function MateHeader({
         <div className="flex gap-3">
           <button 
             className="flex items-center gap-2 bg-white text-black px-5 py-2.5 transition-colors font-bold text-sm uppercase tracking-wide button"
-            onClick={onWriteClick}
+            onClick={() => withLoginCheck(onWriteClick)}
           >
             <PenSquare className="w-4 h-4" />
             WRITE
@@ -38,7 +40,7 @@ export function MateHeader({
 
           <button 
             className="flex items-center gap-2 bg-white text-black px-5 py-2.5 transition-colors font-bold text-sm uppercase tracking-wide relative button"
-            onClick={onMySentClick}
+            onClick={() => withLoginCheck(onMySentClick)}
           >
             <Inbox className="w-4 h-4" />
             MY SENT
@@ -51,7 +53,7 @@ export function MateHeader({
 
           <button 
             className="flex items-center gap-2 px-5 py-2.5 transition-colors font-bold text-sm uppercase tracking-wide relative button buttonDark"
-            onClick={onReceivedClick}
+            onClick={() => withLoginCheck(onReceivedClick)}
           >
             <User className="w-4 h-4" />
             RECEIVED

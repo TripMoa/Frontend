@@ -7,6 +7,7 @@ import type { Post, ApplicationRequest } from "../hooks/mate.types";
 import { getCurrentUserId, calculateDuration, getAgeGroupLabel, getGenderPreferenceLabel, getTransportLabel } from "../hooks/mate.constants";
 import { useMate } from "../hooks/useMate";
 import { isPostExpired } from "../hooks/mate.util";
+import { useAuthGuard } from "../hooks/useAuthGuard";
 import "../styles/MateDetail.css";
 
 export default function MateDetail() {
@@ -25,6 +26,8 @@ export default function MateDetail() {
   const currentUserId = getCurrentUserId();
   const isAuthor = post?.author.id === currentUserId;
   const token = localStorage.getItem("accessToken");
+
+  const { withLoginCheck } = useAuthGuard();
 
   useEffect(() => {
     const loadPost = async () => {
@@ -331,7 +334,7 @@ export default function MateDetail() {
               ) : !showApplyForm ? (
                 <button
                   disabled={hasApplied || post.currentParticipant >= post.maxParticipant}
-                  onClick={() => setShowApplyForm(true)}
+                  onClick={() => withLoginCheck(() => setShowApplyForm(true))}
                   className="apply-button"
                 >
                   {hasApplied ? "Applied" : post.currentParticipant >= post.maxParticipant ? "Full" : "Apply Now"}
