@@ -19,6 +19,7 @@ import type {
   ChatMessage,
   StompConnectionStatus,
 } from "./chat.types";
+import { useAuth } from "../../user/pages/AuthContext";
 
 // ─────────────────────────────────────────────
 // 반환 타입
@@ -255,8 +256,8 @@ export function useChat(): UseChatReturn {
   // ─────────────────────────────────────────
 
   useEffect(() => {
-    const token = localStorage.getItem("accessToken");
-    if (!token) return;
+    const { isAuthenticated } = useAuth();
+    if (!isAuthenticated) return;
     refreshRooms();
   }, [refreshRooms]);
 
