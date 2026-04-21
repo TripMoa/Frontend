@@ -9,6 +9,7 @@ import { isPostExpired } from "../hooks/mate.util";
 import { useAuthGuard } from "../hooks/useAuthGuard";
 import { ProfileIncompleteModal } from "../components/ProfileIncompleteModal";
 import "../styles/MateDetail.css";
+import { getAccessToken } from "../../../api/api";
 
 export default function MateDetail() {
   const { postId } = useParams<{ postId: string }>();
@@ -25,7 +26,7 @@ export default function MateDetail() {
 
   const currentUserId = getCurrentUserId();
   const isAuthor = post?.author?.id === currentUserId;
-  const token = localStorage.getItem("accessToken");
+  const token = getAccessToken();
 
   const {
     withLoginCheck, showLoginModal, closeLoginModal, goToLogin,

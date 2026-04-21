@@ -5,6 +5,8 @@ import {
   GENDER_PREFERENCE_MAP,
   AGE_GROUP_MAP
 } from "./mate.constants";
+import { getAccessToken } from "../../../api/api";
+import { useAuth } from "../../user/pages/AuthContext";
 
 const API_BASE_URL = "http://localhost:8080/api";
 
@@ -16,9 +18,9 @@ export function useMate() {
   const [error, setError] = useState<string | null>(null);
   const [passedPosts, setPassedPosts] = useState<Post[]>([]);
   const [expiredPosts, setExpiredPosts] = useState<Post[]>([]);
-  const token = localStorage.getItem("accessToken");
 
   const fetchPosts = useCallback(async () => {
+    const token = getAccessToken();
     setLoading(true);
     setError(null);
     try {
@@ -59,6 +61,7 @@ export function useMate() {
     ageGroup: string;
     content: string;
   }): Promise<Post | null> => {
+    const token = getAccessToken();
     setLoading(true);
     setError(null);
 
@@ -109,6 +112,7 @@ export function useMate() {
   }, []);
 
   const fetchPostDetail = useCallback(async (postId: number): Promise<Post | null> => {
+    const token = getAccessToken();
     setLoading(true);
     setError(null);
 
@@ -140,6 +144,7 @@ export function useMate() {
   }, []);
 
   const deletePost = useCallback(async (postId: number): Promise<boolean> => {
+    const token = getAccessToken();
     setLoading(true);
     setError(null);
 
@@ -167,6 +172,7 @@ export function useMate() {
   }, []);
 
   const toggleLike = useCallback(async (postId: number): Promise<LikeResponse | null> => {
+    const token = getAccessToken();
     try {
       const response = await fetch(`${API_BASE_URL}/mate/${postId}/like`, {
         method: "POST",
@@ -201,6 +207,7 @@ export function useMate() {
     }
   }, []);
 
+  const token = getAccessToken();
   // 1. 받은 신청 목록 불러오기
   const fetchReceivedApplications = useCallback(async () => {
     try {
@@ -336,8 +343,9 @@ export function useMate() {
   }, [passedPosts, token]);
 
   const fetchPassedPosts = useCallback(async () => {
+    const { isAuthenticated } = useAuth();
     try {
-      if(!token) return;
+      if(!isAuthenticated) return;
       const response = await fetch(`${API_BASE_URL}/mate/posts/passed`, {
         method: "GET",
         headers: {
