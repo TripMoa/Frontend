@@ -9,6 +9,7 @@ import type {
   CreateRoomRequest,
   SendMessageRequest,
 } from "../features/chat/hooks/chat.types";
+import { getAccessToken } from "./api";
 
 // ─────────────────────────────────────────────
 // 기본 설정
@@ -27,7 +28,7 @@ async function fetchWithAuth<T>(
   options: RequestInit = {}
 ): Promise<T> {
   // localStorage, cookie, zustand store 등
-  const token = localStorage.getItem("accessToken");
+  const token = getAccessToken();
 
   const response = await fetch(url, {
     ...options,
@@ -130,7 +131,7 @@ export async function sendMessageRest(
 }
 
 export async function markRoomAsRead(roomId: string): Promise<void> {
-    const token = localStorage.getItem("accessToken");
+    const token = getAccessToken();
     const response = await fetch(`${CHAT_API}/rooms/${roomId}/read`, {
         method: "PUT",
         headers: {
@@ -143,7 +144,7 @@ export async function markRoomAsRead(roomId: string): Promise<void> {
 }
 
 export async function leaveChatRoom(roomId: string): Promise<void> {
-    const token = localStorage.getItem("accessToken");
+    const token = getAccessToken();
     const response = await fetch(`${CHAT_API}/rooms/${roomId}/leave`, {
         method: "DELETE",
         headers: {
