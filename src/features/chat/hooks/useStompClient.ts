@@ -4,8 +4,9 @@ import { useEffect, useRef, useCallback, useState } from "react";
 import { Client, type IMessage } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
 import type { ChatMessage, StompConnectionStatus, StompSendMessage } from "./chat.types";
+import { getAccessToken } from "../../../api/api";
 
-const WS_URL = "http://localhost:8080/ws";
+const WS_URL = "http://localhost:8080/ws"; 
 
 interface UseStompClientOptions {
   roomIds: string[];
@@ -89,7 +90,7 @@ export function useStompClient({
 
     updateStatus("connecting");
 
-    const token = localStorage.getItem("accessToken");
+    const token = getAccessToken();
     const client = new Client({
       // SockJS 사용 (WebSocketConfig의 withSockJS()에 대응)
       webSocketFactory: () => new SockJS(WS_URL) as WebSocket,

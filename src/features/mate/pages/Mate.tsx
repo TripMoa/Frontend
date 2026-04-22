@@ -26,6 +26,7 @@ import "../styles/Mate.css";
 import "../../chat/styles/ChatFAB.css";
 import type { MateTabKey } from "../components/MateTabs";
 import { getTodayKST, isPostExpired } from "../hooks/mate.util";
+import { getAccessToken } from "../../../api/api";
 
 export default function Mate() {
   const navigate = useNavigate();
@@ -230,7 +231,7 @@ export default function Mate() {
     [toggleLike]
   );
 
-  const token = localStorage.getItem("accessToken");
+  const token = getAccessToken();
 
   return (
     <section className="page-section">

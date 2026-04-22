@@ -8,6 +8,8 @@ import {
   AGE_GROUP_REVERSE_MAP
 } from "../hooks/mate.constants";
 import "../styles/MatePostCard.css";
+import { getAccessToken } from "../../../api/api";
+import { useAuth } from "../../user/pages/AuthContext";
 
 interface MatePostCardProps {
   post: Post;
@@ -36,7 +38,7 @@ export function MatePostCard({
 }: MatePostCardProps){
   const currentUserId = getCurrentUserId();
   const isAuthor = post.author.id === currentUserId;
-  const token = localStorage.getItem("accessToken");
+  const { isAuthenticated } = useAuth();
 
   // 날짜 포맷팅 (YYYY-MM-DD -> MM-DD)
   const formatDate = (dateString: string) => {
@@ -195,7 +197,7 @@ export function MatePostCard({
               </div>
             </>
           )          
-          : !token ? (
+          : !isAuthenticated ? (
             <>
               <div className="text-xs font-bold text-black/40 text-center">
                 회원 전용<br />서비스 입니다

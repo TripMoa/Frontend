@@ -1,17 +1,17 @@
 // hooks/useAuthGuard.ts
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useCurrentUser } from "../../chat/hooks/useCurrentUser";
 import { getMyInfo } from "../../../api/auth.api";
+import { useAuth } from "../../user/pages/AuthContext";
 
 export function useAuthGuard() {
-  const { id } = useCurrentUser();
+  const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
 
   const withLoginCheck = (callback: () => void) => {
-    if (!id) {
+    if (!isAuthenticated) {
       setShowLoginModal(true);
       return;
     }
@@ -19,7 +19,7 @@ export function useAuthGuard() {
   };
 
   const withProfileCheck = async (callback: () => void) => {
-    if (!id) {
+    if (!isAuthenticated) {
         setShowLoginModal(true);
         return;
     }
