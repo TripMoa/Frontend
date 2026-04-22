@@ -3,8 +3,9 @@ import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Heart, Calendar, Users, Wallet, Eye } from "lucide-react";
 import { LoginPromptModal } from "../components/LoginPromptModal";
 import type { Post, ApplicationRequest } from "../hooks/mate.types";
-import { getCurrentUserId, calculateDuration, getAgeGroupLabel, getGenderPreferenceLabel, getTransportLabel } from "../hooks/mate.constants";
+import { calculateDuration, getAgeGroupLabel, getGenderPreferenceLabel, getTransportLabel } from "../hooks/mate.constants";
 import { useMate } from "../hooks/useMate";
+import { useAuth } from "../../user/pages/AuthContext";
 import { isPostExpired } from "../hooks/mate.util";
 import { useAuthGuard } from "../hooks/useAuthGuard";
 import { ProfileIncompleteModal } from "../components/ProfileIncompleteModal";
@@ -24,8 +25,8 @@ export default function MateDetail() {
 
   const hasLoadedRef = useRef(false);
 
-  const currentUserId = getCurrentUserId();
-  const isAuthor = post?.author?.id === currentUserId;
+  const { userId } = useAuth();
+  const isAuthor = post?.author?.id === userId;
   const token = getAccessToken();
 
   const {
@@ -74,7 +75,7 @@ export default function MateDetail() {
 
     setPost(prev => prev ? {
       ...prev,
-      isLiked: !prev.liked,
+      liked: !prev.liked,
       likesCount: prev.liked ? prev.likesCount - 1 : prev.likesCount + 1
     } : null);
 
@@ -83,13 +84,13 @@ export default function MateDetail() {
     if (result) {
       setPost(prev => prev ? {
         ...prev,
-        isLiked: result.liked,
+        liked: result.liked,
         likesCount: result.count
       } : null);
     } else {
       setPost(prev => prev ? {
         ...prev,
-        isLiked: prevLiked,
+        liked: prevLiked,
         likesCount: prevCount
       } : null);
     }
@@ -185,7 +186,7 @@ export default function MateDetail() {
 
             {/* 좋아요 버튼 (활성화 시 빨간색) */}
             <button
-              onClick={() => withLoginCheck(() => onLikeClick)}
+              onClick={(e) => withLoginCheck(() => onLikeClick(e))}
               className={`stat-box btn-like ${isLiked ? "active" : ""}`}
             >
               <Heart 

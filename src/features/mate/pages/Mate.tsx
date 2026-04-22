@@ -3,13 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { ArrowUpDown, User, ChevronDown } from "lucide-react";
 
 import { useMate } from "../hooks/useMate";
+import { useAuth } from "../../user/pages/AuthContext";
 import { useChat } from "../../chat/hooks/useChat";
 import { ChatFAB } from "../../chat/components/ChatFAB";
 import { ChatSlideModal } from "../../chat/components/ChatSlideModal";
 import { useMateFilters } from "../hooks/useMateFilters";
 import { usePagination } from "../hooks/usePagination";
 import { SORT_OPTIONS, getSortLabel, POSTS_PER_PAGE } from "../hooks/mate.constants";
-import { useCurrentUser } from "../../chat/hooks/useCurrentUser";
 
 import {
   MateHeader,
@@ -30,6 +30,7 @@ import { getAccessToken } from "../../../api/api";
 
 export default function Mate() {
   const navigate = useNavigate();
+  const { userId } = useAuth();
 
   const [writeError, setWriteError] = useState<string | null>(null);
   const [showWriteModal, setShowWriteModal] = useState(false);
@@ -79,9 +80,6 @@ export default function Mate() {
     handleResetAll,
   } = useMateFilters(posts);
 
-  const currentUser = useCurrentUser();
-  const currentUserId = currentUser?.id;
-
   const passedIdSet = useMemo(
     () => new Set(passedPosts.map(p => p.id)),
     [passedPosts]
@@ -96,7 +94,7 @@ export default function Mate() {
       case 'liked':
         return filteredPosts.filter(p => p.liked);
       case 'my':
-        return posts.filter(p => p.author.id === currentUserId);
+        return posts.filter(p => p.author.id === userId);
       case 'all':
       default:
         return filteredPosts.filter(p =>
@@ -110,7 +108,7 @@ export default function Mate() {
     passed: passedPosts.length,
     expired: expiredPosts.length,
     liked: posts.filter(p => p.liked).length,
-    my: posts.filter(p => p.author.id === currentUserId).length,
+    my: posts.filter(p => p.author.id === userId).length,
   };
 
   const { currentPage, setCurrentPage, totalPages, visiblePosts } = usePagination(
