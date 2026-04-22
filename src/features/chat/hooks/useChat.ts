@@ -60,6 +60,7 @@ export function useChat(): UseChatReturn {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const chatRoomsRef = useRef(chatRooms);
+  const { isAuthenticated } = useAuth();
 
   // chatRooms 레퍼런스 최신 유지
   useEffect(() => {
@@ -256,7 +257,6 @@ export function useChat(): UseChatReturn {
   // ─────────────────────────────────────────
 
   useEffect(() => {
-    const { isAuthenticated } = useAuth();
     if (!isAuthenticated) return;
     refreshRooms();
   }, [refreshRooms]);

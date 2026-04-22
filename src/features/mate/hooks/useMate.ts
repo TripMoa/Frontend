@@ -18,6 +18,7 @@ export function useMate() {
   const [error, setError] = useState<string | null>(null);
   const [passedPosts, setPassedPosts] = useState<Post[]>([]);
   const [expiredPosts, setExpiredPosts] = useState<Post[]>([]);
+  const { isAuthenticated } = useAuth();
 
   const fetchPosts = useCallback(async () => {
     const token = getAccessToken();
@@ -343,7 +344,6 @@ export function useMate() {
   }, [passedPosts, token]);
 
   const fetchPassedPosts = useCallback(async () => {
-    const { isAuthenticated } = useAuth();
     try {
       if(!isAuthenticated) return;
       const response = await fetch(`${API_BASE_URL}/mate/posts/passed`, {
