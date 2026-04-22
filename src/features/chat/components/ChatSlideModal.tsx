@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { X, MessageSquare, Send, Plus, LogOut, MapPin, Calendar, User } from "lucide-react";
 import type { OneOnOneChat } from "../hooks/chat.types";
 import type { Post, ApplicationResponse } from "../../mate/hooks/mate.types";
-import { useCurrentUser } from "../hooks/useCurrentUser";
+import { useAuth } from "../../user/pages/AuthContext";
 import { markRoomAsRead } from "../../../api/chat.api";
 import "../styles/ChatSlide.css";
 
@@ -53,7 +53,7 @@ export function ChatSlideModal({
   const [isClosing, setIsClosing] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>("active");
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { email: currentUserEmail, id: currentUserId } = useCurrentUser();
+  const { userId } = useAuth();
   const [readMessageCounts, setReadMessageCounts] = useState<Record<string, number>>({});
 
   // 모달 닫을 때 애니메이션
@@ -101,7 +101,7 @@ export function ChatSlideModal({
 
   const getPostInfo = (chat: OneOnOneChat): ChatPostInfo => {
     // 채팅 객체에 이미 모든 정보가 있으므로 바로 반환
-    const isIamAuthor = chat.postAuthorId === currentUserEmail;
+    const isIamAuthor = chat.postAuthorId === userId;
     
     return {
       id: chat.postId,
@@ -114,7 +114,7 @@ export function ChatSlideModal({
 
   const getOtherUser = (chat: OneOnOneChat) => {
     // 상대방 정보 가져오기
-    const isIamAuthor = chat.postAuthorId === currentUserEmail;
+    const isIamAuthor = chat.postAuthorId === userId;
     return isIamAuthor ? chat.applicant : chat.postAuthor;
   };
 
@@ -156,7 +156,7 @@ export function ChatSlideModal({
     // 내가 신청한 목록
     // myApplications.filter(app => app.status === 'APPROVED').forEach(app => {
     //   const hasChat = oneOnOneChats.some(
-    //     chat => chat.postId === String(app.matePostId) && chat.applicantId === currentUserEmail
+    //     chat => chat.postId === String(app.matePostId) && chat.applicantId === userId
     //   );
     //   if (!hasChat) {
     //     available.push({
@@ -552,10 +552,10 @@ export function ChatSlideModal({
                     );
                   }
                   
-                  const myEmail = selectedChat.chat.postAuthor.id === currentUserId
-                    ? selectedChat.chat.postAuthor.email
-                    : selectedChat.chat.applicant.email;
-                  const isMyMessage = msg.senderId === myEmail;
+                  const myId = selectedChat.chat.postAuthor.id === userId
+                    ? selectedChat.chat.postAuthor.id
+                    : selectedChat.chat.applicant.id;
+                  const isMyMessage = msg.senderId === myId;
 
                   return (
                     <div key={msg.id} style={{ display: "flex", justifyContent: isMyMessage ? "flex-end" : "flex-start" }}>
