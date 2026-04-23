@@ -2,7 +2,9 @@ import { Send, Check, XCircle, ArrowLeft, MessageSquare, Trash2 } from "lucide-r
 import { useState } from "react";
 import "../styles/MateModals.css";
 import type { ApplicationResponse, SelectedApplicant } from "../hooks/mate.types";
-import { getApplicantAvatar, isPostExpired } from "../hooks/mate.util.ts";
+import { isPostExpired } from "../hooks/mate.util.ts";
+import { getApplicantAvatar } from "../../../shared/hooks/avatar.ts";
+import { AvatarDisplay } from "../../../shared/components/AvatarDisplay.tsx";
 
 interface ReceivedModalProps {
   applications: ApplicationResponse[];
@@ -11,19 +13,6 @@ interface ReceivedModalProps {
   onReject: (id: string, e?: React.MouseEvent<HTMLButtonElement>) => void;
   onClose: () => void;
   onDeleteReceived?: (applyId: string) => void;
-}
-
-function AvatarDisplay({ profileImage, avatarEmoji, className }: {
-  profileImage: string | null;
-  avatarEmoji: string | null;
-  className?: string;
-}) {
-  const avatar = getApplicantAvatar(profileImage, avatarEmoji);
-  
-  if (avatar.type === "image") {
-    return <img src={avatar.src} className={`object-cover rounded-2xl ${className}`} />;
-  }
-  return <span>{avatar.value}</span>;
 }
 
 export function MateReceivedModal({ 
@@ -83,7 +72,13 @@ export function MateReceivedModal({
               {/* Applicant Profile */}
               <div className="flex flex-col items-center mb-8">
                 <div className="w-24 h-24 text-5xl flex items-center justify-center bg-gray-50 border border-gray-200 rounded-2xl mb-4 shadow-inner">
-                  <AvatarDisplay profileImage={selectedApplicant.applicant.profileImage} avatarEmoji={selectedApplicant.applicant.avatarEmoji} />
+                  <AvatarDisplay 
+                    avatar={
+                      getApplicantAvatar(
+                        selectedApplicant.applicant.profileImage,
+                        selectedApplicant.applicant.avatarEmoji
+                    )} 
+                  />
                 </div>
                 <h3 className="text-xl font-bold text-gray-900">{selectedApplicant.applicant.name}</h3>
                 <p className="text-sm text-gray-400 font-mono mb-3">{selectedApplicant.applicant.email}</p>
@@ -245,7 +240,12 @@ export function MateReceivedModal({
                           >
                             <div className="flex items-center gap-4">
                               <div className="w-12 h-12 text-2xl flex items-center justify-center bg-gray-50 rounded-lg group-hover/item:bg-indigo-50 transition-colors">
-                                <AvatarDisplay profileImage={app.profileImage} avatarEmoji={app.avatar} />
+                                <AvatarDisplay avatar={
+                                  getApplicantAvatar(
+                                    app.profileImage,
+                                    app.avatar
+                                  )}
+                                  />
                               </div>
                               <div>
                                 <div className="flex items-center gap-2">
