@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import "../../../styles/modals.css";
 import { useNaverMap } from "../../../hooks/useNaverMap";
+import { searchPlaces } from "../../../../../api/place.api";
 import { CATEGORY_COLOR, getCategoryIcon } from "../../../hooks/schedule.constants";
 
 interface Place {
@@ -23,7 +24,6 @@ interface AddPlaceModalProps {
   existingPlaces: Place[];
 }
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 
 const CATEGORY_MAP: Record<string, string> = {
   관광지: "관광",
@@ -173,14 +173,7 @@ const AddPlaceModal: React.FC<AddPlaceModalProps> = ({
     setSelectedPlace(null);
 
     try {
-      const res = await fetch(
-        `${API_BASE}/schedule/search?query=${encodeURIComponent(query.trim())}&display=12`
-      );
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.detail || `서버 오류 (${res.status})`);
-      }
-      const data = await res.json();
+      const { data } = await searchPlaces(query.trim(), 12);
 
       if (!data.success || !data.places?.length) {
         setErrorMsg(`'${query}' 검색 결과가 없습니다.`);

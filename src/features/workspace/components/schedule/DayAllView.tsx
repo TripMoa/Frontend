@@ -6,6 +6,7 @@ import AiScheduleModal from "../schedule/modal/AiScheduleModal";
 import type { TimelineNode } from "../schedule/modal/AiScheduleModal";
 import { useWorkspaceCore } from "../../hooks/useWorkspaceCore";
 import { useNaverMap } from "../../hooks/useNaverMap";
+import { usePlaces } from "../../hooks/usePlaces";
 import { CATEGORY_COLOR, CATEGORY_LIST, getCategoryIcon } from "../../hooks/schedule.constants";
 import "../../styles/center.css";
 import "../../styles/modals.css";
@@ -24,6 +25,7 @@ interface Place {
 }
 
 interface DayAllViewProps {
+  tripId: number;
   tripTitle: string;
   startDate: string;
   endDate: string;
@@ -33,6 +35,7 @@ interface DayAllViewProps {
 
 
 const DayAllView: React.FC<DayAllViewProps> = ({
+  tripId,
   tripTitle,
   startDate,
   endDate,
@@ -40,11 +43,11 @@ const DayAllView: React.FC<DayAllViewProps> = ({
 }) => {
   const { selectTab } = useWorkspaceCore();
   const { mapLoaded, mapKey } = useNaverMap();
+  const { places: savedPlaces, addPlace, updatePlace, deletePlace } = usePlaces(tripId);
 
 
 
   // ── 상태 ───────────────────────────────────────────────────
-  const [savedPlaces, setSavedPlaces] = useState<Place[]>([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
   const [category, setCategory] = useState("all");
@@ -59,30 +62,6 @@ const DayAllView: React.FC<DayAllViewProps> = ({
   const mapInstanceRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
   const infoWindowRef = useRef<any>(null);
-
-  // ── localStorage 로드 ──────────────────────────────────────
-  const [isLoaded, setIsLoaded] = useState(false);
-
-  useEffect(() => {
-    const saved = localStorage.getItem("saved_places");
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) {
-          setSavedPlaces(parsed);
-        }
-      } catch {
-        // 파싱 실패 시 빈 배열 유지
-      }
-    }
-    setIsLoaded(true);
-  }, []);
-
-  // 로드 완료 후에만 저장 — 초기 빈 배열이 localStorage를 덮어쓰는 것을 방지
-  useEffect(() => {
-    if (!isLoaded) return;
-    localStorage.setItem("saved_places", JSON.stringify(savedPlaces));
-  }, [savedPlaces, isLoaded]);
 
   // ── 지도 초기화 ──────────────────────────────────────────
   useEffect(() => {
@@ -206,12 +185,20 @@ const DayAllView: React.FC<DayAllViewProps> = ({
   };
 
   // ── CRUD ───────────────────────────────────────────────────
-  const handleAddPlace = (place: Place) => {
-    if (savedPlaces.some((p) => p.id === place.id)) {
+  const handleAddPlace = async (place: Place) => {
+    if (savedPlaces.some((p) => p.id === place.id || (p.name === place.name && p.lat === place.lat))) {
       showToast("이미 추가된 장소입니다.");
       return;
     }
-    setSavedPlaces([...savedPlaces, place]);
+    await addPlace({
+      name: place.name,
+      category: place.category,
+      address: place.address,
+      description: place.description,
+      memo: place.memo,
+      lat: place.lat,
+      lng: place.lng,
+    });
     showToast(`${place.name} 추가됨`);
   };
 
@@ -219,19 +206,19 @@ const DayAllView: React.FC<DayAllViewProps> = ({
     setConfirmTargetId(placeId);
   };
 
-  const confirmRemove = () => {
+  const confirmRemove = async () => {
     if (!confirmTargetId) return;
-    setSavedPlaces(savedPlaces.filter((p) => p.id !== confirmTargetId));
+    await deletePlace(confirmTargetId);
     setConfirmTargetId(null);
     setExpandedId(null);
   };
 
   const updateCategory = (placeId: string, category: string) => {
-    setSavedPlaces(savedPlaces.map((p) => (p.id === placeId ? { ...p, category } : p)));
+    updatePlace(placeId, { category });
   };
 
   const updateMemo = (placeId: string, memo: string) => {
-    setSavedPlaces(savedPlaces.map((p) => (p.id === placeId ? { ...p, memo } : p)));
+    updatePlace(placeId, { memo });
   };
 
   const handleOpenAiModal = () => {
@@ -542,6 +529,7 @@ const DayAllView: React.FC<DayAllViewProps> = ({
           savedPlaces={savedPlaces}
           startDate={startDate}
           endDate={endDate}
+          tripId={tripId}
         />
       )}
 
