@@ -8,7 +8,6 @@ import {
   AGE_GROUP_REVERSE_MAP
 } from "../hooks/mate.constants";
 import "../styles/MatePostCard.css";
-import { getAccessToken } from "../../../api/api";
 import { useAuth } from "../../user/pages/AuthContext";
 
 interface MatePostCardProps {
@@ -36,8 +35,8 @@ export function MatePostCard({
   onRestore,
   onDelete,
 }: MatePostCardProps){
-  const currentUserId = getCurrentUserId();
-  const isAuthor = post.author.id === currentUserId;
+  const { userId } = useAuth();
+  const isAuthor = post.author.id === userId;
   const { isAuthenticated } = useAuth();
 
   // 날짜 포맷팅 (YYYY-MM-DD -> MM-DD)

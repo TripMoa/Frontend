@@ -1,9 +1,9 @@
 // components/mate/ChatModal.tsx
 import { useState, useEffect, useRef } from "react";
-import { X, MessageSquare, Users, Send, Search } from "lucide-react";
+import { X, MessageSquare, Send, Search } from "lucide-react";
 import type { OneOnOneChat } from "../hooks/chat.types";
 import type { Post } from "../../mate/hooks/mate.types";
-import { useCurrentUser } from "../hooks/useCurrentUser";
+import { useAuth } from "../../user/pages/AuthContext";
 
 interface ChatModalProps {
   isOpen: boolean;
@@ -24,11 +24,11 @@ export function ChatModal({
   allPosts,
   onSendOneOnOneMessage,
 }: ChatModalProps){
-  const { email: currentUserEmail } = useCurrentUser();
   const [selectedChat, setSelectedChat] = useState<SelectedChat>(null);
   const [messageInput, setMessageInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { userId } = useAuth();
 
   // 모달이 닫힐 때 선택된 채팅 초기화
   useEffect(() => {
@@ -104,7 +104,7 @@ export function ChatModal({
   const filteredOneOnOneChats = oneOnOneChats.filter(chat => {
     if (!searchQuery) return true;
     const post = getPostInfo(chat.postId);
-    const isMyChat = chat.applicantId === currentUserEmail;
+    const isMyChat = chat.applicantId === userId;
     const otherUserName = isMyChat ? post?.author.nickname : "Unknown";
     return post?.destination.toLowerCase().includes(searchQuery.toLowerCase()) ||
            otherUserName?.toLowerCase().includes(searchQuery.toLowerCase());
@@ -161,8 +161,8 @@ export function ChatModal({
                 <div className="space-y-4 max-w-5xl mx-auto">
                   {filteredOneOnOneChats.map((chat) => {
                     const post = getPostInfo(chat.postId);
-                    const isMyChat = chat.applicantId === currentUserEmail;
-                    const otherUser = chat.postAuthorId === currentUserEmail
+                    const isMyChat = chat.applicantId === userId;
+                    const otherUser = chat.postAuthorId === userId
                      ? chat.applicant
                      : chat.postAuthor;
                     const lastMessage = chat.messages[chat.messages.length - 1];
@@ -203,7 +203,7 @@ export function ChatModal({
             <div className="bg-white border-b-2 border-black p-5 flex items-center justify-between">
               <div className="flex items-center gap-4">
                 {(() => {
-                  const otherUser = selectedChat.chat.postAuthorId === currentUserEmail
+                  const otherUser = selectedChat.chat.postAuthorId === userId
                     ? selectedChat.chat.applicant
                     : selectedChat.chat.postAuthor;
                   return (
@@ -231,7 +231,7 @@ export function ChatModal({
             {/* 메시지 영역 */}
             <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-blue-50">
               {(selectedChat.type === "one-on-one" ? selectedChat.chat.messages : selectedChat.chat.messages).map((msg) => {
-                const isMyMessage = msg.senderId === currentUserEmail;
+                const isMyMessage = msg.senderId === userId;
 
                 return (
                   <div key={msg.id} className={`flex ${isMyMessage ? "justify-end" : "justify-start"}`}>

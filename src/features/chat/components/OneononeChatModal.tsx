@@ -5,7 +5,7 @@ import type { Post } from "../../mate/hooks/mate.types";
 import type { ChatMessage } from "../hooks/chat.types";  // 경로 수정
 import ChatBubble from "./ChatBubble";
 import ChatInput from "./ChatInput";    
-// import { CURRENT_USER } from "../../hooks/mate.constants";
+import { useAuth } from "../../user/pages/AuthContext";
 
 interface OneOnOneChatModalProps {
   post: Post;
@@ -21,6 +21,7 @@ export default function OneOnOneChatModal({
   onClose,
 }: OneOnOneChatModalProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { userId } = useAuth();
 
   // 메시지 추가될 때마다 스크롤 하단으로
   useEffect(() => {
@@ -70,7 +71,7 @@ export default function OneOnOneChatModal({
                 <ChatBubble
                   key={msg.id}
                   message={msg}
-                  isMyMessage={msg.senderId === CURRENT_USER.email}
+                  isMyMessage={msg.senderId === userId}
                 />
               ))}
               <div ref={messagesEndRef} />
