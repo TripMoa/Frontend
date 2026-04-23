@@ -1,6 +1,13 @@
 // src/features/workspace/hooks/useTimeline.ts
 import { useEffect, useState, useCallback } from "react";
-import { STORAGE_KEYS, STORAGE_SCHEMA_VERSION } from "../hooks/schedule.constants";
+import {
+  getSchedules,
+  createScheduleItem,
+  updateScheduleItem,
+  deleteScheduleItem,
+  reorderScheduleItems,
+  moveScheduleItem,
+} from "../../../api/schedule.api";
 
 interface PlaceInfo {
   name: string;
@@ -10,233 +17,266 @@ interface PlaceInfo {
   memo?: string;
   imageUrl?: string;
   rating?: number;
+  lat?: number;
+  lng?: number;
 }
 
 export interface TimelineNode {
+  id?: number;
+  scheduleId?: number;
   time: string;
   title: string;
   desc: string;
   placeInfo?: PlaceInfo;
 }
 
-// ─── localStorage 안전 헬퍼 ──────────────────────────────────
-
-function safeGetStorage(key: string): string | null {
-  try {
-    return localStorage.getItem(key);
-  } catch (e) {
-    console.warn(`[useTimeline] localStorage.getItem("${key}") 실패:`, e);
-    return null;
-  }
+interface ScheduleItemResponse {
+  id: number;
+  time: string;
+  title: string;
+  category?: string;
+  description: string;
+  orderIndex: number;
+  lat?: number;
+  lng?: number;
 }
 
-function safeSetStorage(key: string, value: string): boolean {
-  try {
-    localStorage.setItem(key, value);
-    return true;
-  } catch (e) {
-    // QuotaExceededError 등
-    console.error(`[useTimeline] localStorage.setItem("${key}") 실패:`, e);
-    return false;
-  }
+interface ScheduleResponse {
+  scheduleId: number;
+  day: number;
+  items: ScheduleItemResponse[];
 }
 
-function safeParseJSON<T>(raw: string | null, fallback: T): T {
-  if (!raw) return fallback;
-  try {
-    return JSON.parse(raw) as T;
-  } catch (e) {
-    console.warn("[useTimeline] JSON 파싱 실패:", e);
-    return fallback;
-  }
+function toTimelineNodes(scheduleId: number, items: ScheduleItemResponse[]): TimelineNode[] {
+  return items.map((item) => ({
+    id: item.id,
+    scheduleId,
+    time: item.time,
+    title: item.title,
+    desc: item.description,
+    placeInfo: {
+      name: item.title,
+      address: item.description,
+      category: item.category,
+      lat: item.lat,
+      lng: item.lng,
+    },
+  }));
 }
 
-// ─── 스키마 마이그레이션 ─────────────────────────────────────
-// 버전이 다를 경우 기존 데이터를 안전하게 초기화하고 버전을 갱신합니다.
-
-function runMigrationIfNeeded(): void {
-  const savedVersion = safeParseJSON<number>(
-    safeGetStorage(STORAGE_KEYS.SCHEMA_VERSION),
-    0
-  );
-
-  if (savedVersion < STORAGE_SCHEMA_VERSION) {
-    console.info(
-      `[useTimeline] 스키마 마이그레이션: v${savedVersion} → v${STORAGE_SCHEMA_VERSION}`
-    );
-    // v1 이하: 타임라인/날짜 데이터 구조 변경 가능성 — 기존 데이터 초기화
-    if (savedVersion < 2) {
-      // 기존 타임라인 데이터는 유지하되 구조가 맞는지 검증
-      const raw = safeGetStorage(STORAGE_KEYS.TIMELINE);
-      const data = safeParseJSON<Record<string, unknown>>(raw, {});
-      const isValid =
-        typeof data === "object" &&
-        !Array.isArray(data) &&
-        Object.values(data).every((v) => Array.isArray(v));
-
-      if (!isValid) {
-        console.warn("[useTimeline] 기존 타임라인 데이터 구조 불일치 — 초기화");
-        safeSetStorage(STORAGE_KEYS.TIMELINE, "{}");
-        safeSetStorage(STORAGE_KEYS.DATE_LOGS, "[]");
-      }
-    }
-    safeSetStorage(
-      STORAGE_KEYS.SCHEMA_VERSION,
-      JSON.stringify(STORAGE_SCHEMA_VERSION)
-    );
-  }
+function toDayKey(day: number): string {
+  return `DAY ${day}`;
 }
 
-// ─── 훅 본체 ────────────────────────────────────────────────
-
-export const useTimeline = (currentDay: string) => {
+export const useTimeline = (currentDay: string, tripId: number | null) => {
   const [nodes, setNodes] = useState<TimelineNode[]>([]);
-  const [storageError, setStorageError] = useState<string | null>(null);
+  const [allDays, setAllDays] = useState<Record<string, TimelineNode[]>>({});
+  const [scheduleIdMap, setScheduleIdMap] = useState<Record<string, number>>({});
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // 앱 첫 마운트 시 마이그레이션 실행
-  useEffect(() => {
-    runMigrationIfNeeded();
-  }, []);
-
-  /* =========================
-     1️⃣ DAY 변경 시 저장된 일정 불러오기
-  ========================= */
-  useEffect(() => {
-    if (!currentDay || currentDay === "DAY ALL") {
-      setNodes([]);
-      return;
+  const fetchAll = useCallback(async () => {
+    if (!tripId) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const { data } = await getSchedules(tripId);
+      const mapped: Record<string, TimelineNode[]> = {};
+      const idMap: Record<string, number> = {};
+      data.forEach((schedule: ScheduleResponse) => {
+        const key = toDayKey(schedule.day);
+        mapped[key] = toTimelineNodes(schedule.scheduleId, schedule.items);
+        idMap[key] = schedule.scheduleId;
+      });
+      setAllDays(mapped);
+      setScheduleIdMap(idMap);
+    } catch {
+      setError("일정을 불러오지 못했습니다.");
+    } finally {
+      setLoading(false);
     }
+  }, [tripId]);
 
-    const raw = safeGetStorage(STORAGE_KEYS.TIMELINE);
-    const data = safeParseJSON<Record<string, TimelineNode[]>>(raw, {});
-    setNodes(data[currentDay] ?? []);
-  }, [currentDay]);
+  useEffect(() => { fetchAll(); }, [fetchAll]);
 
-  /* =========================
-     2️⃣ nodes 변경 시 자동 저장
-  ========================= */
   useEffect(() => {
-    if (!currentDay || currentDay === "DAY ALL") return;
+    if (!currentDay || currentDay === "DAY ALL") { setNodes([]); return; }
+    setNodes(allDays[currentDay] ?? []);
+  }, [currentDay, allDays]);
 
-    const raw = safeGetStorage(STORAGE_KEYS.TIMELINE);
-    const data = safeParseJSON<Record<string, TimelineNode[]>>(raw, {});
-    data[currentDay] = nodes;
-
-    const ok = safeSetStorage(STORAGE_KEYS.TIMELINE, JSON.stringify(data));
-    if (!ok) {
-      setStorageError(
-        "저장 공간이 부족합니다. 일정이 저장되지 않을 수 있습니다."
-      );
-    } else {
-      setStorageError(null);
-    }
-  }, [nodes, currentDay]);
-
-  /* =========================
-     3️⃣ 노드 추가
-  ========================= */
-  const addNode = useCallback(() => {
-    setNodes((prev) => [...prev, { time: "00:00", title: "NEW", desc: "" }]);
-  }, []);
-
-  /* =========================
-     4️⃣ 노드 수정
-  ========================= */
-  const updateNode = useCallback(
-    (idx: number, field: string, value: string) => {
-      setNodes((prev) =>
-        prev.map((n, i) => (i === idx ? { ...n, [field]: value } : n))
-      );
-    },
-    []
-  );
-
-  /* =========================
-     5️⃣ 노드 삭제
-  ========================= */
-  const deleteNode = useCallback((idx: number) => {
-    setNodes((prev) => prev.filter((_, i) => i !== idx));
-  }, []);
-
-  /* =========================
-     6️⃣ 노드 순서 변경 (드래그앤드롭 결과 반영)
-  ========================= */
-  const reorderNodes = useCallback((fromIdx: number, toIdx: number) => {
-    setNodes((prev) => {
-      const next = [...prev];
-      const [moved] = next.splice(fromIdx, 1);
-      next.splice(toIdx, 0, moved);
-      return next;
-    });
-  }, []);
-
-  /* =========================
-     7️⃣ 노드를 다른 날로 이동
-  ========================= */
-  const moveNodeToDay = useCallback(
-    (idx: number, targetDay: string) => {
-      const node = nodes[idx];
-      if (!node) return;
-
-      const nextNodes = nodes.filter((_, i) => i !== idx);
-      setNodes(nextNodes);
-
-      const raw = safeGetStorage(STORAGE_KEYS.TIMELINE);
-      const data = safeParseJSON<Record<string, TimelineNode[]>>(raw, {});
-      data[currentDay] = nextNodes;
-      data[targetDay] = [...(data[targetDay] ?? []), node];
-
-      const ok = safeSetStorage(STORAGE_KEYS.TIMELINE, JSON.stringify(data));
-      if (!ok) {
-        setStorageError(
-          "저장 공간이 부족합니다. 일정 이동이 저장되지 않을 수 있습니다."
-        );
-      }
-    },
-    [nodes, currentDay]
-  );
-
-  /* =========================
-     8️⃣ 외부 데이터로 타임라인 교체 (AI 생성 결과 반영)
-        페이지 새로고침 없이 상태 직접 업데이트
-  ========================= */
   const loadFromExternal = useCallback(
     (allDaysData: Record<string, TimelineNode[]>) => {
-      const raw = safeGetStorage(STORAGE_KEYS.TIMELINE);
-      const existing = safeParseJSON<Record<string, TimelineNode[]>>(raw, {});
-      const merged = { ...existing, ...allDaysData };
-
-      const ok = safeSetStorage(
-        STORAGE_KEYS.TIMELINE,
-        JSON.stringify(merged)
-      );
-      if (!ok) {
-        setStorageError(
-          "저장 공간이 부족합니다. 일정이 저장되지 않을 수 있습니다."
-        );
-        return;
-      }
-      setStorageError(null);
-
-      if (
-        currentDay &&
-        currentDay !== "DAY ALL" &&
-        allDaysData[currentDay]
-      ) {
+      setAllDays((prev) => ({ ...prev, ...allDaysData }));
+      if (currentDay && currentDay !== "DAY ALL" && allDaysData[currentDay]) {
         setNodes(allDaysData[currentDay]);
       }
+      // scheduleIdMap도 업데이트 — 노드의 scheduleId로 역추적
+      setScheduleIdMap((prev) => {
+        const next = { ...prev };
+        Object.entries(allDaysData).forEach(([dayKey, nodes]) => {
+          const scheduleId = nodes.find((n) => n.scheduleId != null)?.scheduleId;
+          if (scheduleId != null) {
+            next[dayKey] = scheduleId;
+          }
+        });
+        return next;
+      });
     },
     [currentDay]
   );
 
+  const addNode = useCallback(async () => {
+    const scheduleId = scheduleIdMap[currentDay];
+    if (!scheduleId) return;
+    try {
+      const { data } = await createScheduleItem({
+        scheduleId, time: "00:00", title: "NEW", description: "",
+      });
+      const newNode: TimelineNode = {
+        id: data.id, scheduleId,
+        time: data.time, title: data.title, desc: data.description,
+      };
+      setNodes((prev) => {
+        const next = [...prev, newNode];
+        setAllDays((d) => ({ ...d, [currentDay]: next }));
+        return next;
+      });
+    } catch {
+      setError("노드 추가에 실패했습니다.");
+    }
+  }, [currentDay, scheduleIdMap]);
+
+  // 장소 검색으로 노드 추가 — 장소 정보를 그대로 노드로 생성
+  const addNodeFromPlace = useCallback(async (place: {
+    name: string;
+    category?: string;
+    address?: string;
+    lat?: number;
+    lng?: number;
+    description?: string;
+    memo?: string;
+    rating?: number;
+  }) => {
+    const scheduleId = scheduleIdMap[currentDay];
+    if (!scheduleId) return;
+    try {
+      const { data } = await createScheduleItem({
+        scheduleId,
+        time: "00:00",
+        title: place.name,
+        description: place.address ?? "",
+      });
+      const newNode: TimelineNode = {
+        id: data.id,
+        scheduleId,
+        time: data.time,
+        title: data.title,
+        desc: data.description,
+        placeInfo: {
+          name: place.name,
+          category: place.category ?? "",
+          address: place.address ?? "",
+          lat: place.lat,
+          lng: place.lng,
+          description: place.description,
+          memo: place.memo,
+          rating: place.rating,
+        },
+      };
+      setNodes((prev) => {
+        const next = [...prev, newNode];
+        setAllDays((d) => ({ ...d, [currentDay]: next }));
+        return next;
+      });
+    } catch {
+      setError("노드 추가에 실패했습니다.");
+    }
+  }, [currentDay, scheduleIdMap]);
+
+  const updateNode = useCallback(async (idx: number, field: string, value: string) => {
+    const node = nodes[idx];
+    if (!node?.id) return;
+
+    setNodes((prev) => {
+      const next = prev.map((n, i) => (i === idx ? { ...n, [field]: value } : n));
+      setAllDays((d) => ({ ...d, [currentDay]: next }));
+      return next;
+    });
+
+    const patch: { time?: string; title?: string; description?: string } = {};
+    if (field === "time") patch.time = value;
+    else if (field === "title") patch.title = value;
+    else if (field === "desc") patch.description = value;
+
+    try {
+      await updateScheduleItem(node.id, patch);
+    } catch {
+      setError("노드 수정에 실패했습니다.");
+      fetchAll();
+    }
+  }, [nodes, currentDay, fetchAll]);
+
+  const deleteNode = useCallback(async (idx: number) => {
+    const node = nodes[idx];
+    if (!node?.id) return;
+
+    setNodes((prev) => {
+      const next = prev.filter((_, i) => i !== idx);
+      setAllDays((d) => ({ ...d, [currentDay]: next }));
+      return next;
+    });
+
+    try {
+      await deleteScheduleItem(node.id);
+    } catch {
+      setError("노드 삭제에 실패했습니다.");
+      fetchAll();
+    }
+  }, [nodes, currentDay, fetchAll]);
+
+  const reorderNodes = useCallback(async (fromIdx: number, toIdx: number) => {
+    const next = [...nodes];
+    const [moved] = next.splice(fromIdx, 1);
+    next.splice(toIdx, 0, moved);
+
+    setNodes(next);
+    setAllDays((d) => ({ ...d, [currentDay]: next }));
+
+    const itemIds = next.map((n) => n.id).filter((id): id is number => id != null);
+    try {
+      await reorderScheduleItems(itemIds);
+    } catch {
+      setError("순서 변경에 실패했습니다.");
+      fetchAll();
+    }
+  }, [nodes, currentDay, fetchAll]);
+
+  const moveNodeToDay = useCallback(async (idx: number, targetDay: string) => {
+    const node = nodes[idx];
+    if (!node?.id) return;
+
+    const targetScheduleId = scheduleIdMap[targetDay];
+    if (!targetScheduleId) return;
+
+    const nextNodes = nodes.filter((_, i) => i !== idx);
+    setNodes(nextNodes);
+    setAllDays((prev) => ({
+      ...prev,
+      [currentDay]: nextNodes,
+      [targetDay]: [...(prev[targetDay] ?? []), { ...node, scheduleId: targetScheduleId }],
+    }));
+
+    try {
+      await moveScheduleItem(node.id, targetScheduleId);
+    } catch {
+      setError("일정 이동에 실패했습니다.");
+      fetchAll();
+    }
+  }, [nodes, currentDay, scheduleIdMap, fetchAll]);
+
   return {
-    nodes,
-    storageError,   // 컴포넌트에서 에러 배너 표시용
-    addNode,
-    updateNode,
-    deleteNode,
-    reorderNodes,
-    moveNodeToDay,
-    loadFromExternal,
+    nodes, allDays, loading, error,
+    addNode, addNodeFromPlace, updateNode, deleteNode, reorderNodes, moveNodeToDay,
+    loadFromExternal, refetch: fetchAll,
   };
 };
