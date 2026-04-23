@@ -2,6 +2,7 @@
 
 import React, { useMemo, useState, useEffect, useRef } from "react";
 import PlaceDetailModal from "../schedule/modal/PlaceDetailModal";
+import AddPlaceModal from "../schedule/modal/AddPlaceModal";
 import { useNaverMap } from "../../hooks/useNaverMap";
 import { CATEGORY_COLOR, getCategoryIcon } from "../../hooks/schedule.constants";
 
@@ -14,6 +15,8 @@ interface PlaceInfo {
   category?: string;
   description?: string;
   memo?: string;
+  lat?: number;
+  lng?: number;
 }
 
 interface TimelineNode {
@@ -39,9 +42,21 @@ interface DayDetailViewProps {
   startDate: string;
   endDate: string;
   nodes: TimelineNode[];
+  savedPlaces: SavedPlace[];
   dayKeys?: string[];
   storageError?: string | null;
   addNode: () => void;
+  addNodeFromPlace: (place: {
+    name: string;
+    category?: string;
+    address?: string;
+    lat?: number;
+    lng?: number;
+    description?: string;
+    memo?: string;
+    rating?: number;
+  }) => Promise<void>;
+  addPlace: (place: Omit<SavedPlace, "id">) => Promise<void>;
   updateNode: (idx: number, field: string, value: string) => void;
   deleteNode: (idx: number) => void;
   reorderNodes: (fromIdx: number, toIdx: number) => void;
@@ -53,15 +68,19 @@ const DayDetailView: React.FC<DayDetailViewProps> = ({
   tripTitle,
   startDate,
   nodes,
+  savedPlaces,
   dayKeys = [],
   storageError = null,
   addNode,
+  addNodeFromPlace,
+  addPlace,
   updateNode,
   deleteNode,
   reorderNodes,
   moveNodeToDay,
 }) => {
   const [selectedPlace, setSelectedPlace] = useState<PlaceInfo | null>(null);
+  const [isAddNodeModalOpen, setIsAddNodeModalOpen] = useState(false);
   const [mapSelectedPlace, setMapSelectedPlace] = useState<SavedPlace | null>(null);
 
   const { mapLoaded, mapKey } = useNaverMap();
@@ -70,24 +89,6 @@ const DayDetailView: React.FC<DayDetailViewProps> = ({
   const mapInstanceRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
   const infoWindowRef = useRef<any>(null);
-
-  // saved_places에서 lat/lng 참조 — storage 변경도 감지
-  const [savedPlaces, setSavedPlaces] = useState<SavedPlace[]>([]);
-
-  useEffect(() => {
-    const load = () => {
-      const saved = localStorage.getItem("saved_places");
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed)) setSavedPlaces(parsed);
-        } catch { /* 파싱 실패 무시 */ }
-      }
-    };
-    load();
-    window.addEventListener("storage", load);
-    return () => window.removeEventListener("storage", load);
-  }, []);
 
   const dragFromIdx = React.useRef<number | null>(null);
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
@@ -104,15 +105,37 @@ const DayDetailView: React.FC<DayDetailViewProps> = ({
     return start.toISOString().split("T")[0];
   }, [dayTitle, startDate]);
 
-  // 노드에서 좌표를 가진 장소만 추출 (saved_places 매칭)
+  // 노드에서 좌표를 가진 장소만 추출
+  // 1순위: placeInfo에 lat/lng 직접 포함 (AI 생성 일정)
+  // 2순위: savedPlaces에서 이름으로 매칭 (수동 추가 노드)
   const mapPlaces = useMemo(() => {
     return nodes
       .filter((n) => n.placeInfo?.name)
       .map((n, idx) => {
-        const matched = savedPlaces.find(
-          (sp) => sp.name === n.placeInfo!.name
-        );
-        return matched
+        const info = n.placeInfo!;
+
+        // 1순위: placeInfo에 좌표 직접 있는 경우
+        if (info.lat != null && info.lng != null) {
+          return {
+            id: String(idx),
+            name: info.name,
+            category: info.category || "",
+            address: info.address || "",
+            lat: info.lat,
+            lng: info.lng,
+            rating: info.rating,
+            _idx: idx,
+            _time: n.time,
+          };
+        }
+
+        // 2순위: savedPlaces에서 이름 매칭
+        const matched = savedPlaces.find((sp) => sp.name === info.name)
+          ?? savedPlaces.find((sp) =>
+            info.name && (sp.name.includes(info.name) || info.name.includes(sp.name))
+          );
+
+        return matched && matched.lat != null && matched.lng != null
           ? { ...matched, _idx: idx, _time: n.time }
           : null;
       })
@@ -259,7 +282,7 @@ const DayDetailView: React.FC<DayDetailViewProps> = ({
           <div style={{ display: "flex", gap: "10px" }}>
             {isEditing && (
               <button
-                onClick={addNode}
+                onClick={() => setIsAddNodeModalOpen(true)}
                 style={{ padding: "10px 20px", background: "#fff", color: "#000", border: "2px solid #000", fontWeight: "bold", fontSize: "14px", cursor: "pointer", borderRadius: "4px" }}
               >
                 + 노드 추가
@@ -411,22 +434,55 @@ const DayDetailView: React.FC<DayDetailViewProps> = ({
                           <span style={{ fontSize: "18px", flexShrink: 0, lineHeight: 1 }}>{icon}</span>
                         )}
 
-                        {/* 클릭 시 상세 모달 */}
-                        <div
-                          style={{ flex: 1, minWidth: 0, cursor: (!isEditing && n.placeInfo) ? "pointer" : "default" }}
-                          onClick={() => { if (!isEditing) handleNodeClick(n); }}
-                        >
-                          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "3px" }}>
-                            <h3 style={{ fontSize: "14px", fontWeight: "700", margin: 0, overflow: "hidden", textOverflow: isEditing ? "unset" : "ellipsis", whiteSpace: isEditing ? "normal" : "nowrap", color: "#111" }}>
-                              {n.title}
-                            </h3>
-                            {n.placeInfo?.rating && (
-                              <span style={{ fontSize: "11px", color: "#ff9800", flexShrink: 0 }}>⭐ {n.placeInfo.rating}</span>
-                            )}
-                          </div>
-                          <p style={{ fontSize: "12px", color: "#aaa", margin: 0, overflow: "hidden", textOverflow: isEditing ? "unset" : "ellipsis", whiteSpace: isEditing ? "normal" : "nowrap", lineHeight: 1.5 }}>
-                            {n.desc}
-                          </p>
+                        {/* 클릭 시 상세 모달 / 편집 모드 시 input */}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          {isEditing && !isFixed ? (
+                            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                              <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                                <input
+                                  type="text"
+                                  value={n.time}
+                                  onChange={(e) => updateNode(idx, "time", e.target.value)}
+                                  placeholder="HH:MM"
+                                  style={{ width: "64px", padding: "4px 8px", border: "1.5px solid #ddd", borderRadius: "4px", fontSize: "12px", fontFamily: "var(--font-mono)" }}
+                                  onClick={(e) => e.stopPropagation()}
+                                />
+                                <input
+                                  type="text"
+                                  value={n.title}
+                                  onChange={(e) => updateNode(idx, "title", e.target.value)}
+                                  placeholder="장소명"
+                                  style={{ flex: 1, padding: "4px 8px", border: "1.5px solid #ddd", borderRadius: "4px", fontSize: "13px", fontWeight: "600" }}
+                                  onClick={(e) => e.stopPropagation()}
+                                />
+                              </div>
+                              <input
+                                type="text"
+                                value={n.desc}
+                                onChange={(e) => updateNode(idx, "desc", e.target.value)}
+                                placeholder="설명 (주소 등)"
+                                style={{ width: "100%", padding: "4px 8px", border: "1.5px solid #ddd", borderRadius: "4px", fontSize: "12px", color: "#888", boxSizing: "border-box" }}
+                                onClick={(e) => e.stopPropagation()}
+                              />
+                            </div>
+                          ) : (
+                            <div
+                              style={{ cursor: n.placeInfo ? "pointer" : "default" }}
+                              onClick={() => { if (!isEditing) handleNodeClick(n); }}
+                            >
+                              <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "3px" }}>
+                                <h3 style={{ fontSize: "14px", fontWeight: "700", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "#111" }}>
+                                  {n.title}
+                                </h3>
+                                {n.placeInfo?.rating && (
+                                  <span style={{ fontSize: "11px", color: "#ff9800", flexShrink: 0 }}>⭐ {n.placeInfo.rating}</span>
+                                )}
+                              </div>
+                              <p style={{ fontSize: "12px", color: "#aaa", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", lineHeight: 1.5 }}>
+                                {n.desc}
+                              </p>
+                            </div>
+                          )}
                         </div>
 
                         {n.placeInfo?.category && (
@@ -532,7 +588,6 @@ const DayDetailView: React.FC<DayDetailViewProps> = ({
           placeInfo={selectedPlace}
           onClose={() => setSelectedPlace(null)}
           onViewOnMap={() => {
-            // 지도 마커와 연동: 같은 이름의 장소를 mapSelectedPlace로 설정
             const matched = mapPlaces.find((p) => p.name === selectedPlace.name);
             if (matched) {
               setMapSelectedPlace(matched);
@@ -544,6 +599,43 @@ const DayDetailView: React.FC<DayDetailViewProps> = ({
               }
             }
             setSelectedPlace(null);
+          }}
+        />
+      )}
+
+      {/* 노드 추가용 장소 검색 모달 */}
+      {isAddNodeModalOpen && (
+        <AddPlaceModal
+          onClose={() => setIsAddNodeModalOpen(false)}
+          existingPlaces={savedPlaces}
+          onAddPlace={async (place) => {
+            // 1. 노드로 추가
+            await addNodeFromPlace({
+              name: place.name,
+              category: place.category,
+              address: place.address,
+              lat: place.lat,
+              lng: place.lng,
+              description: place.description,
+              memo: place.memo,
+              rating: place.rating,
+            });
+            // 2. DAY ALL 장소 목록에도 추가 (중복 체크는 AddPlaceModal에서)
+            const alreadyInPlaces = savedPlaces.some(
+              (p) => p.name === place.name && p.lat === place.lat
+            );
+            if (!alreadyInPlaces) {
+              await addPlace({
+                name: place.name,
+                category: place.category,
+                address: place.address,
+                // description: place.description,
+                // memo: place.memo ?? "",
+                lat: place.lat,
+                lng: place.lng,
+              });
+            }
+            setIsAddNodeModalOpen(false);
           }}
         />
       )}
