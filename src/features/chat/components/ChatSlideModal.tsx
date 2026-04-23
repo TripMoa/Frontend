@@ -6,6 +6,8 @@ import type { OneOnOneChat } from "../hooks/chat.types";
 import type { Post, ApplicationResponse } from "../../mate/hooks/mate.types";
 import { useAuth } from "../../user/pages/AuthContext";
 import { markRoomAsRead } from "../../../api/chat.api";
+import { getApplicantAvatar } from "../../../shared/hooks/avatar";
+import { AvatarDisplay } from "../../../shared/components/AvatarDisplay";
 import "../styles/ChatSlide.css";
 
 interface ChatSlideModalProps {
@@ -346,7 +348,7 @@ export function ChatSlideModal({
                           <div className="chat-slide-chatCardContent">
                             <div className="chat-slide-avatarWrapper">
                               <div className={`chat-slide-avatar chat-slide-avatarPink`}>
-                                {item.otherUser.avatarEmoji || "👤"}
+                                <AvatarDisplay avatar={getApplicantAvatar(null, item.otherUser.avatarEmoji)} />
                               </div>
                               <div className="chat-slide-onlineDot"></div>
                             </div>
@@ -398,15 +400,12 @@ export function ChatSlideModal({
                             <div className="chat-slide-chatCardContent" onClick={() => handleSelectOneOnOne(chat)}>
                               <div className="chat-slide-avatarWrapper">
                                 <div className={`chat-slide-avatar chat-slide-avatarPink`} style={{ overflow: "hidden" }}>
-                                  {otherUser.profileImage ? (
-                                    <img 
-                                      src={otherUser.profileImage} 
-                                      alt={otherUser.name}
-                                      style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }}
-                                    />
-                                ) : (
-                                  otherUser.avatarEmoji || "👤"
-                                )}
+                                  <AvatarDisplay 
+                                    avatar={getApplicantAvatar(
+                                      otherUser.profileImage, 
+                                      otherUser.avatarEmoji
+                                    )} 
+                                  />
                               </div>
                                 {chat.unreadCount > 0 && (
                                   <div style={{
@@ -479,7 +478,7 @@ export function ChatSlideModal({
                               <div className="chat-slide-chatCardContent">
                                 <div className="chat-slide-avatarWrapper">
                                   <div className={`chat-slide-avatar chat-slide-avatarPink`}>
-                                    {item.otherUser.avatarEmoji || "👤"}
+                                    <AvatarDisplay avatar={getApplicantAvatar(null, item.otherUser.avatarEmoji)} />
                                   </div>
                                   <div className="chat-slide-onlineDot"></div>
                                 </div>
@@ -513,15 +512,19 @@ export function ChatSlideModal({
             </div>
           </>
         ) : (
+          <>
+            {(() => {
+            const otherUser = getOtherUser(selectedChat.chat);
+            return(
           // 채팅 화면
           <>
             <div className="chat-slide-header">
               <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                 <div className={`chat-slide-avatar chat-slide-avatarPink`} style={{ width: "40px", height: "40px", fontSize: "20px" }}>
-                  {selectedChat.post.author.avatarEmoji}
+                  <AvatarDisplay avatar={getApplicantAvatar(otherUser.profileImage, otherUser.avatarEmoji)} />
                 </div>
                 <div>
-                  <div style={{ fontWeight: 700, fontSize: "16px" }}>{selectedChat.post.author.name}</div>
+                  <div style={{ fontWeight: 700, fontSize: "16px" }}>{otherUser.name}</div>
                   <div style={{ fontSize: "13px", opacity: 0.8 }}>📍 {selectedChat.post.destination}</div>
                 </div>
               </div>
@@ -627,7 +630,10 @@ export function ChatSlideModal({
               })()}
             </div>
           </>
-        )}
+          );
+          })()}
+        </>
+      )}
       </div>
     </>
   );

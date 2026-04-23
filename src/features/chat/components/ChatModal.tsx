@@ -4,6 +4,8 @@ import { X, MessageSquare, Send, Search } from "lucide-react";
 import type { OneOnOneChat } from "../hooks/chat.types";
 import type { Post } from "../../mate/hooks/mate.types";
 import { useAuth } from "../../user/pages/AuthContext";
+import { AvatarDisplay } from "../../../shared/components/AvatarDisplay";
+import { getApplicantAvatar } from "../../../shared/hooks/avatar";
 
 interface ChatModalProps {
   isOpen: boolean;
@@ -176,7 +178,7 @@ export function ChatModal({
                       >
                         <div className="flex items-center gap-4">
                           <div className="w-16 h-16 rounded-full bg-pink-200 border-2 border-black flex items-center justify-center text-3xl flex-shrink-0">
-                            {otherUser?.avatarEmoji || "👤"}
+                            <AvatarDisplay avatar={getApplicantAvatar(otherUser?.profileImage ?? null, otherUser?.avatarEmoji ?? null)} />
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between mb-2">
