@@ -1,12 +1,13 @@
 // src/features/workspace/components/schedule/modal/AiScheduleModal.tsx
 
 import React, { useState, useEffect, useMemo } from "react";
+import { generateSchedule } from "../../../../../api/schedule.api";
+import { searchPlaces } from "../../../../../api/place.api";
 import "../../../styles/modals.css";
 import {
   CATEGORY_TO_BACKEND,
   TRANSPORT_TO_BACKEND,
   PACE_TO_BACKEND,
-  STORAGE_KEYS,
 } from "../../../hooks/schedule.constants";
 
 interface Place {
@@ -69,6 +70,8 @@ export interface TimelineNode {
     memo?: string;
     imageUrl?: string;
     rating?: number;
+    lat?: number;
+    lng?: number;
   };
 }
 
@@ -82,11 +85,12 @@ interface AiScheduleModalProps {
   savedPlaces: Place[];
   startDate: string;
   endDate: string;
+  tripId: number;
   /** 모달 안에서 바로 장소를 추가할 수 있도록 부모의 핸들러를 받음 */
   onAddPlace: (place: Place) => void;
 }
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
+
 
 function calcNDays(start: string, end: string): number {
   try {
@@ -112,6 +116,7 @@ const AiScheduleModal: React.FC<AiScheduleModalProps> = ({
   savedPlaces,
   startDate,
   endDate,
+  tripId,
   onAddPlace,
 }) => {
   const [settings, setSettings] = useState<AiScheduleSettings>({
@@ -246,6 +251,7 @@ const AiScheduleModal: React.FC<AiScheduleModalProps> = ({
     const resolvedHotels = [...manualHotels, ...autoHotels];
 
     const body = {
+      tripId,
       places: visitPlaces.map((p) => ({
         name: p.name,
         lat: p.lat,
@@ -303,117 +309,55 @@ const AiScheduleModal: React.FC<AiScheduleModalProps> = ({
     setPinWarnings([]);
 
     try {
-      const res = await fetch(`${API_BASE}/schedule/generate`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.detail || `서버 오류 (${res.status})`);
-      }
-
-      const data = await res.json();
-      if (!data.success || !data.itinerary)
+      const { data } = await generateSchedule(body);
+      // Spring이 ScheduleResponse[] 형태로 반환
+      // [{ scheduleId, day, items: [{ id, time, title, description, orderIndex }] }]
+      if (!data || !Array.isArray(data) || data.length === 0)
         throw new Error("일정 생성에 실패했습니다.");
 
-      // ── pin_warnings 수집 (백엔드에서 반환) ──
-      const collectedPinWarnings: string[] = [];
-      Object.values(data.itinerary).forEach((dayData: any) => {
-        if (Array.isArray(dayData.pin_warnings)) {
-          collectedPinWarnings.push(...dayData.pin_warnings);
-        }
-      });
-
-      // ── API 응답 → TimelineNode 변환 ──
+      // ── API 응답(Spring ScheduleResponse[]) → TimelineNode 변환 ──
       const generatedSchedule: Record<string, TimelineNode[]> = {};
       const dayKeys: string[] = [];
 
-      Object.entries(data.itinerary).forEach(([dayKey, dayData]: [string, any]) => {
-        const dayNum = dayKey.replace("day_", "");
-        const label = `DAY ${dayNum}`;
+      (data as any[]).forEach((schedule: any) => {
+        const label = `DAY ${schedule.day}`;
         dayKeys.push(label);
 
-        generatedSchedule[label] = (dayData.places || []).map((p: any) => {
-          const matched = savedPlaces.find((sp) => sp.name === p.place);
-          // 이동시간 추정치임을 desc에 명시
-          const travelNote =
-            p.travel_minutes != null
-              ? `이동 약 ${p.travel_minutes}분 (추정)`
-              : null;
-
+        generatedSchedule[label] = (schedule.items || []).map((item: any) => {
+          // 완전 일치 먼저, 없으면 부분 일치로 폴백
+          const matched = savedPlaces.find((sp) => sp.name === item.title)
+            ?? savedPlaces.find((sp) =>
+              item.title && (
+                sp.name.includes(item.title) || item.title.includes(sp.name)
+              )
+            );
           return {
-            time: p.time || "00:00",
-            title: p.place || "",
-            desc: [
-              p.address,
-              p.stay_minutes ? `${p.stay_minutes}분 체류` : null,
-              travelNote,
-              p.type === "hotel_checkin"
-                ? "🏨 체크인"
-                : p.type === "hotel"
-                ? "🏨 숙소"
-                : p.type === "departure"
-                ? "✈️ 출발"
-                : p.type === "arrival"
-                ? "📍 집결"
-                : null,
-            ]
-              .filter(Boolean)
-              .join(" · "),
+            id: item.id,
+            scheduleId: schedule.scheduleId,
+            time: item.time || "00:00",
+            title: item.title || "",
+            desc: item.description || "",
             placeInfo: {
-              name: p.place || "",
-              address: p.address || "",
-              category: p.category || "",
+              name: item.title || "",
+              address: item.description || "",
+              category: matched?.category || "",
               description: matched?.description || "",
               memo: matched?.memo || "",
               imageUrl: matched?.imageUrl,
               rating: matched?.rating,
+              lat: matched?.lat,
+              lng: matched?.lng,
             },
           };
         });
       });
 
-      // ── localStorage 저장 ──
-      try {
-        const existing = localStorage.getItem(STORAGE_KEYS.TIMELINE);
-        const timelineData: Record<string, TimelineNode[]> = existing
-          ? JSON.parse(existing)
-          : {};
-        dayKeys.forEach((label) => {
-          timelineData[label] = generatedSchedule[label];
-        });
-        localStorage.setItem(STORAGE_KEYS.TIMELINE, JSON.stringify(timelineData));
-
-        const existingLogs = localStorage.getItem(STORAGE_KEYS.DATE_LOGS);
-        const dateLogs: string[] = existingLogs ? JSON.parse(existingLogs) : [];
-        dayKeys.forEach((label) => {
-          if (!dateLogs.includes(label)) dateLogs.push(label);
-        });
-        localStorage.setItem(STORAGE_KEYS.DATE_LOGS, JSON.stringify(dateLogs));
-      } catch (storageErr) {
-        console.error("[AiScheduleModal] localStorage 저장 실패:", storageErr);
-        // 저장 실패해도 콜백은 호출 (인메모리 상태는 유지)
-      }
-
       setLoadingProgress(100);
 
-      // pin 경고가 있으면 잠깐 표시 후 닫기
-      if (collectedPinWarnings.length > 0) {
-        setPinWarnings(collectedPinWarnings);
-        setIsLoading(false);
-        // 경고 확인 후 사용자가 직접 닫도록 (또는 3초 후 자동 완료)
-        setTimeout(() => {
-          onGenerate(settings, generatedSchedule, dayKeys);
-          onClose();
-        }, 4000);
-      } else {
-        setTimeout(() => {
-          onGenerate(settings, generatedSchedule, dayKeys);
-          onClose();
-        }, 400);
-      }
+      setTimeout(() => {
+        onGenerate(settings, generatedSchedule, dayKeys);
+        onClose();
+      }, 400);
     } catch (e: any) {
       setErrorMsg(e.message || "일정 생성 중 오류가 발생했습니다.");
       setIsLoading(false);
@@ -449,18 +393,14 @@ const AiScheduleModal: React.FC<AiScheduleModalProps> = ({
     setHotelSearchResults([]);
 
     try {
-      const res = await fetch(
-        `${API_BASE}/schedule/search?query=${encodeURIComponent(q)}&display=8`
-      );
-      if (!res.ok) throw new Error(`서버 오류 (${res.status})`);
-      const data = await res.json();
+      const { data: searchData } = await searchPlaces(q, 8);
 
-      if (!data.success || !data.places?.length) {
+      if (!searchData.success || !searchData.places?.length) {
         setHotelSearchError(`'${q}' 검색 결과가 없습니다.`);
         return;
       }
 
-      const mapped: Place[] = data.places.map((p: any, idx: number) => ({
+      const mapped: Place[] = searchData.places.map((p: any, idx: number) => ({
         id: `hotel_search_${Date.now()}_${idx}`,
         name: p.name,
         category: "숙소",          // 숙소 검색이므로 카테고리 고정
@@ -507,18 +447,14 @@ const AiScheduleModal: React.FC<AiScheduleModalProps> = ({
     setDeptSearchResults([]);
 
     try {
-      const res = await fetch(
-        `${API_BASE}/schedule/search?query=${encodeURIComponent(q)}&display=8`
-      );
-      if (!res.ok) throw new Error(`서버 오류 (${res.status})`);
-      const data = await res.json();
+      const { data: deptData } = await searchPlaces(q, 8);
 
-      if (!data.success || !data.places?.length) {
+      if (!deptData.success || !deptData.places?.length) {
         setDeptSearchError(`'${q}' 검색 결과가 없습니다.`);
         return;
       }
 
-      const mapped: Place[] = data.places.map((p: any, idx: number) => ({
+      const mapped: Place[] = deptData.places.map((p: any, idx: number) => ({
         id: `dept_search_${Date.now()}_${idx}`,
         name: p.name,
         category: "교통",   // 출발지 검색 결과는 교통 카테고리로 저장
