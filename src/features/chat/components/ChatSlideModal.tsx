@@ -1,13 +1,15 @@
 // components/mate/chat/ChatSlide.tsx
 
 import { useState, useEffect, useRef } from "react";
-import { X, MessageSquare, Send, Plus, LogOut, MapPin, Calendar, User } from "lucide-react";
+import { X, MessageSquare, Send, Plus, LogOut, MapPin, Calendar, Siren } from "lucide-react";
 import type { OneOnOneChat } from "../hooks/chat.types";
 import type { Post, ApplicationResponse } from "../../mate/hooks/mate.types";
 import { useAuth } from "../../user/pages/AuthContext";
 import { markRoomAsRead } from "../../../api/chat.api";
 import { getApplicantAvatar } from "../../../shared/hooks/avatar";
 import { AvatarDisplay } from "../../../shared/components/AvatarDisplay";
+import { ReportModal } from "../../report/components";
+import { submitReport } from "../../../api/report.api";
 import "../styles/ChatSlide.css";
 
 interface ChatSlideModalProps {
@@ -57,6 +59,7 @@ export function ChatSlideModal({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { userId } = useAuth();
   const [readMessageCounts, setReadMessageCounts] = useState<Record<string, number>>({});
+  const [showReport, setShowReport] = useState(false);
 
   // 모달 닫을 때 애니메이션
   const handleClose = () => {
@@ -155,29 +158,6 @@ export function ChatSlideModal({
       otherUser: { name: string; email: string; avatarEmoji: string | null};
     }> = [];
 
-    // 내가 신청한 목록
-    // myApplications.filter(app => app.status === 'APPROVED').forEach(app => {
-    //   const hasChat = oneOnOneChats.some(
-    //     chat => chat.postId === String(app.matePostId) && chat.applicantId === userId
-    //   );
-    //   if (!hasChat) {
-    //     available.push({
-    //       type: "sent",
-    //       postId: String(app.matePostId),
-    //       applicantId: undefined,
-    //       destination: app.postDestination,
-    //       startDate: app.startDate,
-    //       endDate: app.endDate,
-    //       post: null as any,
-    //       otherUser: { 
-    //         name: app.postAuthorName, 
-    //         email: app.postAuthorEmail, 
-    //         avatarEmoji: app.postAuthorAvatar ?? null
-    //       }
-    //     });
-    //   }
-    // });
-
     // 받은 신청 목록
     receivedApplications
     .filter(app => app.status?.toUpperCase() === 'APPROVED')
@@ -209,22 +189,6 @@ export function ChatSlideModal({
   };
 
   const availableChats = getAvailableChats();
-
-  // const handleCreateNewChat = (item: typeof availableChats[0]) => {
-  //   console.log("postId:", item.postId, "applicantId:", item.applicantId); 
-  //   onCreateOneOnOneChat(item.postId, item.applicantId);
-  //   // 채팅 생성 후 자동으로 해당 채팅방 열기
-  //   setTimeout(() => {
-  //     const newChat = oneOnOneChats.find(
-  //       chat => chat.postId === item.postId && 
-  //       (chat.applicantId === item.otherUser.email || chat.postAuthorId === item.otherUser.email)
-  //     );
-  //     if (newChat) {
-  //       const post = getPostInfo(newChat);
-  //       setSelectedChat({ type: "one-on-one", chat: newChat, post });
-  //     }
-  //   }, 100);
-  // };
 
   const handleCreateNewChat = async (item: typeof availableChats[0]) => {
     const newRoom = await onCreateOneOnOneChat(item.postId, item.applicantId);
@@ -282,7 +246,7 @@ export function ChatSlideModal({
                 </div>
               </div>
               <button onClick={handleClose} className="chat-slide-closeBtn">
-                <X size={24} />
+                <X size={20} />
               </button>
             </div>
 
@@ -528,9 +492,18 @@ export function ChatSlideModal({
                   <div style={{ fontSize: "13px", opacity: 0.8 }}>📍 {selectedChat.post.destination}</div>
                 </div>
               </div>
-              <button onClick={() => setSelectedChat(null)} className="chat-slide-closeBtn">
-                <X size={20} />
-              </button>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <button
+                  onClick={() => setShowReport(true)}
+                  className="chat-slide-reportBtn"
+                  title="신고하기"
+                >
+                  <Siren size={20} />
+                </button>
+                <button onClick={() => setSelectedChat(null)} className="chat-slide-closeBtn">
+                  <X size={20} />
+                </button>
+              </div>
             </div>
 
             {/* 만료 배너 */}
@@ -635,6 +608,27 @@ export function ChatSlideModal({
         </>
       )}
       </div>
+
+      {selectedChat && (
+        <ReportModal
+          show={showReport}
+          targetType="채팅"
+          targetAuthor={getOtherUser(selectedChat.chat).name}
+          onClose={() => setShowReport(false)}
+          onSubmit={async (reason, detail) => {
+            const otherUser = getOtherUser(selectedChat.chat);
+            await submitReport({
+              reportedUserId: otherUser.id,
+              location: "CHAT",
+              targetId: Number(selectedChat.chat.id),
+              reason,
+              detail,
+              contentSnapshot: selectedChat.chat.messages.at(-1)?.content,
+              reportedNickname: otherUser.name,
+            });
+          }}
+        />
+      )}
     </>
   );
 }
