@@ -15,6 +15,9 @@ import {
   type AuthLogoutReason,
   notifyAuthLogout,
 } from "../../../api/api";
+import { getMySanctionStatus } from "../../../api/sanction.api";
+import { ActionPromptModal } from "../../../shared/components/ActionPromptModal";
+import { markWarningPopupRead } from "../../../api/sanction.api";
 
 type AuthContextType = {
   isAuthenticated: boolean;
@@ -42,6 +45,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [userId, setUserId] = useState<number | null>(null);
   const [logoutMessage, setLogoutMessage] = useState<string | null>(null);
   const didBootstrap = useRef(false);
+  const [warningMessage, setWarningMessage] = useState<string | null>(null);
+  const [showWarningModal, setShowWarningModal] = useState(false);
+  const [logoutHeadline, setLogoutHeadline] = useState("계정 이용 제한");
 
   /**
    * 클라이언트 인증 상태 초기화 후 비로그인 상태 전환
@@ -54,8 +60,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const clearLogoutMessage = useCallback(() => {
     setLogoutMessage(null);
+    setLogoutHeadline("계정 이용 제한");
   }, []);
-
   /**
    * refreshToken 쿠키 기준으로 인증 상태 복구
    */
@@ -85,8 +91,26 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     if (didBootstrap.current) return;
     didBootstrap.current = true;
 
+    const checkSanction = async () => {
+      try {
+        const res = await getMySanctionStatus();
+
+        if (res.data.showWarningPopup) {
+          setWarningMessage(res.data.warningMessage);
+          setShowWarningModal(true);
+        }
+      } catch (e) {
+        console.error("제재 상태 조회 실패", e);
+      }
+    };
+
     const runBootstrap = async () => {
-      await refreshAuth();
+      const success = await refreshAuth();
+
+      if (success) {
+        await checkSanction();
+      }
+
       setAuthReady(true);
     };
 
@@ -118,7 +142,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
 
       if (reason === "withdraw") {
-        setLogoutMessage("회원 탈퇴가 완료되었습니다.");
+        setLogoutHeadline("회원 탈퇴 완료");
+        setLogoutMessage("회원 탈퇴가 정상적으로 완료되었습니다.");
+        return;
+      }
+
+      if (reason === "suspended") {
+        setLogoutHeadline("계정 이용 제한");
+        setLogoutMessage(
+          `신고 정책으로 정지된 계정입니다.\n문의가 필요한 경우 고객센터 이메일로 문의해주세요.\n${import.meta.env.VITE_SUPPORT_EMAIL}`,
+        );
         return;
       }
 
@@ -164,6 +197,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     };
   }, []);
 
+  const handleCloseWarning = async () => {
+    await markWarningPopupRead();
+    setShowWarningModal(false);
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -179,6 +217,30 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }}
     >
       {children}
+
+      <ActionPromptModal
+        open={showWarningModal}
+        title="서비스 이용 경고"
+        headline="신고가 누적되었습니다"
+        description={
+          (warningMessage ??
+            "신고가 누적되었습니다.\n반복될 경우 서비스 이용이 제한될 수 있습니다.") +
+          "\n\n문의가 필요한 경우 마이페이지 > 신고 관리 탭에서\n이메일 문의 기능을 이용해주세요."
+        }
+        confirmText="확인했습니다"
+        onClose={handleCloseWarning}
+        onConfirm={handleCloseWarning}
+      />
+
+      <ActionPromptModal
+        open={!!logoutMessage}
+        title="서비스 이용 안내"
+        headline={logoutHeadline}
+        description={logoutMessage ?? ""}
+        confirmText="확인"
+        onClose={clearLogoutMessage}
+        onConfirm={clearLogoutMessage}
+      />
     </AuthContext.Provider>
   );
 };
