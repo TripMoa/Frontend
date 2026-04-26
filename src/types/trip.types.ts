@@ -1,11 +1,12 @@
 // src/types/trip.types.ts
 
+import type { ProfileType } from "./auth.types";
+
 // ===================
 // Enums & Common
 // ===================
 export type TripStatus = "ACTIVE" | "ARCHIVED";
 export type TripVisibility = "PUBLIC" | "PRIVATE";
-export type ProfileType = "CUSTOM" | "AVATAR";
 
 // ===================
 // Response DTO
