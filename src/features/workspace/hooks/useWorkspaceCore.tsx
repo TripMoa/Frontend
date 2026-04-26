@@ -10,7 +10,10 @@ import {
   renameNoticeGroup as renameNoticeGroupApi,
 } from "../../../api/notice.api";
 
-import { getTripDetail, updateTrip as updateTripApi } from "../../../api/trip.api";
+import {
+  getTripDetail,
+  updateTrip as updateTripApi,
+} from "../../../api/trip.api";
 import type { TripMemberResponse } from "../../../types/trip.types";
 import type { NoticeGroupResponse } from "../../../types/notice.types";
 
@@ -61,17 +64,20 @@ interface WorkspaceCoreState {
 }
 
 const LS_TRIP_DATA = "tripData";
-const LS_CURRENT_NOTICE_GROUP_ID = "tripmoa_current_notice_group_id";
 const DEFAULT_DAY_LABEL = "DAY ALL";
 
 const normalizeName = (name: string) => name.trim().toLowerCase();
 
 const sortNoticeGroups = (groups: NoticeGroupResponse[]) =>
   [...groups].sort((a, b) =>
-    a.sortOrder !== b.sortOrder ? a.sortOrder - b.sortOrder : a.groupId - b.groupId
+    a.sortOrder !== b.sortOrder
+      ? a.sortOrder - b.sortOrder
+      : a.groupId - b.groupId,
   );
 
-const pickFallbackNoticeGroupId = (groups: NoticeGroupResponse[]): number | null => {
+const pickFallbackNoticeGroupId = (
+  groups: NoticeGroupResponse[],
+): number | null => {
   if (groups.length === 0) return null;
   return groups.find((g) => g.isDefault)?.groupId ?? groups[0].groupId;
 };
@@ -87,44 +93,29 @@ const useWorkspaceCoreInternal = (): WorkspaceCoreState => {
 
   const [activeView, setActiveView] = useState<WorkspaceViewType>("timeline");
   const [currentDay, setCurrentDay] = useState<string>(DEFAULT_DAY_LABEL);
-  const [currentNoticeGroupId, setCurrentNoticeGroupId] = useState<number | null>(null);
+  const [currentNoticeGroupId, setCurrentNoticeGroupId] = useState<
+    number | null
+  >(null);
   const [hideRight, setHideRight] = useState<boolean>(false);
 
   const [trip, setTrip] = useState<TripInfo>(() => {
     try {
       const saved = localStorage.getItem(LS_TRIP_DATA);
       if (saved) return JSON.parse(saved) as TripInfo;
-    } catch { /* 파싱 실패 무시 */ }
+    } catch {
+      /* 파싱 실패 무시 */
+    }
     return { title: "", startDate: "", endDate: "" };
   });
   const [tripMembers, setTripMembers] = useState<TripMemberResponse[]>([]);
   const [isTripLoading, setIsTripLoading] = useState(false);
 
-  const currentNoticeStorageKey = useMemo(
-    () => `${LS_CURRENT_NOTICE_GROUP_ID}_${Number.isFinite(tripId) ? tripId : "unknown"}`,
-    [tripId]
-  );
-
   const currentNoticeGroup = useMemo(() => {
     if (currentNoticeGroupId == null) return "";
-    return noticeGroups.find((g) => g.groupId === currentNoticeGroupId)?.name ?? "";
+    return (
+      noticeGroups.find((g) => g.groupId === currentNoticeGroupId)?.name ?? ""
+    );
   }, [noticeGroups, currentNoticeGroupId]);
-
-  // 공지 선택값 로드/저장 (localStorage 유지 — 공지는 서버 기반이라 선택값 정도는 OK)
-  useEffect(() => {
-    const stored = localStorage.getItem(currentNoticeStorageKey);
-    if (!stored) { setCurrentNoticeGroupId(null); return; }
-    const parsed = Number(stored);
-    setCurrentNoticeGroupId(Number.isFinite(parsed) ? parsed : null);
-  }, [currentNoticeStorageKey]);
-
-  useEffect(() => {
-    if (currentNoticeGroupId == null) {
-      localStorage.removeItem(currentNoticeStorageKey);
-      return;
-    }
-    localStorage.setItem(currentNoticeStorageKey, String(currentNoticeGroupId));
-  }, [currentNoticeGroupId, currentNoticeStorageKey]);
 
   // 여행 정보 API 조회
   useEffect(() => {
@@ -133,12 +124,18 @@ const useWorkspaceCoreInternal = (): WorkspaceCoreState => {
     getTripDetail(tripId)
       .then((res) => {
         const d = res.data;
-        const t: TripInfo = { title: d.title, startDate: d.tripStartDate, endDate: d.tripEndDate };
+        const t: TripInfo = {
+          title: d.title,
+          startDate: d.tripStartDate,
+          endDate: d.tripEndDate,
+        };
         setTrip(t);
         setTripMembers(d.members ?? []);
         localStorage.setItem(LS_TRIP_DATA, JSON.stringify(t));
       })
-      .catch(() => { /* localStorage fallback 유지 */ })
+      .catch(() => {
+        /* localStorage fallback 유지 */
+      })
       .finally(() => setIsTripLoading(false));
   }, [tripId]);
 
@@ -160,7 +157,10 @@ const useWorkspaceCoreInternal = (): WorkspaceCoreState => {
 
   // 공지 그룹 조회
   const reloadNoticeGroups = async () => {
-    if (!Number.isFinite(tripId) || tripId <= 0) { setNoticeGroups([]); return; }
+    if (!Number.isFinite(tripId) || tripId <= 0) {
+      setNoticeGroups([]);
+      return;
+    }
     setIsNoticeGroupsLoading(true);
     try {
       const response = await getNoticeGroups(tripId);
@@ -172,10 +172,15 @@ const useWorkspaceCoreInternal = (): WorkspaceCoreState => {
     }
   };
 
-  useEffect(() => { void reloadNoticeGroups(); }, [tripId]);
+  useEffect(() => {
+    void reloadNoticeGroups();
+  }, [tripId]);
 
   useEffect(() => {
-    if (noticeGroups.length === 0) { setCurrentNoticeGroupId(null); return; }
+    if (noticeGroups.length === 0) {
+      setCurrentNoticeGroupId(null);
+      return;
+    }
     const exists = noticeGroups.some((g) => g.groupId === currentNoticeGroupId);
     if (exists) return;
     setCurrentNoticeGroupId(pickFallbackNoticeGroupId(noticeGroups));
@@ -184,11 +189,17 @@ const useWorkspaceCoreInternal = (): WorkspaceCoreState => {
   const selectTab = (title: string, view: WorkspaceViewType) => {
     setActiveView(view);
     setHideRight(false);
-    if (view === "timeline") { setCurrentDay(title); return; }
+    if (view === "timeline") {
+      setCurrentDay(title);
+      return;
+    }
     if (view === "notice") {
-      const matched = noticeGroups.find((g) => normalizeName(g.name) === normalizeName(title));
+      const matched = noticeGroups.find(
+        (g) => normalizeName(g.name) === normalizeName(title),
+      );
       if (matched) setCurrentNoticeGroupId(matched.groupId);
-      else if (currentNoticeGroupId == null) setCurrentNoticeGroupId(pickFallbackNoticeGroupId(noticeGroups));
+      else if (currentNoticeGroupId == null)
+        setCurrentNoticeGroupId(pickFallbackNoticeGroupId(noticeGroups));
       return;
     }
   };
@@ -201,7 +212,10 @@ const useWorkspaceCoreInternal = (): WorkspaceCoreState => {
 
   // ── dateLogs 관련 ─────────────────────────────────────────
   const addDateLog = () => {
-    const name = prompt("추가할 일정 이름을 입력하세요.", `DAY ${dateLogs.length + 1}`);
+    const name = prompt(
+      "추가할 일정 이름을 입력하세요.",
+      `DAY ${dateLogs.length + 1}`,
+    );
     if (!name?.trim()) return;
     setDateLogs((prev) => [...prev, name.trim()]);
   };
@@ -211,7 +225,9 @@ const useWorkspaceCoreInternal = (): WorkspaceCoreState => {
     if (current == null) return;
     const newName = prompt("이름을 변경하세요:", current);
     if (!newName?.trim()) return;
-    setDateLogs((prev) => prev.map((d, i) => (i === index ? newName.trim() : d)));
+    setDateLogs((prev) =>
+      prev.map((d, i) => (i === index ? newName.trim() : d)),
+    );
   };
 
   const deleteDateLog = (index: number) => {
@@ -239,15 +255,22 @@ const useWorkspaceCoreInternal = (): WorkspaceCoreState => {
       if (name === null) return;
       const trimmed = name.trim();
       if (!trimmed) return;
-      if (noticeGroups.some((g) => normalizeName(g.name) === normalizeName(trimmed))) {
-        alert("이미 존재하는 이름입니다."); continue;
+      if (
+        noticeGroups.some(
+          (g) => normalizeName(g.name) === normalizeName(trimmed),
+        )
+      ) {
+        alert("이미 존재하는 이름입니다.");
+        continue;
       }
       try {
         const response = await createNoticeGroupApi(tripId, { name: trimmed });
         await reloadNoticeGroups();
         setCurrentNoticeGroupId(response.data.groupId);
         setActiveView("notice");
-      } catch { alert("공지 그룹 생성에 실패했습니다."); }
+      } catch {
+        alert("공지 그룹 생성에 실패했습니다.");
+      }
       return;
     }
   };
@@ -262,11 +285,22 @@ const useWorkspaceCoreInternal = (): WorkspaceCoreState => {
       if (newName === null) return;
       const trimmed = newName.trim();
       if (!trimmed || trimmed === target.name) return;
-      if (noticeGroups.some((g) => g.groupId !== groupId && normalizeName(g.name) === normalizeName(trimmed))) {
-        alert("이미 존재하는 이름입니다."); continue;
+      if (
+        noticeGroups.some(
+          (g) =>
+            g.groupId !== groupId &&
+            normalizeName(g.name) === normalizeName(trimmed),
+        )
+      ) {
+        alert("이미 존재하는 이름입니다.");
+        continue;
       }
-      try { await renameNoticeGroupApi(tripId, groupId, { name: trimmed }); await reloadNoticeGroups(); }
-      catch { alert("공지 그룹 이름 수정에 실패했습니다."); }
+      try {
+        await renameNoticeGroupApi(tripId, groupId, { name: trimmed });
+        await reloadNoticeGroups();
+      } catch {
+        alert("공지 그룹 이름 수정에 실패했습니다.");
+      }
       return;
     }
   };
@@ -276,43 +310,83 @@ const useWorkspaceCoreInternal = (): WorkspaceCoreState => {
     const target = noticeGroups.find((g) => g.groupId === groupId);
     if (!target || target.isDefault) return;
     if (!confirm("정말 삭제하시겠습니까?")) return;
-    try { await deleteNoticeGroupApi(tripId, groupId); await reloadNoticeGroups(); }
-    catch { alert("공지 그룹 삭제에 실패했습니다."); }
+    try {
+      await deleteNoticeGroupApi(tripId, groupId);
+      await reloadNoticeGroups();
+    } catch {
+      alert("공지 그룹 삭제에 실패했습니다.");
+    }
   };
 
   const renameItem = (type: "date" | "notice", index: number) => {
-    if (type === "date") { renameDateLog(index); return; }
+    if (type === "date") {
+      renameDateLog(index);
+      return;
+    }
     const target = noticeGroups[index];
     if (target) void renameNoticeGroup(target.groupId);
   };
 
   const deleteItem = (type: "date" | "notice", index: number) => {
-    if (type === "date") { deleteDateLog(index); return; }
+    if (type === "date") {
+      deleteDateLog(index);
+      return;
+    }
     const target = noticeGroups[index];
     if (target) void deleteNoticeGroup(target.groupId);
   };
 
   return {
-    dateLogs, noticeGroups, activeView, currentDay,
-    currentNoticeGroupId, currentNoticeGroup, hideRight, isNoticeGroupsLoading,
-    trip, tripMembers, isTripLoading, updateTripData,
-    selectTab, selectNoticeGroup, reloadNoticeGroups,
-    addDateLog, renameDateLog, deleteDateLog, syncDateLogs,
-    addNoticeGroup, renameNoticeGroup, deleteNoticeGroup,
-    renameItem, deleteItem, setHideRight, setActiveView,
+    dateLogs,
+    noticeGroups,
+    activeView,
+    currentDay,
+    currentNoticeGroupId,
+    currentNoticeGroup,
+    hideRight,
+    isNoticeGroupsLoading,
+    trip,
+    tripMembers,
+    isTripLoading,
+    updateTripData,
+    selectTab,
+    selectNoticeGroup,
+    reloadNoticeGroups,
+    addDateLog,
+    renameDateLog,
+    deleteDateLog,
+    syncDateLogs,
+    addNoticeGroup,
+    renameNoticeGroup,
+    deleteNoticeGroup,
+    renameItem,
+    deleteItem,
+    setHideRight,
+    setActiveView,
   };
 };
 
 const WorkspaceCoreContext = createContext<WorkspaceCoreState | null>(null);
 
-export const WorkspaceCoreProvider = ({ children }: { children: ReactNode }) => {
+export const WorkspaceCoreProvider = ({
+  children,
+}: {
+  children: ReactNode;
+}) => {
   const core = useWorkspaceCoreInternal();
   const value = useMemo(() => core, [core]);
-  return <WorkspaceCoreContext.Provider value={value}>{children}</WorkspaceCoreContext.Provider>;
+  return (
+    <WorkspaceCoreContext.Provider value={value}>
+      {children}
+    </WorkspaceCoreContext.Provider>
+  );
 };
 
 export const useWorkspaceCore = (): WorkspaceCoreState => {
   const ctx = useContext(WorkspaceCoreContext);
-  if (!ctx) throw new Error("useWorkspaceCore must be used within WorkspaceCoreProvider");
+  if (!ctx)
+    throw new Error(
+      "useWorkspaceCore must be used within WorkspaceCoreProvider",
+    );
   return ctx;
 };
