@@ -77,7 +77,8 @@ import type {
 export type UseExpensesStore = ReturnType<typeof useExpenses>;
 
 export const useExpenses = () => {
-  const { tripId, ownerUserId, tripDetail } = useTripContext();
+  const { tripId, ownerUserId, tripDetail, isOwner, currentUserId } =
+    useTripContext();
 
   const [expenses, setExpenses] = useState<ExpenseItem[]>([]);
   const [filterDate, setFilterDate] = useState<string>("ALL");
@@ -723,6 +724,8 @@ export const useExpenses = () => {
 
     members,
     ownerUserId,
+    currentUserId,
+    isOwner,
 
     sharedPercent,
     personalPercent,

@@ -28,6 +28,7 @@ const buildFileUrl = (fileUrl: string) => {
 
 export const useVouchers = () => {
   const { tripId } = useTripContext();
+
   const [vouchers, setVouchers] = useState<VoucherResponse[]>([]);
   const [loading, setLoading] = useState(false);
 

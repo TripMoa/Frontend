@@ -1,11 +1,10 @@
 // src/features/workspace/components/modals/ExpenseModal.tsx
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useParams } from "react-router-dom";
 import "./../../../styles/expModal.css";
 import { requestExpenseOcrWithPreview } from "../../../../../api/ocr.api";
 import BaseModal from "../../../../../shared/components/BaseModal";
-
+import { useTripContext } from "../../../hooks/useTripContext";
 import type { UseExpensesStore } from "../../../hooks/useExpenses";
 import type {
   ExpenseItem,
@@ -90,8 +89,7 @@ const calcEqualSplit = (
 };
 
 const ExpenseModal: React.FC<Props> = ({ store }) => {
-  const { tripId: tripIdParam } = useParams<{ tripId: string }>();
-  const tripId = Number(tripIdParam);
+  const { tripId } = useTripContext();
 
   const {
     isExpenseModalOpen,

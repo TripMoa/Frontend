@@ -55,6 +55,8 @@ const ExpenseView: React.FC<Props> = ({ store, onOpenSettleDetail }) => {
     personalPercent,
     members,
     ownerUserId,
+    currentUserId,
+    isOwner,
     isBootstrapLoading,
     bootstrapError,
     isPreviewLoading,
@@ -99,9 +101,6 @@ const ExpenseView: React.FC<Props> = ({ store, onOpenSettleDetail }) => {
     String(filterDate).startsWith("CALRANGE:");
 
   const isRecentDateActive = (date: string) => filterDate === `DATE:${date}`;
-
-  const currentUserId = Number(localStorage.getItem("userId"));
-  const isOwner = currentUserId === ownerUserId;
 
   const myMemberNickname =
     members.find((member) => member.userId === currentUserId)?.nickname ?? null;
