@@ -13,7 +13,8 @@ export type AuthLogoutReason =
   | "manual"
   | "withdraw"
   | "refresh-expired"
-  | "remote-tab";
+  | "remote-tab"
+  | "suspended";
 
 // refreshToken 쿠키 자동 전송
 export const api = axios.create({
@@ -36,6 +37,12 @@ export const clearAccessToken = () => {
 // 인증 관련 클라이언트 상태 초기화
 export const clearAuthState = () => {
   clearAccessToken();
+
+  localStorage.removeItem("tripData");
+
+  Object.keys(localStorage)
+    .filter((key) => key.startsWith("tripmoa_current_notice_group_id"))
+    .forEach((key) => localStorage.removeItem(key));
 };
 
 // 인증 상태 변경 이벤트 발행
@@ -82,7 +89,13 @@ const refreshTokens = async (): Promise<RefreshTokenResponse> => {
         { withCredentials: true },
       )
       .then((res) => {
-        const { accessToken, authenticated } = res.data;
+        const { accessToken, authenticated, reason } = res.data;
+
+        if (authenticated === false && reason === "SUSPENDED") {
+          clearAuthState();
+          notifyAuthLogout("suspended");
+          throw new Error("Suspended");
+        }
 
         if (!accessToken || authenticated === false) {
           clearAuthState();
