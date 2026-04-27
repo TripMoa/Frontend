@@ -13,6 +13,8 @@ import UserSettings from "./features/user/pages/UserSetting";
 import OAuthSuccess from "./features/user/pages/OAuthSuccess";
 import ProtectedRoute from "./features/user/pages/ProtectedRoute";
 import { AuthProvider } from "./features/user/pages/AuthContext";
+import NoticePage from "./features/user/pages/NoticePage";
+import FaqPage from "./features/user/pages/FaqPage";
 
 export default function App() {
   return (
@@ -25,6 +27,8 @@ export default function App() {
         {/* 보호된 라우트: 설정 페이지 */}
         <Route element={<ProtectedRoute />}>
           <Route path="/setting" element={<UserSettings />} />
+          <Route path="/notice" element={<NoticePage />} />
+          <Route path="/faq" element={<FaqPage />} />
         </Route>
 
         {/* 레이아웃 있는 페이지 */}
