@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import type { MyTripSummaryResponse } from "../../../types/trip.types";
+import type { MyTripSummaryResponse } from "../../../types";
 import type { TripStatusInfo } from "./../hooks/useMyTrips";
 
 interface TripCardProps {

@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { checkEmail } from "../../../api/auth.api";
 import BaseModal from "../../../shared/components/BaseModal";
 import "../styles/TripCreateModal.css";
-import type { UserResponse } from "../../../types/auth.types";
+import type { UserResponse } from "../../../types";
 import type {
   SelectedMember,
   TripCreateFormState,
@@ -115,6 +115,29 @@ export const TripCreateModal = ({
     }));
   };
 
+  const isValidDateInput = (value: string) => {
+    return /^\d{4}-\d{2}-\d{2}$/.test(value);
+  };
+
+  const isDateRangeValid =
+    !formData.tripStartDate ||
+    !formData.tripEndDate ||
+    formData.tripEndDate >= formData.tripStartDate;
+
+  const handleStartDateChange = (value: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      tripStartDate: value,
+    }));
+  };
+
+  const handleEndDateChange = (value: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      tripEndDate: value,
+    }));
+  };
+
   return (
     <BaseModal
       open={isOpen}
@@ -143,12 +166,9 @@ export const TripCreateModal = ({
             <input
               type="date"
               value={formData.tripStartDate}
-              onChange={(e) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  tripStartDate: e.target.value,
-                }))
-              }
+              min="1900-01-01"
+              max="9999-12-31"
+              onChange={(e) => handleStartDateChange(e.target.value)}
               required
             />
           </div>
@@ -158,16 +178,18 @@ export const TripCreateModal = ({
             <input
               type="date"
               value={formData.tripEndDate}
-              min={formData.tripStartDate}
-              onChange={(e) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  tripEndDate: e.target.value,
-                }))
-              }
+              min={formData.tripStartDate || "1900-01-01"}
+              max="9999-12-31"
+              onChange={(e) => handleEndDateChange(e.target.value)}
               required
             />
           </div>
+
+          {!isDateRangeValid && (
+            <p className="tcm-error">
+              ⚠ 도착 날짜는 출발 날짜 이후여야 합니다.
+            </p>
+          )}
         </div>
 
         <div className="tcm-field">
@@ -214,7 +236,11 @@ export const TripCreateModal = ({
           </div>
         </div>
 
-        <button type="submit" className="tcm-submit" disabled={isSubmitting}>
+        <button
+          type="submit"
+          className="tcm-submit"
+          disabled={isSubmitting || !isDateRangeValid}
+        >
           {isSubmitting ? "SAVING..." : "SAVE MISSION"}
         </button>
       </form>

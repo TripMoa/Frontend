@@ -4,16 +4,17 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { getTripDetail } from "../../../api/trip.api";
 import type { TripDetailResponse } from "../../../types/trip.types";
+import { useAuth } from "../../../features/user/pages/AuthContext";
 
 export const useTripContext = () => {
   const params = useParams<{ tripId: string }>();
   const tripId = Number(params.tripId);
 
+  const { userId } = useAuth();
+
   const [tripDetail, setTripDetail] = useState<TripDetailResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const currentUserId = Number(localStorage.getItem("userId"));
 
   useEffect(() => {
     if (!Number.isFinite(tripId) || tripId <= 0) {
@@ -43,16 +44,17 @@ export const useTripContext = () => {
   }, [tripId]);
 
   const ownerUserId = tripDetail?.ownerUserId ?? null;
+
   const isOwner =
     ownerUserId !== null &&
-    !Number.isNaN(currentUserId) &&
-    currentUserId === ownerUserId;
+    userId !== null &&
+    Number(userId) === Number(ownerUserId);
 
   return {
     tripId,
     tripDetail,
     ownerUserId,
-    currentUserId,
+    currentUserId: userId,
     isOwner,
     loading,
     error,

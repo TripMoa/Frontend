@@ -1,6 +1,7 @@
 // src/features/myTrips/hooks/useMyTrips.ts
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   createTrip,
   deleteTrip,
@@ -53,6 +54,8 @@ const FILTER_TO_VISIBILITY: Record<
 };
 
 export const useMyTrips = () => {
+  const navigate = useNavigate();
+
   const [filter, setFilter] = useState<TripFilter>("all");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [trips, setTrips] = useState<MyTripSummaryResponse[]>([]);
@@ -190,10 +193,13 @@ export const useMyTrips = () => {
       setIsSubmitting(true);
 
       try {
-        await createTrip(payload);
+        const response = await createTrip(payload);
+
         setIsModalOpen(false);
         resetForm();
-        await fetchTrips(filter);
+
+        const createdTripId = response.data.tripId;
+        navigate(`/workspace/${createdTripId}`);
       } catch (submitError) {
         console.error("여행 생성 실패:", submitError);
         window.alert("여행 생성에 실패했습니다.");
