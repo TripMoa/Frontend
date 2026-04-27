@@ -2,8 +2,11 @@
 import React from "react";
 import "../../styles/sidebar.css";
 import { useWorkspaceCore } from "../../hooks/useWorkspaceCore";
+import { useTripContext } from "../../hooks/useTripContext";
 
 const WorkspaceSidebar: React.FC = () => {
+  const { isOwner } = useTripContext();
+
   const {
     dateLogs,
     noticeGroups,
@@ -36,7 +39,9 @@ const WorkspaceSidebar: React.FC = () => {
 
   const calcNightsDays = (start: string, end: string) => {
     if (!start || !end) return "-";
-    const diff = Math.round((new Date(end).getTime() - new Date(start).getTime()) / 86400000);
+    const diff = Math.round(
+      (new Date(end).getTime() - new Date(start).getTime()) / 86400000,
+    );
     if (diff <= 0) return "당일치기";
     return `${diff}박 ${diff + 1}일`;
   };
@@ -139,12 +144,14 @@ const WorkspaceSidebar: React.FC = () => {
           }}
         >
           <span>&gt;&gt; NOTICES</span>
-          <button
-            className="btn-add-mini"
-            onClick={() => void addNoticeGroup()}
-          >
-            [+]
-          </button>
+          {isOwner && (
+            <button
+              className="btn-add-mini"
+              onClick={() => void addNoticeGroup()}
+            >
+              [+]
+            </button>
+          )}
         </div>
 
         <div id="notice-log-list">
@@ -174,7 +181,7 @@ const WorkspaceSidebar: React.FC = () => {
                   {group.name}
                 </a>
 
-                {!group.isDefault && (
+                {isOwner && !group.isDefault && (
                   <div className="ws-item-controls">
                     <span onClick={() => void renameNoticeGroup(group.groupId)}>
                       ✎
@@ -193,8 +200,12 @@ const WorkspaceSidebar: React.FC = () => {
       <div className="ws-info-area">
         <div className="info-group">
           <div className="info-label">TRIP DURATION</div>
-          <div className="info-val">{formatDateRange(trip.startDate, trip.endDate)}</div>
-          <div className="info-sub">{calcNightsDays(trip.startDate, trip.endDate)}</div>
+          <div className="info-val">
+            {formatDateRange(trip.startDate, trip.endDate)}
+          </div>
+          <div className="info-sub">
+            {calcNightsDays(trip.startDate, trip.endDate)}
+          </div>
         </div>
 
         <div className="info-group">
@@ -204,10 +215,20 @@ const WorkspaceSidebar: React.FC = () => {
               <div
                 key={m.memberId}
                 className="mem-icon"
-                style={m.avatarColor ? { background: m.avatarColor } : undefined}
+                style={
+                  m.profileType === "CUSTOM"
+                    ? { background: "transparent" }
+                    : m.avatarColor
+                      ? { background: m.avatarColor }
+                      : undefined
+                }
                 title={m.nickname}
               >
-                {m.avatarEmoji || m.nickname.charAt(0).toUpperCase()}
+                {m.profileType === "CUSTOM" && m.profileImage ? (
+                  <img src={m.profileImage} alt={m.nickname} />
+                ) : (
+                  m.avatarEmoji || m.nickname.charAt(0).toUpperCase()
+                )}
               </div>
             ))}
           </div>

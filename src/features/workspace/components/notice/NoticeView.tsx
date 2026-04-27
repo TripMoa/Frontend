@@ -2,6 +2,7 @@
 
 import React from "react";
 import type { NoticeItem } from "../../hooks/useNotices";
+import { useTripContext } from "../../hooks/useTripContext";
 
 interface Props {
   notices: NoticeItem[];
@@ -20,6 +21,8 @@ const NoticeView: React.FC<Props> = ({
   onDelete,
   onTogglePin,
 }) => {
+  const { isOwner } = useTripContext();
+
   return (
     <>
       <div
@@ -49,7 +52,10 @@ const NoticeView: React.FC<Props> = ({
         </button>
       </div>
 
-      <div className="notice-container" id="notice-list-container">
+      <div
+        className={`notice-container ${!isLoading && notices.length === 0 ? "empty" : ""}`}
+        id="notice-list-container"
+      >
         {isLoading ? (
           <div
             style={{
@@ -62,15 +68,10 @@ const NoticeView: React.FC<Props> = ({
             공지사항을 불러오는 중입니다.
           </div>
         ) : notices.length === 0 ? (
-          <div
-            style={{
-              padding: "40px 20px",
-              textAlign: "center",
-              color: "#777",
-              fontWeight: 500,
-            }}
-          >
-            등록된 공지사항이 없습니다.
+          <div className="notice-empty">
+            <i className="fa-regular fa-note-sticky"></i>
+            <p>등록된 공지사항이 없습니다.</p>
+            <span>새로운 공지를 추가해보세요.</span>
           </div>
         ) : (
           notices.map((notice) => (
@@ -81,8 +82,20 @@ const NoticeView: React.FC<Props> = ({
               }`}
             >
               <div
-                className={`nc-pin-btn ${notice.isPinned ? "active" : ""}`}
-                onClick={() => void onTogglePin(notice.id)}
+                className={`nc-pin-btn ${notice.isPinned ? "active" : ""} ${
+                  notice.isPinned && !isOwner ? "disabled" : ""
+                }`}
+                onClick={() => {
+                  if (notice.isPinned && !isOwner) return;
+                  void onTogglePin(notice.id);
+                }}
+                title={
+                  notice.isPinned
+                    ? isOwner
+                      ? "핀 해제"
+                      : "핀 해제는 소유주만 가능합니다"
+                    : "핀 고정"
+                }
               >
                 <i className="fa-solid fa-thumbtack"></i>
               </div>
@@ -100,12 +113,15 @@ const NoticeView: React.FC<Props> = ({
                 >
                   EDIT
                 </span>
-                <span
-                  className="nc-btn del"
-                  onClick={() => void onDelete(notice.id)}
-                >
-                  DELETE
-                </span>
+
+                {isOwner && (
+                  <span
+                    className="nc-btn del"
+                    onClick={() => void onDelete(notice.id)}
+                  >
+                    DELETE
+                  </span>
+                )}
               </div>
             </div>
           ))
