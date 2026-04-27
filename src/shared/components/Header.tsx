@@ -4,26 +4,30 @@ import { useNavigate } from "react-router-dom";
 import { logout } from "../../api/auth.api";
 import { useAuth } from "../../features/user/pages/AuthContext";
 import { useUserProfile } from "../../features/user/hooks/useUserSetting";
+import { useAccessGuard } from "../hooks/useAccessGuard";
+import { ActionPromptModal } from "./ActionPromptModal";
 
 function HeaderProfileMenu() {
   const navigate = useNavigate();
   const { profile } = useUserProfile();
 
   const fallbackProfile = {
+    profileType: "AVATAR" as const,
     avatarEmoji: "😊",
     avatarColor: "#FFE5E5",
-    profileImage: null,
+    profileImage: "",
   };
 
   const displayProfile = profile ?? fallbackProfile;
-
   const handleLogout = async () => {
     await logout();
     navigate("/", { replace: true });
   };
 
   const handleSettingsClick = () => {
-    navigate("/setting");
+    navigate("/setting", {
+      state: { closeTo: location.pathname + location.search },
+    });
   };
 
   return (
@@ -32,16 +36,18 @@ function HeaderProfileMenu() {
         <div
           className="profile-circle"
           style={{
-            background: displayProfile.profileImage
-              ? "transparent"
-              : displayProfile.avatarColor,
+            background:
+              displayProfile.profileType === "CUSTOM"
+                ? "transparent"
+                : displayProfile.avatarColor || "#FFE5E5",
             overflow: "hidden",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
           }}
         >
-          {displayProfile.profileImage ? (
+          {displayProfile.profileType === "CUSTOM" &&
+          displayProfile.profileImage ? (
             <img
               src={displayProfile.profileImage}
               alt="Profile"
@@ -53,7 +59,7 @@ function HeaderProfileMenu() {
             />
           ) : (
             <span style={{ fontSize: "1.2rem" }}>
-              {displayProfile.avatarEmoji}
+              {displayProfile.avatarEmoji || "😊"}
             </span>
           )}
         </div>
@@ -74,16 +80,12 @@ function HeaderProfileMenu() {
 export default function Header() {
   const navigate = useNavigate();
   const { isAuthenticated, authReady } = useAuth();
-
+  const { requireLogin, showLoginModal, closeLoginModal, moveToLogin } =
+    useAccessGuard();
   const handleLogoClick = () => navigate("/");
 
   const handlePlanClick = () => {
-    if (!isAuthenticated) {
-      navigate("/login", {
-        state: { message: "로그인 이후 이용 가능합니다.", from: "/mytrips" },
-      });
-      return;
-    }
+    if (!requireLogin()) return;
 
     navigate("/mytrips");
   };
@@ -108,6 +110,16 @@ export default function Header() {
             >
               MY PLAN ❯
             </button>
+            <ActionPromptModal
+              open={showLoginModal}
+              title="로그인이 필요합니다"
+              headline="로그인 후 이용할 수 있어요"
+              description="게시글 작성은 로그인한 사용자만 이용할 수 있습니다."
+              cancelText="취소"
+              confirmText="로그인"
+              onClose={closeLoginModal}
+              onConfirm={moveToLogin}
+            />
           </li>
 
           <li className="nav-group">
