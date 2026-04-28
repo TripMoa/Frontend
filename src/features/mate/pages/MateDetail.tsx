@@ -1,14 +1,14 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Heart, Calendar, Users, Wallet, Eye } from "lucide-react";
-import { LoginPromptModal } from "../components/LoginPromptModal";
 import type { Post, ApplicationRequest } from "../hooks/mate.types";
 import { calculateDuration, getAgeGroupLabel, getGenderPreferenceLabel, getTransportLabel } from "../hooks/mate.constants";
 import { useMate } from "../hooks/useMate";
 import { useAuth } from "../../user/pages/AuthContext";
 import { isPostExpired } from "../hooks/mate.util";
-import { useAuthGuard } from "../hooks/useAuthGuard";
-import { ProfileIncompleteModal } from "../components/ProfileIncompleteModal";
+import { useAccessGuard } from "../../../shared/hooks";
+import { ActionPromptModal } from "../../../shared/components";
+import { useUserProfile } from "../../user/hooks";
 import "../styles/MateDetail.css";
 import { getAccessToken } from "../../../api/api";
 
@@ -28,11 +28,6 @@ export default function MateDetail() {
   const { userId } = useAuth();
   const isAuthor = post?.author?.id === userId;
   const token = getAccessToken();
-
-  const {
-    withLoginCheck, showLoginModal, closeLoginModal, goToLogin,
-    withProfileCheck, showProfileModal, closeProfileModal, goToProfileEdit,
-  } = useAuthGuard();
 
   useEffect(() => {
     const loadPost = async () => {
@@ -157,6 +152,29 @@ export default function MateDetail() {
   const hasApplied = post.hasApplied || false;
   const isExpire = isPostExpired(post);
 
+  const { profile } = useUserProfile();
+
+  const {
+    showLoginModal,
+    showAdultModal,
+    closeLoginModal,
+    closeAdultModal,
+    moveToLogin,
+    moveToMypageForVerification,
+    requireLogin,
+    requireAdultVerified,
+  } = useAccessGuard(profile);
+
+  const handleApplyClick = () => {
+    if (requireAdultVerified()) setShowApplyForm(true);
+  };
+
+  const handleLikeClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    if (requireLogin()) onLikeClick(e);
+  };  
+
+
   return (
     <>
     <div className="mate-detail">
@@ -186,7 +204,7 @@ export default function MateDetail() {
 
             {/* 좋아요 버튼 (활성화 시 빨간색) */}
             <button
-              onClick={(e) => withLoginCheck(() => onLikeClick(e))}
+              onClick={handleLikeClick}
               className={`stat-box btn-like ${isLiked ? "active" : ""}`}
             >
               <Heart 
@@ -340,7 +358,7 @@ export default function MateDetail() {
               ) : !showApplyForm ? (
                 <button
                   disabled={hasApplied || post.currentParticipant >= post.maxParticipant}
-                  onClick={() => withProfileCheck(() => setShowApplyForm(true))}
+                  onClick={handleApplyClick}
                   className="apply-button"
                 >
                   {hasApplied ? "Applied" : post.currentParticipant >= post.maxParticipant ? "Full" : "Apply Now"}
@@ -384,16 +402,26 @@ export default function MateDetail() {
       </div>
     </div>
 
-    {showProfileModal && (
-      <ProfileIncompleteModal
-        onClose={closeProfileModal}
-        onGoToEdit={goToProfileEdit}
-      />
-    )}
-    
-    {showLoginModal && (
-      <LoginPromptModal onClose={closeLoginModal} onLogin={goToLogin} />
-    )}
+    <ActionPromptModal
+      open={showLoginModal}
+      title=">> LOGIN REQUIRED"
+      headline="Members Only"
+      description="이 기능은 로그인 후 이용할 수 있습니다"
+      cancelText="둘러보기"
+      confirmText="로그인하기"
+      onClose={closeLoginModal}
+      onConfirm={moveToLogin}
+    />
+    <ActionPromptModal
+      open={showAdultModal}
+      title=">> PROFILE INCOMPLETE"
+      headline="Complete Your Profile"
+      description="성인 인증이 필요한 서비스입니다."
+      cancelText="닫기"
+      confirmText="프로필 설정하기"
+      onClose={closeAdultModal}
+      onConfirm={moveToMypageForVerification}
+    />
     </>
   );
 }
