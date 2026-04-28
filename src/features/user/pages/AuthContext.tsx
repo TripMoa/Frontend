@@ -16,13 +16,16 @@ import {
   notifyAuthLogout,
 } from "../../../api/api";
 import { getMySanctionStatus } from "../../../api/sanction.api";
-import { ActionPromptModal } from "../../../shared/components/ActionPromptModal";
 import { markWarningPopupRead } from "../../../api/sanction.api";
+import type { UserResponse } from "../../../types/auth.types";
+import { ActionPromptModal } from "../../../shared/components/ActionPromptModal";
 
 type AuthContextType = {
   isAuthenticated: boolean;
   authReady: boolean;
   userId: number | null;
+  profile: UserResponse | null;
+  setProfile: (profile: UserResponse | null) => void;
   logoutMessage: string | null;
   setAuthenticated: (value: boolean) => void;
   setUserId: (id: number | null) => void;
@@ -43,6 +46,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authReady, setAuthReady] = useState(false);
   const [userId, setUserId] = useState<number | null>(null);
+  const [profile, setProfile] = useState<UserResponse | null>(null);
   const [logoutMessage, setLogoutMessage] = useState<string | null>(null);
   const didBootstrap = useRef(false);
   const [warningMessage, setWarningMessage] = useState<string | null>(null);
@@ -56,6 +60,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     clearAuthState();
     setIsAuthenticated(false);
     setUserId(null);
+    setProfile(null);
   }, []);
 
   const clearLogoutMessage = useCallback(() => {
@@ -76,6 +81,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       const response = await getMyInfo();
       setUserId(response.data.id);
+      setProfile(response.data);
       setIsAuthenticated(true);
       return true;
     } catch {
@@ -208,6 +214,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         isAuthenticated,
         authReady,
         userId,
+        profile,
+        setProfile,
         logoutMessage,
         setUserId,
         setAuthenticated: setIsAuthenticated,
