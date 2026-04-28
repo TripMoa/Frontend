@@ -8,7 +8,6 @@ import { useAuth } from "../../user/pages/AuthContext";
 import { isPostExpired } from "../hooks/mate.util";
 import { useAccessGuard } from "../../../shared/hooks";
 import { ActionPromptModal } from "../../../shared/components";
-import { useUserProfile } from "../../user/hooks";
 import "../styles/MateDetail.css";
 import { getAccessToken } from "../../../api/api";
 
@@ -28,6 +27,26 @@ export default function MateDetail() {
   const { userId } = useAuth();
   const isAuthor = post?.author?.id === userId;
   const token = getAccessToken();
+
+  const {
+    showLoginModal,
+    showAdultModal,
+    closeLoginModal,
+    closeAdultModal,
+    moveToLogin,
+    moveToMypageForVerification,
+    requireLogin,
+    requireAdultVerified,
+  } = useAccessGuard();
+
+  const handleApplyClick = () => {
+    if (requireAdultVerified()) setShowApplyForm(true);
+  };
+
+  const handleLikeClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    if (requireLogin()) onLikeClick(e);
+  };  
 
   useEffect(() => {
     const loadPost = async () => {
@@ -151,29 +170,6 @@ export default function MateDetail() {
   const isLiked = post.liked || false;
   const hasApplied = post.hasApplied || false;
   const isExpire = isPostExpired(post);
-
-  const { profile } = useUserProfile();
-
-  const {
-    showLoginModal,
-    showAdultModal,
-    closeLoginModal,
-    closeAdultModal,
-    moveToLogin,
-    moveToMypageForVerification,
-    requireLogin,
-    requireAdultVerified,
-  } = useAccessGuard(profile);
-
-  const handleApplyClick = () => {
-    if (requireAdultVerified()) setShowApplyForm(true);
-  };
-
-  const handleLikeClick = (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.stopPropagation();
-    if (requireLogin()) onLikeClick(e);
-  };  
-
 
   return (
     <>
