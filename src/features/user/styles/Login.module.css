@@ -115,6 +115,78 @@
   z-index: 1;
 }
 
+/* 정지 안내 전체 박스 */
+.suspendedBox {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 24px;
+  text-align: center;
+}
+
+/* 제목 */
+.suspendedBox h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+/* 설명 문구 */
+.suspendedBox p {
+  font-size: 0.9rem;
+  color: #555;
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+
+/* 이메일 박스 */
+.emailBox {
+  margin: 16px 0;
+  padding: 10px 14px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-family: monospace;
+  font-size: 0.85rem;
+  background-color: #f9f9f9;
+  color: #222;
+}
+
+/* 공통 버튼 스타일 */
+.suspendedBox button {
+  width: 100%;
+  max-width: 280px;
+  padding: 10px 0;
+  margin-top: 8px;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+/* 이메일 복사 버튼 */
+.suspendedBox button:first-of-type {
+  background-color: #222;
+  color: #fff;
+  border: none;
+}
+
+.suspendedBox button:first-of-type:hover {
+  background-color: #444;
+}
+
+/* 돌아가기 버튼 */
+.suspendedBox button:last-of-type {
+  background-color: transparent;
+  color: #555;
+  border: 1px solid #ccc;
+}
+
+.suspendedBox button:last-of-type:hover {
+  background-color: #f2f2f2;
+}
+
 /* 뭉실뭉실 구름 1 */
 .cloud1 {
   position: absolute;

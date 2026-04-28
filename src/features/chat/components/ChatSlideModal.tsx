@@ -1,11 +1,15 @@
 // components/mate/chat/ChatSlide.tsx
 
 import { useState, useEffect, useRef } from "react";
-import { X, MessageSquare, Send, Plus, LogOut, MapPin, Calendar, User } from "lucide-react";
+import { X, MessageSquare, Send, Plus, LogOut, MapPin, Calendar, Siren } from "lucide-react";
 import type { OneOnOneChat } from "../hooks/chat.types";
 import type { Post, ApplicationResponse } from "../../mate/hooks/mate.types";
-import { useCurrentUser } from "../hooks/useCurrentUser";
+import { useAuth } from "../../user/pages/AuthContext";
 import { markRoomAsRead } from "../../../api/chat.api";
+import { getApplicantAvatar } from "../../../shared/hooks/avatar";
+import { AvatarDisplay } from "../../../shared/components/AvatarDisplay";
+import { ReportModal } from "../../report/components";
+import { submitReport } from "../../../api/report.api";
 import "../styles/ChatSlide.css";
 
 interface ChatSlideModalProps {
@@ -53,8 +57,9 @@ export function ChatSlideModal({
   const [isClosing, setIsClosing] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>("active");
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { email: currentUserEmail, id: currentUserId } = useCurrentUser();
+  const { userId } = useAuth();
   const [readMessageCounts, setReadMessageCounts] = useState<Record<string, number>>({});
+  const [showReport, setShowReport] = useState(false);
 
   // 모달 닫을 때 애니메이션
   const handleClose = () => {
@@ -101,7 +106,7 @@ export function ChatSlideModal({
 
   const getPostInfo = (chat: OneOnOneChat): ChatPostInfo => {
     // 채팅 객체에 이미 모든 정보가 있으므로 바로 반환
-    const isIamAuthor = chat.postAuthorId === currentUserEmail;
+    const isIamAuthor = chat.postAuthorId === userId;
     
     return {
       id: chat.postId,
@@ -114,7 +119,7 @@ export function ChatSlideModal({
 
   const getOtherUser = (chat: OneOnOneChat) => {
     // 상대방 정보 가져오기
-    const isIamAuthor = chat.postAuthorId === currentUserEmail;
+    const isIamAuthor = chat.postAuthorId === userId;
     return isIamAuthor ? chat.applicant : chat.postAuthor;
   };
 
@@ -153,29 +158,6 @@ export function ChatSlideModal({
       otherUser: { name: string; email: string; avatarEmoji: string | null};
     }> = [];
 
-    // 내가 신청한 목록
-    // myApplications.filter(app => app.status === 'APPROVED').forEach(app => {
-    //   const hasChat = oneOnOneChats.some(
-    //     chat => chat.postId === String(app.matePostId) && chat.applicantId === currentUserEmail
-    //   );
-    //   if (!hasChat) {
-    //     available.push({
-    //       type: "sent",
-    //       postId: String(app.matePostId),
-    //       applicantId: undefined,
-    //       destination: app.postDestination,
-    //       startDate: app.startDate,
-    //       endDate: app.endDate,
-    //       post: null as any,
-    //       otherUser: { 
-    //         name: app.postAuthorName, 
-    //         email: app.postAuthorEmail, 
-    //         avatarEmoji: app.postAuthorAvatar ?? null
-    //       }
-    //     });
-    //   }
-    // });
-
     // 받은 신청 목록
     receivedApplications
     .filter(app => app.status?.toUpperCase() === 'APPROVED')
@@ -207,22 +189,6 @@ export function ChatSlideModal({
   };
 
   const availableChats = getAvailableChats();
-
-  // const handleCreateNewChat = (item: typeof availableChats[0]) => {
-  //   console.log("postId:", item.postId, "applicantId:", item.applicantId); 
-  //   onCreateOneOnOneChat(item.postId, item.applicantId);
-  //   // 채팅 생성 후 자동으로 해당 채팅방 열기
-  //   setTimeout(() => {
-  //     const newChat = oneOnOneChats.find(
-  //       chat => chat.postId === item.postId && 
-  //       (chat.applicantId === item.otherUser.email || chat.postAuthorId === item.otherUser.email)
-  //     );
-  //     if (newChat) {
-  //       const post = getPostInfo(newChat);
-  //       setSelectedChat({ type: "one-on-one", chat: newChat, post });
-  //     }
-  //   }, 100);
-  // };
 
   const handleCreateNewChat = async (item: typeof availableChats[0]) => {
     const newRoom = await onCreateOneOnOneChat(item.postId, item.applicantId);
@@ -280,7 +246,7 @@ export function ChatSlideModal({
                 </div>
               </div>
               <button onClick={handleClose} className="chat-slide-closeBtn">
-                <X size={24} />
+                <X size={20} />
               </button>
             </div>
 
@@ -346,7 +312,7 @@ export function ChatSlideModal({
                           <div className="chat-slide-chatCardContent">
                             <div className="chat-slide-avatarWrapper">
                               <div className={`chat-slide-avatar chat-slide-avatarPink`}>
-                                {item.otherUser.avatarEmoji || "👤"}
+                                <AvatarDisplay avatar={getApplicantAvatar(null, item.otherUser.avatarEmoji)} />
                               </div>
                               <div className="chat-slide-onlineDot"></div>
                             </div>
@@ -398,15 +364,12 @@ export function ChatSlideModal({
                             <div className="chat-slide-chatCardContent" onClick={() => handleSelectOneOnOne(chat)}>
                               <div className="chat-slide-avatarWrapper">
                                 <div className={`chat-slide-avatar chat-slide-avatarPink`} style={{ overflow: "hidden" }}>
-                                  {otherUser.profileImage ? (
-                                    <img 
-                                      src={otherUser.profileImage} 
-                                      alt={otherUser.name}
-                                      style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }}
-                                    />
-                                ) : (
-                                  otherUser.avatarEmoji || "👤"
-                                )}
+                                  <AvatarDisplay 
+                                    avatar={getApplicantAvatar(
+                                      otherUser.profileImage, 
+                                      otherUser.avatarEmoji
+                                    )} 
+                                  />
                               </div>
                                 {chat.unreadCount > 0 && (
                                   <div style={{
@@ -479,7 +442,7 @@ export function ChatSlideModal({
                               <div className="chat-slide-chatCardContent">
                                 <div className="chat-slide-avatarWrapper">
                                   <div className={`chat-slide-avatar chat-slide-avatarPink`}>
-                                    {item.otherUser.avatarEmoji || "👤"}
+                                    <AvatarDisplay avatar={getApplicantAvatar(null, item.otherUser.avatarEmoji)} />
                                   </div>
                                   <div className="chat-slide-onlineDot"></div>
                                 </div>
@@ -513,21 +476,34 @@ export function ChatSlideModal({
             </div>
           </>
         ) : (
+          <>
+            {(() => {
+            const otherUser = getOtherUser(selectedChat.chat);
+            return(
           // 채팅 화면
           <>
             <div className="chat-slide-header">
               <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                 <div className={`chat-slide-avatar chat-slide-avatarPink`} style={{ width: "40px", height: "40px", fontSize: "20px" }}>
-                  {selectedChat.post.author.avatarEmoji}
+                  <AvatarDisplay avatar={getApplicantAvatar(otherUser.profileImage, otherUser.avatarEmoji)} />
                 </div>
                 <div>
-                  <div style={{ fontWeight: 700, fontSize: "16px" }}>{selectedChat.post.author.name}</div>
+                  <div style={{ fontWeight: 700, fontSize: "16px" }}>{otherUser.name}</div>
                   <div style={{ fontSize: "13px", opacity: 0.8 }}>📍 {selectedChat.post.destination}</div>
                 </div>
               </div>
-              <button onClick={() => setSelectedChat(null)} className="chat-slide-closeBtn">
-                <X size={20} />
-              </button>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <button
+                  onClick={() => setShowReport(true)}
+                  className="chat-slide-reportBtn"
+                  title="신고하기"
+                >
+                  <Siren size={20} />
+                </button>
+                <button onClick={() => setSelectedChat(null)} className="chat-slide-closeBtn">
+                  <X size={20} />
+                </button>
+              </div>
             </div>
 
             {/* 만료 배너 */}
@@ -552,10 +528,10 @@ export function ChatSlideModal({
                     );
                   }
                   
-                  const myEmail = selectedChat.chat.postAuthor.id === currentUserId
-                    ? selectedChat.chat.postAuthor.email
-                    : selectedChat.chat.applicant.email;
-                  const isMyMessage = msg.senderId === myEmail;
+                  const myId = selectedChat.chat.postAuthor.id === userId
+                    ? selectedChat.chat.postAuthor.id
+                    : selectedChat.chat.applicant.id;
+                  const isMyMessage = msg.senderId === myId;
 
                   return (
                     <div key={msg.id} style={{ display: "flex", justifyContent: isMyMessage ? "flex-end" : "flex-start" }}>
@@ -627,8 +603,32 @@ export function ChatSlideModal({
               })()}
             </div>
           </>
-        )}
+          );
+          })()}
+        </>
+      )}
       </div>
+
+      {selectedChat && (
+        <ReportModal
+          show={showReport}
+          targetType="채팅"
+          targetAuthor={getOtherUser(selectedChat.chat).name}
+          onClose={() => setShowReport(false)}
+          onSubmit={async (reason, detail) => {
+            const otherUser = getOtherUser(selectedChat.chat);
+            await submitReport({
+              reportedUserId: otherUser.id,
+              location: "CHAT",
+              targetId: Number(selectedChat.chat.id),
+              reason,
+              detail,
+              contentSnapshot: selectedChat.chat.messages.at(-1)?.content,
+              reportedNickname: otherUser.name,
+            });
+          }}
+        />
+      )}
     </>
   );
 }

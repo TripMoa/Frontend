@@ -7,7 +7,7 @@
 /** 채팅 메시지 (백엔드 ChatMessageResponse 매칭) */
 export interface ChatMessage {
   id: string;
-  senderId: string;       // Member.email
+  senderId: number;       // Member.Id
   senderName: string;
   senderAvatar: string;   // profileImage
   content: string;
@@ -29,8 +29,8 @@ export interface ChatMemberInfo {
 export interface OneOnOneChat {
   id: string;
   postId: string;
-  postAuthorId: string;     // author email
-  applicantId: string;      // applicant email
+  postAuthorId: number;     // author id
+  applicantId: number;      // applicant id
   destination: string;
   startDate: string;
   endDate: string;

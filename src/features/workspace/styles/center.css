@@ -1382,12 +1382,16 @@
   box-shadow: 2px 2px 0px #000;
 }
 
+.nc-pin-btn.disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
 .nc-pin-btn i {
   font-size: 14px;
   transform: rotate(25deg);
 }
 
-/* pinned 상태일 때 태그가 버튼과 겹치지 않도록 */
 .notice-card .nc-tag {
   margin-right: 52px;
 }
@@ -1424,6 +1428,43 @@
 }
 .notice-card.green {
   background: #e8f5e9;
+}
+
+.notice-container.empty {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+}
+
+.notice-empty {
+  flex: 1;
+  min-height: 420px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transform: translateY(-40px);
+  color: #9ca3af;
+  text-align: center;
+}
+
+.notice-empty i {
+  font-size: 42px;
+  margin-bottom: 14px;
+  color: #c7cbd1;
+}
+
+.notice-empty p {
+  margin: 0 0 8px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.notice-empty span {
+  font-size: 13px;
+  color: #b0b5bd;
 }
 
 .ws-body {

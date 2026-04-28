@@ -555,6 +555,23 @@
   background: #ddd;
 }
 
+.chat-slide-reportBtn {
+  border: 2px solid black;
+  color: white;
+  background: black;
+  font-size: 20px;
+  cursor: pointer;
+  transition: background 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+}
+
+.chat-slide-reportBtn:hover {
+  color: red;
+}
+
 @keyframes slideDown {
   from { transform: translateY(-100%); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }

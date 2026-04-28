@@ -5,6 +5,8 @@ import {
   GENDER_PREFERENCE_MAP,
   AGE_GROUP_MAP
 } from "./mate.constants";
+import { getAccessToken } from "../../../api/api";
+import { useAuth } from "../../user/pages/AuthContext";
 
 const API_BASE_URL = "http://localhost:8080/api";
 
@@ -16,18 +18,23 @@ export function useMate() {
   const [error, setError] = useState<string | null>(null);
   const [passedPosts, setPassedPosts] = useState<Post[]>([]);
   const [expiredPosts, setExpiredPosts] = useState<Post[]>([]);
-  const token = localStorage.getItem("accessToken");
+  const { isAuthenticated } = useAuth();
 
   const fetchPosts = useCallback(async () => {
+    const token = getAccessToken();
     setLoading(true);
     setError(null);
     try {
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
       const response = await fetch(`${API_BASE_URL}/mate/`, {
         method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
+        headers,
       });
 
       if (!response.ok) {
@@ -55,6 +62,7 @@ export function useMate() {
     ageGroup: string;
     content: string;
   }): Promise<Post | null> => {
+    const token = getAccessToken();
     setLoading(true);
     setError(null);
 
@@ -105,16 +113,21 @@ export function useMate() {
   }, []);
 
   const fetchPostDetail = useCallback(async (postId: number): Promise<Post | null> => {
+    const token = getAccessToken();
     setLoading(true);
     setError(null);
 
     try {
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
       const response = await fetch(`${API_BASE_URL}/mate/${postId}`, {
         method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
+        headers,
       });
 
       if (!response.ok) {
@@ -132,6 +145,7 @@ export function useMate() {
   }, []);
 
   const deletePost = useCallback(async (postId: number): Promise<boolean> => {
+    const token = getAccessToken();
     setLoading(true);
     setError(null);
 
@@ -159,6 +173,7 @@ export function useMate() {
   }, []);
 
   const toggleLike = useCallback(async (postId: number): Promise<LikeResponse | null> => {
+    const token = getAccessToken();
     try {
       const response = await fetch(`${API_BASE_URL}/mate/${postId}/like`, {
         method: "POST",
@@ -193,6 +208,7 @@ export function useMate() {
     }
   }, []);
 
+  const token = getAccessToken();
   // 1. 받은 신청 목록 불러오기
   const fetchReceivedApplications = useCallback(async () => {
     try {
@@ -240,14 +256,54 @@ export function useMate() {
   const fetchSentApplications = useCallback(async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/mate/applications/sent`, {
-        headers: { "Authorization": `Bearer ${localStorage.getItem("accessToken")}`}
+        headers: { "Authorization": `Bearer ${token}`}
       });
       if(!response.ok) throw new Error("데이터 로딩 실패");
       const data = await response.json();
       setApplications(data);
     } catch (err) {
     }
-  }, []);
+  }, [token]);
+
+  // 4. 보낸 신청서 삭제하기(만료된 게시글)
+  const deleteSentApplication = useCallback(async (applyId: string): Promise<boolean> => {
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/mate/applications/${applyId}/sent`, {
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${token}`}
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "신청서 삭제에 실패했습니다.");
+      }
+      await fetchSentApplications();
+      return true;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "신청서 삭제에 실패했습니다.");
+      return false;
+    }
+  }, [token, fetchSentApplications]);
+
+// 5. 받은 신청서 삭제하기
+  const deleteReceivedApplication = useCallback(async (applyId: string): Promise<boolean> => {
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/mate/applications/${applyId}/received`, {
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${token}`}
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "신청서 삭제에 실패했습니다.");
+      }
+      await fetchReceivedApplications();
+      return true;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "신청서 삭제에 실패했습니다.");
+      return false;
+    }
+  }, [token, fetchReceivedApplications]);
 
   const passPost = useCallback(async (postId: number) => {
     const target = posts.find(p => p.id === postId);
@@ -289,6 +345,7 @@ export function useMate() {
 
   const fetchPassedPosts = useCallback(async () => {
     try {
+      if(!isAuthenticated) return;
       const response = await fetch(`${API_BASE_URL}/mate/posts/passed`, {
         method: "GET",
         headers: {
@@ -306,13 +363,18 @@ export function useMate() {
 
   const fetchExpiredPosts = useCallback(async () => {
     try {
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
       const response = await fetch(`${API_BASE_URL}/mate/posts/expired`, {
         method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
-        },
+        headers,
       });
+
       if (!response.ok) throw new Error("EXPIRED 목록을 불러오는데 실패했습니다.");
       const data: Post[] = await response.json();
       setExpiredPosts(data);
@@ -344,6 +406,8 @@ export function useMate() {
     getApplicantStatus: (id: string) => {
       const app = receivedApplications.find(a => String(a.id) === String(id));
       return app?.status || "pending"; 
-    }
+    },
+    deleteSentApplication,
+    deleteReceivedApplication,
   };
 }

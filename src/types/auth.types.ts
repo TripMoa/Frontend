@@ -4,9 +4,23 @@
 // Enums & Common
 // ===================
 
+export type AgeVerificationStatus = "UNVERIFIED" | "VERIFIED" | "UNDERAGE";
+
 export type Gender = "MALE" | "FEMALE" | "OTHER" | null;
 
 export type ProfileType = "CUSTOM" | "AVATAR";
+
+export type RefreshTokenResponse = {
+  accessToken?: string;
+  authenticated: boolean;
+  reason?: "SUSPENDED" | string;
+  message?: string;
+};
+
+export type TravelStyleOption = {
+  id: number;
+  name: string;
+};
 
 // ===================
 // Request DTO
@@ -34,11 +48,6 @@ export interface UserUpdateRequestDto {
 // Response DTO
 // ===================
 
-export interface RefreshTokenResponse {
-  accessToken: string;
-  refreshToken: string;
-}
-
 export interface CheckEmailResponse {
   exists: boolean;
   userId: number | null;
@@ -46,22 +55,43 @@ export interface CheckEmailResponse {
   name: string | null;
 }
 
+export interface AgeVerificationResponse {
+  ageVerified: boolean;
+  ageVerificationStatus: AgeVerificationStatus;
+}
+
 export interface UserResponse {
+  // 식별
   id: number;
+
+  // 기본 정보
   nickname: string;
   name: string | null;
   email: string | null;
-  provider: string | null;
   notificationEmail: string | null;
   gender: Gender;
+  birthDate: string | null; // "YYYY-MM-DD"
   mbti: string | null;
+
+  // 프로필 이미지
   profileImage: string | null;
-  profileType?: ProfileType;
+  profileType: ProfileType;
   avatarEmoji: string | null;
   avatarColor: string | null;
-  birthDate: string | null; // LocalDate -> "YYYY-MM-DD"
+
+  // 소셜 계정
+  provider: string | null;
+  linkedProviders: string[];
+
+  // 잠금 여부
   nameLocked: boolean;
   genderLocked: boolean;
   birthLocked: boolean;
+
+  // 인증
+  ageVerified: boolean;
+  ageVerificationStatus: AgeVerificationStatus;
+
+  // 여행 스타일
   travelStyles: string[];
 }

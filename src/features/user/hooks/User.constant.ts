@@ -1,10 +1,16 @@
 // constants/user.constants.ts
 
-export const STORAGE_KEYS = {
-  USER_PROFILE: "tripmoa_user_profile",
-} as const;
+export const GENDER_OPTIONS = [
+  { label: "남성", value: "MALE" },
+  { label: "여성", value: "FEMALE" },
+  { label: "기타", value: "OTHER" },
+] as const;
 
-export const GENDERS = ["남성", "여성", "기타"] as const;
+export const PRIVACY_ITEMS = [
+  { id: "isPrivateName", label: "이름" },
+  { id: "isPrivateAge", label: "나이" },
+  { id: "isPrivateGender", label: "성별" },
+] as const;
 
 export const MBTI_TYPES = [
   "INTJ",
@@ -24,25 +30,6 @@ export const MBTI_TYPES = [
   "ESTP",
   "ESFP",
 ];
-
-export const TRAVEL_STYLES = [
-  "맛집탐방",
-  "액티비티",
-  "힐링",
-  "문화탐방",
-  "쇼핑",
-  "자연",
-  "사진",
-  "야경",
-  "로컬체험",
-  "카페투어",
-  "축제",
-  "역사탐방",
-  "야외활동",
-  "미식투어",
-  "럭셔리",
-  "배낭여행",
-] as const;
 
 // 랜덤 아바타용 이모지
 export const AVATAR_EMOJIS = [
@@ -116,25 +103,14 @@ export const AVATAR_COLORS = [
   "#FFC8B8",
 ] as const;
 
-export const DEFAULT_PROFILE = {
-  photo: "",
-  nickname: "",
-  name: "",
-  birthDate: "",
-  gender: "",
-  mbti: "",
-  travelStyles: [] as string[],
-  isVerified: false,
-} as const;
-
 // 모달 내용
 export const MODAL_MESSAGES = {
   VERIFY: {
-    TITLE: "본인 인증",
+    TITLE: "성인 이용 안내",
     DESCRIPTION:
-      "실제 서비스에서는 휴대폰 인증, 아이핀 인증 등이 진행됩니다.\n데모에서는 바로 인증이 완료됩니다.",
-    BUTTON: "인증하기",
-    SUCCESS: "✅ 본인 인증이 완료되었습니다!",
+      "현재 휴대폰 본인인증 기능은 제공되지 않습니다.\n생년월일 정보를 기준으로 성인 여부를 확인합니다.\n미성년자의 이용에 대한 책임은 본인에게 있습니다.",
+    BUTTON: "확인",
+    SUCCESS: "안내 확인이 완료되었습니다!",
   },
   DELETE: {
     TITLE: "계정을 탈퇴하시겠습니까?",
@@ -144,7 +120,7 @@ export const MODAL_MESSAGES = {
     SUCCESS: "계정이 탈퇴되었습니다. 그동안 이용해주셔서 감사합니다.",
   },
   SAVE: {
-    SUCCESS: "✅ 프로필이 저장되었습니다!",
+    SUCCESS: "프로필이 저장되었습니다!",
   },
 } as const;
 

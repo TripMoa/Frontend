@@ -1,13 +1,15 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import {
-  ArrowLeft, Heart, Calendar, Users, Wallet, Eye
-} from "lucide-react";
+import { ArrowLeft, Heart, Calendar, Users, Wallet, Eye } from "lucide-react";
 import type { Post, ApplicationRequest } from "../hooks/mate.types";
-import { getCurrentUserId, calculateDuration, getAgeGroupLabel, getGenderPreferenceLabel, getTransportLabel } from "../hooks/mate.constants";
+import { calculateDuration, getAgeGroupLabel, getGenderPreferenceLabel, getTransportLabel } from "../hooks/mate.constants";
 import { useMate } from "../hooks/useMate";
+import { useAuth } from "../../user/pages/AuthContext";
 import { isPostExpired } from "../hooks/mate.util";
+import { useAccessGuard } from "../../../shared/hooks";
+import { ActionPromptModal } from "../../../shared/components";
 import "../styles/MateDetail.css";
+import { getAccessToken } from "../../../api/api";
 
 export default function MateDetail() {
   const { postId } = useParams<{ postId: string }>();
@@ -22,9 +24,29 @@ export default function MateDetail() {
 
   const hasLoadedRef = useRef(false);
 
-  const currentUserId = getCurrentUserId();
-  const isAuthor = post?.author.id === currentUserId;
-  const token = localStorage.getItem("accessToken");
+  const { userId } = useAuth();
+  const isAuthor = post?.author?.id === userId;
+  const token = getAccessToken();
+
+  const {
+    showLoginModal,
+    showAdultModal,
+    closeLoginModal,
+    closeAdultModal,
+    moveToLogin,
+    moveToMypageForVerification,
+    requireLogin,
+    requireAdultVerified,
+  } = useAccessGuard();
+
+  const handleApplyClick = () => {
+    if (requireAdultVerified()) setShowApplyForm(true);
+  };
+
+  const handleLikeClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    if (requireLogin()) onLikeClick(e);
+  };  
 
   useEffect(() => {
     const loadPost = async () => {
@@ -67,7 +89,7 @@ export default function MateDetail() {
 
     setPost(prev => prev ? {
       ...prev,
-      isLiked: !prev.liked,
+      liked: !prev.liked,
       likesCount: prev.liked ? prev.likesCount - 1 : prev.likesCount + 1
     } : null);
 
@@ -76,13 +98,13 @@ export default function MateDetail() {
     if (result) {
       setPost(prev => prev ? {
         ...prev,
-        isLiked: result.liked,
+        liked: result.liked,
         likesCount: result.count
       } : null);
     } else {
       setPost(prev => prev ? {
         ...prev,
-        isLiked: prevLiked,
+        liked: prevLiked,
         likesCount: prevCount
       } : null);
     }
@@ -150,6 +172,7 @@ export default function MateDetail() {
   const isExpire = isPostExpired(post);
 
   return (
+    <>
     <div className="mate-detail">
       <div className="max-w-4xl mx-auto px-6 py-16">
         
@@ -177,7 +200,7 @@ export default function MateDetail() {
 
             {/* 좋아요 버튼 (활성화 시 빨간색) */}
             <button
-              onClick={onLikeClick}
+              onClick={handleLikeClick}
               className={`stat-box btn-like ${isLiked ? "active" : ""}`}
             >
               <Heart 
@@ -331,7 +354,7 @@ export default function MateDetail() {
               ) : !showApplyForm ? (
                 <button
                   disabled={hasApplied || post.currentParticipant >= post.maxParticipant}
-                  onClick={() => setShowApplyForm(true)}
+                  onClick={handleApplyClick}
                   className="apply-button"
                 >
                   {hasApplied ? "Applied" : post.currentParticipant >= post.maxParticipant ? "Full" : "Apply Now"}
@@ -374,5 +397,27 @@ export default function MateDetail() {
         <div className="py-12"></div>
       </div>
     </div>
+
+    <ActionPromptModal
+      open={showLoginModal}
+      title=">> LOGIN REQUIRED"
+      headline="Members Only"
+      description="이 기능은 로그인 후 이용할 수 있습니다"
+      cancelText="둘러보기"
+      confirmText="로그인하기"
+      onClose={closeLoginModal}
+      onConfirm={moveToLogin}
+    />
+    <ActionPromptModal
+      open={showAdultModal}
+      title=">> PROFILE INCOMPLETE"
+      headline="Complete Your Profile"
+      description="성인 인증이 필요한 서비스입니다."
+      cancelText="닫기"
+      confirmText="프로필 설정하기"
+      onClose={closeAdultModal}
+      onConfirm={moveToMypageForVerification}
+    />
+    </>
   );
 }

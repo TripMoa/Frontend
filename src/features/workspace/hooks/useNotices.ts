@@ -1,7 +1,6 @@
 // src/features/workspace/hooks/useNotices.ts
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
-
+import { useTripContext } from "./useTripContext";
 import {
   createNoticeItem,
   deleteNoticeItem,
@@ -103,8 +102,7 @@ const mapNoticeItem = (item: NoticeItemResponse): NoticeItem => ({
 });
 
 export const useNotices = (): UseNoticesStore => {
-  const params = useParams<{ tripId: string }>();
-  const tripId = Number(params.tripId);
+  const { tripId } = useTripContext();
 
   const { currentNoticeGroupId, reloadNoticeGroups } = useWorkspaceCore();
 

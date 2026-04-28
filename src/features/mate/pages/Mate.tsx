@@ -3,13 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { ArrowUpDown, User, ChevronDown } from "lucide-react";
 
 import { useMate } from "../hooks/useMate";
+import { useAuth } from "../../user/pages/AuthContext";
 import { useChat } from "../../chat/hooks/useChat";
 import { ChatFAB } from "../../chat/components/ChatFAB";
 import { ChatSlideModal } from "../../chat/components/ChatSlideModal";
 import { useMateFilters } from "../hooks/useMateFilters";
 import { usePagination } from "../hooks/usePagination";
 import { SORT_OPTIONS, getSortLabel, POSTS_PER_PAGE } from "../hooks/mate.constants";
-import { useCurrentUser } from "../../chat/hooks/useCurrentUser";
 
 import {
   MateHeader,
@@ -26,9 +26,11 @@ import "../styles/Mate.css";
 import "../../chat/styles/ChatFAB.css";
 import type { MateTabKey } from "../components/MateTabs";
 import { getTodayKST, isPostExpired } from "../hooks/mate.util";
+import { getAccessToken } from "../../../api/api";
 
 export default function Mate() {
   const navigate = useNavigate();
+  const { userId } = useAuth();
 
   const [writeError, setWriteError] = useState<string | null>(null);
   const [showWriteModal, setShowWriteModal] = useState(false);
@@ -56,6 +58,8 @@ export default function Mate() {
     fetchPassedPosts, fetchExpiredPosts,
     passPost, unpassPost,
     passedPosts, expiredPosts,
+    deleteSentApplication,
+    deleteReceivedApplication,
    } = useMate();
 
   const {
@@ -76,9 +80,6 @@ export default function Mate() {
     handleResetAll,
   } = useMateFilters(posts);
 
-  const currentUser = useCurrentUser();
-  const currentUserId = currentUser?.id;
-
   const passedIdSet = useMemo(
     () => new Set(passedPosts.map(p => p.id)),
     [passedPosts]
@@ -93,7 +94,7 @@ export default function Mate() {
       case 'liked':
         return filteredPosts.filter(p => p.liked);
       case 'my':
-        return posts.filter(p => p.author.id === currentUserId);
+        return posts.filter(p => p.author.id === userId);
       case 'all':
       default:
         return filteredPosts.filter(p =>
@@ -107,7 +108,7 @@ export default function Mate() {
     passed: passedPosts.length,
     expired: expiredPosts.length,
     liked: posts.filter(p => p.liked).length,
-    my: posts.filter(p => p.author.id === currentUserId).length,
+    my: posts.filter(p => p.author.id === userId).length,
   };
 
   const { currentPage, setCurrentPage, totalPages, visiblePosts } = usePagination(
@@ -228,6 +229,7 @@ export default function Mate() {
     [toggleLike]
   );
 
+  const token = getAccessToken();
 
   return (
     <section className="page-section">
@@ -437,6 +439,7 @@ export default function Mate() {
           return app?.status || "pending";
          }}
          onClose={() => setShowSentModal(false)}
+         onDeleteSent={(applyId) => deleteSentApplication(applyId)}
         />
       )}
 
@@ -450,9 +453,11 @@ export default function Mate() {
           onApprove={(id, postId, applicantId) => handleApplicationStatus(id, 'approve')}
           onReject={(id) => handleApplicationStatus(id, 'reject')}
           onClose={() => setShowReceivedModal(false)}
+          onDeleteReceived={(applyId) => deleteReceivedApplication(applyId)}
         />
       )}
 
+      {token && (
       <ChatFAB 
         onClick={() => {
           refreshRooms();
@@ -460,8 +465,8 @@ export default function Mate() {
           fetchReceivedApplications();
           setShowChatModal(true);
         }}
-        unreadCount={0}
       />
+      )}
 
       {showChatModal && (
         <ChatSlideModal

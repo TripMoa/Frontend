@@ -1,16 +1,25 @@
 // src/api/auth.api.ts
 
-import { api } from "./api";
+import { api, clearAuthState, notifyAuthLogout } from "./api";
 import type {
   CheckEmailRequest,
   CheckEmailResponse,
   UserResponse,
   UserUpdateRequestDto,
+  TravelStyleOption,
+  AgeVerificationResponse,
 } from "../types/auth.types";
+
+const LOGOUT_SYNC_KEY = "logout-event";
 
 // 로그인된 사용자 정보 조회
 export const getMyInfo = () => {
   return api.get<UserResponse>("/users/me");
+};
+
+// 여행 스타일 목록 조회
+export const getTravelStyles = () => {
+  return api.get<TravelStyleOption[]>("/users/styles");
 };
 
 // 이메일 가입 여부 확인
@@ -23,28 +32,38 @@ export const updateMyInfo = (data: UserUpdateRequestDto) => {
   return api.patch<void>("/users/me", data);
 };
 
+export const verifyAdult = () => {
+  return api.patch<AgeVerificationResponse>("/users/me/age-verification");
+};
+
+// 로그아웃 상태를 다른 탭에도 동기화
+const broadcastLogoutToOtherTabs = (reason: "manual" | "withdraw") => {
+  localStorage.setItem(
+    LOGOUT_SYNC_KEY,
+    JSON.stringify({
+      reason,
+      timestamp: Date.now(),
+    }),
+  );
+};
+
 // 로그아웃
 export const logout = async () => {
   try {
     await api.post<void>("/logout");
-  } catch (error) {
-    console.error("서버 로그아웃 처리 실패:", error);
+  } catch {
+    // 서버 로그아웃 실패해도 클라이언트 상태는 초기화
   } finally {
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("refreshToken");
-    localStorage.removeItem("userId");
-    // localStorage.clear();
+    clearAuthState();
+    broadcastLogoutToOtherTabs("manual");
+    notifyAuthLogout("manual");
   }
 };
 
 // 회원 탈퇴
 export const withdraw = async () => {
-  const response = await api.delete<void>("/users/me");
-
-  localStorage.removeItem("accessToken");
-  localStorage.removeItem("refreshToken");
-  localStorage.removeItem("userId");
-  // localStorage.clear();
-
-  return response;
+  await api.delete("/users/me");
+  clearAuthState();
+  broadcastLogoutToOtherTabs("withdraw");
+  notifyAuthLogout("withdraw");
 };
