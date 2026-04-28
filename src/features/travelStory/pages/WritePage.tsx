@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import ConfirmModal from '../components/modals/ConfirmModal';
+import { useLocation } from "react-router-dom";
+import { createDraft } from "../../../api/drafts.api"; 
 import { useImageUpload } from '../hooks/useImageUpload';
 import { getTags } from '../../../api/travelTags.api';
 import type { Tag } from '../../../api/travelTags.api';
@@ -9,11 +11,13 @@ import '../styles/WritePage.css';
 interface WritePageProps {
   goBack: () => void;
   onPublish: () => void;
-  onSaveDraft: () => void;
+  onSaveDraft: (type: "FREE" | "REVIEW") => void;
   onOpenDraftModal: () => void;
   editingStory?: any;
   currentDraft?: any;
   drafts: any[];
+
+  type?: "FREE" | "REVIEW";
 }
 
 // 기간 선택용 커스텀 드롭다운
@@ -159,16 +163,46 @@ function WritePage({
   onOpenDraftModal,
   editingStory, 
   currentDraft,
-  drafts
+  drafts,
+  type = "FREE" 
 }: WritePageProps) {
 
+  console.log("type:", type);
+
+const defaultContent = `
+<p style="margin-bottom: 12px;">
+  여행 이야기를 자유롭게 작성해주세요...
+</p>
+
+<div class="tip-box">
+  <p style="display:flex; align-items:center; gap:6px;">
+    
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+      <path d="M4 7h4l2-2h4l2 2h4v12H4z" stroke="currentColor" stroke-width="2"/>
+      <circle cx="12" cy="13" r="3" stroke="currentColor" stroke-width="2"/>
+    </svg>
+
+    <span> 사진 업로드 TIP</span>
+
+  </p>
+
+  <ul>
+    <li> - 최대 10장까지 업로드 가능</li>
+    <li> - 슬라이더 형식으로 자동 정렬</li>
+    <li> - COVER 버튼으로 대표 이미지 설정</li>
+  </ul>
+</div>
+`;
+
+  const [title, setTitle] = useState('');
+  const [destination, setDestination] = useState('');
+  const [isCleared, setIsCleared] = useState(false);
+  const [isCenter, setIsCenter] = useState(false);
   const [selectedCoverImage, setSelectedCoverImage] = useState<string | null>(editingStory?.image || null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [confirmAction, setConfirmAction] = useState<'back' | null>(null);
-  const [activeHeading, setActiveHeading] = useState<'h2' | 'h3' | null>(null);
-  const [activeList, setActiveList] = useState<'ol' | 'ul' | null>(null);
   const [travelStyles, setTravelStyles] = useState<Tag[]>([]);
-  const [selectedTags, setSelectedTags] = useState<number[]>([]);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [duration, setDuration] = useState(editingStory?.duration || currentDraft?.duration || '선택하세요');
   const [departureDate, setDepartureDate] = useState(editingStory?.departureDate || currentDraft?.departureDate || '');  // 여기
   const [expenses, setExpenses] = useState({
@@ -178,6 +212,7 @@ function WritePage({
     attraction: '',
     shopping: ''
   });
+
 
   // 경비 합계 계산
   const totalExpenses = 
@@ -190,21 +225,25 @@ function WritePage({
   const { upload } = useImageUpload();
   const editorRef = useRef<HTMLDivElement>(null);
 
+const toggleCenter = () => { 
+  if (isCenter) { 
+     execCmd('justifyLeft');
+   } else {
+     execCmd('justifyCenter'); 
+   }  setIsCenter(!isCenter); 
+ };
+
   // 나가기 경고 표시 여부 판단 - 제목/목적지/본문 중 하나라도 입력되면 true
   const hasContent = useCallback(() => {
-    if (editingStory || currentDraft) {
-      return true;
-    }
-    const titleInput = document.querySelector('.title-input') as HTMLInputElement;
-    const destinationInput = document.querySelector('.form-input') as HTMLInputElement;
-    const editor = document.querySelector('.blog-editor-wysiwyg') as HTMLDivElement;
+    const editor = editorRef.current;
+    const content = editor?.innerHTML;
 
-    const title = titleInput?.value.trim();
-    const destination = destinationInput?.value.trim();
-    const content = editor?.innerText.trim();
-
-    return !!(title || destination || (content && content !== '여행 이야기를 자유롭게 작성해주세요...'));
-  }, [editingStory, currentDraft]);
+    return !!(
+      title.trim() ||
+      destination.trim() ||
+      (content && content.trim() !== '' && content !== '여행 이야기를 자유롭게 작성해주세요...')
+    );
+  }, [title, destination]);
 
   // 상대 경로 이미지 URL을 절대 경로로 변환
   const normalizeImageUrl = (url: string) => {
@@ -243,6 +282,11 @@ function WritePage({
     fetchTags();
   }, []);
 
+    useEffect(() => {
+    setTitle(editingStory?.title || currentDraft?.title || '');
+    setDestination(editingStory?.destination || currentDraft?.destination || '');
+}, [editingStory, currentDraft]);
+
   // 브라우저 뒤로가기 감지 - 내용 있으면 모달, 없으면 그냥 나가기
   useEffect(() => {
     window.history.pushState({ page: 'write' }, '', window.location.href);
@@ -261,16 +305,23 @@ function WritePage({
     return () => window.removeEventListener('popstate', handlePopState);
   }, [hasContent, goBack]);
 
-  // 수정 모드 진입 시 태그 초기화 - 태그 이름 → ID 변환 후 선택 상태 설정
   useEffect(() => {
-    if (editingStory?.tags && travelStyles.length > 0) {
-      const tagNames = editingStory.tags.split(',').map((t: string) => t.trim());
-      const tagIds = travelStyles
-        .filter(t => tagNames.includes(t.name))
-        .map(t => t.id);
-      setSelectedTags(tagIds);
+  const editor = editorRef.current;
+  if (!editor) return;
+
+  editor.innerHTML = defaultContent;
+}, []);
+
+// 수정 모드 진입 시 저장된 태그 문자열을 분리하여 선택 상태로 초기화
+  useEffect(() => {
+    if (editingStory?.tags) {
+      const tagNames = editingStory.tags
+        .split(',')
+        .map((t: string) => t.trim());
+
+      setSelectedTags(tagNames);
     }
-  }, [travelStyles, editingStory]);
+  }, [editingStory]);
 
   // 수정 모드 진입 시 경비 초기화
   useEffect(() => {
@@ -287,10 +338,24 @@ function WritePage({
 
   // 수정/임시저장 모드 진입 시 에디터 내용 초기화
   useEffect(() => {
+    console.log('현재 draft:', currentDraft);
     if (editorRef.current && (editingStory || currentDraft)) {
       editorRef.current.innerHTML = editingStory?.description || currentDraft?.description || '';
     }
   }, [editingStory?.id, currentDraft?.id]);
+
+  useEffect(() => {
+  if (!currentDraft) {
+    setTitle('');
+    setDestination('');
+
+    if (editorRef.current) {
+      editorRef.current.innerHTML = '';
+    }
+
+    setIsCleared(false);
+  }
+}, [currentDraft]);
 
   // 페이지 이탈 시 브라우저 경고 (새로고침/탭 닫기)
   useEffect(() => {
@@ -499,7 +564,9 @@ function WritePage({
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    const editor = document.querySelector('.blog-editor-wysiwyg') as HTMLDivElement;
+    const editor = editorRef.current;
+    if (!editor) return;
+    
     const currentImages = editor?.querySelectorAll('.slider-images-container img').length || 0;
 
     if (currentImages >= 10) {
@@ -1015,68 +1082,15 @@ function WritePage({
     e.target.value = '';
   };
 
-  // execCommand 래퍼 - 에디터 포커스 후 명령 실행
   const execCmd = (command: string, value?: string) => {
-    const editor = editorRef.current;
-    if (!editor) return;
-    editor.focus();
-    document.execCommand(command, false, value ?? undefined);
-  };
-
-
-// 헤딩 삽입 - DOM 직접 조작
-const insertHeading = (headingTag: 'h2' | 'h3') => {
   const editor = editorRef.current;
   if (!editor) return;
-  // editor.focus() 삭제
 
-  const sel = window.getSelection();
-  const h = document.createElement(headingTag);
-
-  if (sel && sel.rangeCount > 0 && editor.contains(sel.anchorNode)) {
-    const range = sel.getRangeAt(0);
-    const selectedText = range.toString();
-    h.textContent = selectedText || '\u200B';
-    range.deleteContents();
-    range.insertNode(h);
-  } else {
-    h.textContent = '\u200B';
-    editor.appendChild(h);
-  }
-
-  const newRange = document.createRange();
-  newRange.setStart(h, h.childNodes.length);
-  newRange.collapse(true);
-  sel?.removeAllRanges();
-  sel?.addRange(newRange);
-};
-
-// 목록 삽입 - DOM 직접 조작
-const insertList = (listType: 'ol' | 'ul') => {
-  const editor = editorRef.current;
-  if (!editor) return;
   editor.focus();
-
-  const sel = window.getSelection();
-  const list = document.createElement(listType);
-  const li = document.createElement('li');
-  li.textContent = '\u200B';
-  list.appendChild(li);
-
-  if (sel && sel.rangeCount > 0 && editor.contains(sel.anchorNode)) {
-    const range = sel.getRangeAt(0);
-    range.deleteContents();
-    range.insertNode(list);
-  } else {
-    editor.appendChild(list);
-  }
-
-  const newRange = document.createRange();
-  newRange.setStart(li, 0);
-  newRange.collapse(true);
-  sel?.removeAllRanges();
-  sel?.addRange(newRange);
+  document.execCommand(command, false, value ?? undefined);
 };
+
+
 
   // 에디터 내용이 비었을 때 innerHTML 초기화 → placeholder 재표시
 const handleEditorInput = () => {
@@ -1089,26 +1103,23 @@ const handleEditorInput = () => {
   ) {
     editor.innerHTML = '';
   }
+  
 };
 
   // 발행 버튼 클릭 - 유효성 검사 후 publishData를 window에 저장하고 onPublish 호출
   const handlePublishClick = () => {
-    const titleInput = document.querySelector('.title-input') as HTMLInputElement;
-    const destinationInput = document.querySelector('.form-input') as HTMLInputElement;
-    const editor = document.querySelector('.blog-editor-wysiwyg') as HTMLDivElement;
-    const title = titleInput?.value.trim();
-    const destination = destinationInput?.value.trim();
+    const titleTrimmed = title.trim();
+    const destinationTrimmed = destination.trim();
+    const editor = editorRef.current;
     const content = editor?.innerHTML.trim();
 
-    if (!title) {
+    if (!titleTrimmed) {
       alert('제목을 입력해주세요.');
-      titleInput?.focus();
       return;
     }
 
-    if (!destination) {
+    if (!destinationTrimmed) {
       alert('목적지를 입력해주세요.');
-      destinationInput?.focus();
       return;
     }
 
@@ -1125,10 +1136,7 @@ const handleEditorInput = () => {
     }
 
     // 선택된 태그 ID → 태그 이름 문자열로 변환
-    const tagNames = selectedTags
-      .map(id => travelStyles.find(t => t.id === id)?.name)
-      .filter(name => name)
-      .join(',');
+    const tagNames = selectedTags.join(',');
 
     const expensesJson = JSON.stringify({
       transportation: parseInt(expenses.transportation) || 0,
@@ -1159,6 +1167,11 @@ const handleEditorInput = () => {
 
   return (
     <div className="detail-page-container">
+
+      <div style={{ color: "red", fontWeight: "bold" }}>
+      현재 타입: {type}
+    </div>
+
       <div className="write-page-content">
 
         <div className="write-header">
@@ -1193,7 +1206,7 @@ const handleEditorInput = () => {
           <div className="write-header-actions">
             {/* 임시저장 버튼 + 저장된 개수 뱃지 */}
             <div className="write-draft-btn-wrapper">
-              <button onClick={onSaveDraft} className="write-draft-btn">
+              <button onClick={() => onSaveDraft(type)} className="write-draft-btn">
                 SAVE DRAFT
               </button>
               <div onClick={onOpenDraftModal} className="write-draft-badge">
@@ -1212,77 +1225,78 @@ const handleEditorInput = () => {
           <div className="write-title-section">
             <label className="write-label">TITLE *</label>
             <input
-              key={`title-${editingStory?.id || 'new'}`}
               type="text"
               className="title-input"
               placeholder="여행 제목을 입력하세요."
-              defaultValue={editingStory?.title || currentDraft?.title || ''}
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
               maxLength={15}
             />
           </div>
 
           {/* 목적지 / 기간 / 출발일 3열 그리드 */}
-          <div className="write-form-grid">
-            <div>
-              <label className="write-label">DESTINATION *</label>
-              <input
-                key={`dest-${editingStory?.id || 'new'}`}
-                type="text"
-                className="form-input"
-                placeholder="예: 경주"
-                defaultValue={editingStory?.destination || currentDraft?.destination || ''}
-              />
-            </div>
+          {type === "REVIEW" && (
+            <div className="write-form-grid">
+              <div>
+                <label className="write-label">DESTINATION *</label>
+                <input
+                  className="form-input"
+                  placeholder="예 : 경주"
+                  value={destination}
+                  onChange={(e) => setDestination(e.target.value)}
+                />
+                </div>
 
-            <div>
-              <label className="write-label">DURATION</label>
-              <CustomSelect
-                value={duration}
-                options={['선택하세요', '당일치기', '1박 2일', '2박 3일', '3박 4일', '4박 5일', '5박 6일', '1주일 이상']}
-                onChange={(val) => setDuration(val)}
-              />
-            </div>
+                <div>
+                  <label className="write-label">DURATION</label>
+                  <CustomSelect
+                    value={duration}
+                    options={['선택하세요', '당일치기', '1박 2일', '2박 3일', '3박 4일', '4박 5일', '5박 6일', '1주일 이상']}
+                    onChange={(val) => setDuration(val)}
+                  />
+                </div>
 
-            <div>
-              <label className="write-label">DEPARTURE DATE</label>
-              <CustomDatePicker
-                value={departureDate}
-                onChange={(val) => setDepartureDate(val)}
-              />
-            </div>
-          </div>
+                <div>
+                  <label className="write-label">DEPARTURE DATE</label>
+                  <CustomDatePicker
+                    value={departureDate}
+                    onChange={(val) => setDepartureDate(val)}
+                  />
+                </div>
 
-          {/* 경비 입력 - 항목별 입력 후 합계 자동 계산 */}
-          <div className="write-expenses-section">
-            <label className="write-label">여행 경비</label>
-            <div className="write-expenses-container">
-              <div className="write-expenses-grid">
-                {[
-                  { label: '교통비', key: 'transportation', placeholder: '0' },
-                  { label: '숙박비', key: 'accommodation', placeholder: '0' },
-                  { label: '식비', key: 'food', placeholder: '0' },
-                  { label: '관광/입장료', key: 'attraction', placeholder: '0' },
-                  { label: '쇼핑/기타', key: 'shopping', placeholder: '0' },
-                ].map(({ label, key, placeholder }) => (
-                  <div key={key} className="write-expense-row">
-                    <label className="write-expense-label">{label}</label>
-                    <input
-                      type="number"
-                      value={expenses[key as keyof typeof expenses]}
-                      onChange={(e) => setExpenses({ ...expenses, [key]: e.target.value })}
-                      placeholder={placeholder}
-                      className="write-expense-input"
-                    />
-                    <span className="write-expense-unit">원</span>
+                {/* 경비 입력 */}
+                <div className="write-expenses-section">
+                  <label className="write-label">여행 경비</label>
+                  <div className="write-expenses-container">
+                    <div className="write-expenses-grid">
+                      {[
+                        { label: '교통비', key: 'transportation', placeholder: '0' },
+                        { label: '숙박비', key: 'accommodation', placeholder: '0' },
+                        { label: '식비', key: 'food', placeholder: '0' },
+                        { label: '관광/입장료', key: 'attraction', placeholder: '0' },
+                        { label: '쇼핑/기타', key: 'shopping', placeholder: '0' },
+                      ].map(({ label, key, placeholder }) => (
+                        <div key={key} className="write-expense-row">
+                          <label className="write-expense-label">{label}</label>
+                          <input
+                            type="number"
+                            value={expenses[key as keyof typeof expenses]}
+                            onChange={(e) => setExpenses({ ...expenses, [key]: e.target.value })}
+                            placeholder={placeholder}
+                            className="write-expense-input"
+                          />
+                          <span className="write-expense-unit">원</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="write-expenses-total">
+                      <span>총 합계</span>
+                      <span>{totalExpenses.toLocaleString()}원</span>
+                    </div>
                   </div>
-                ))}
+                </div>
               </div>
-              <div className="write-expenses-total">
-                <span>총 합계</span>
-                <span>{totalExpenses.toLocaleString()}원</span>
-              </div>
-            </div>
-          </div>
+            )}
 
           {/* 여행 스타일 태그 선택 - 토글 방식 */}
           <div className="write-tags-section">
@@ -1292,12 +1306,12 @@ const handleEditorInput = () => {
                 <button
                   key={tag.id}
                   type="button"
-                  className={`style-tag ${selectedTags.includes(tag.id) ? 'selected' : ''}`}
+                  className={`style-tag ${selectedTags.includes(tag.name) ? 'selected' : ''}`}
                   onClick={() => {
                     setSelectedTags(prev =>
-                      prev.includes(tag.id)
-                        ? prev.filter(id => id !== tag.id)
-                        : [...prev, tag.id]
+                      prev.includes(tag.name)
+                        ? prev.filter(t => t !== tag.name)
+                        : [...prev, tag.name]
                     );
                   }}
                 >
@@ -1310,27 +1324,8 @@ const handleEditorInput = () => {
           {/* 본문 에디터 - 툴바 + WYSIWYG */}
           <div className="write-editor-section">
             <label className="write-label">CONTENT *</label>
-
-            <div className="write-toolbar">
-              {/* 헤딩 1 */}
-              <button type="button" className="toolbar-btn" title="헤딩"
-                onMouseDown={(e) => { e.preventDefault(); insertHeading('h2'); }}>
-                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                  <path d="M4 6v12M4 12h8M12 6v12"/>
-                  <text x="15" y="17" fontSize="9" fontWeight="900" fill="currentColor" stroke="none">1</text>
-                </svg>
-              </button>
-
-              {/* 헤딩 2 */}
-              <button type="button" className="toolbar-btn" title="서브헤딩"
-                onMouseDown={(e) => { e.preventDefault(); insertHeading('h3'); }}>
-                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                  <path d="M4 6v12M4 12h7M11 6v12"/>
-                  <text x="14" y="17" fontSize="8" fontWeight="900" fill="currentColor" stroke="none">2</text>
-                </svg>
-              </button>
-
-              <div className="toolbar-divider" />
+              
+              <div className="write-toolbar">
 
               {/* 볼드 */}
               <button type="button" className="toolbar-btn" title="볼드"
@@ -1343,33 +1338,17 @@ const handleEditorInput = () => {
 
               <div className="toolbar-divider" />
 
-              {/* 숫자 목록 */}
-              <button type="button" className="toolbar-btn" title="숫자 목록"
-                onMouseDown={(e) => { e.preventDefault(); insertList('ol'); }}>
-                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                  <line x1="10" y1="6" x2="21" y2="6"/>
-                  <line x1="10" y1="12" x2="21" y2="12"/>
-                  <line x1="10" y1="18" x2="21" y2="18"/>
-                  <text x="2" y="8" fontSize="6" fontWeight="900" fill="currentColor" stroke="none">1.</text>
-                  <text x="2" y="14" fontSize="6" fontWeight="900" fill="currentColor" stroke="none">2.</text>
-                  <text x="2" y="20" fontSize="6" fontWeight="900" fill="currentColor" stroke="none">3.</text>
-                </svg>
-              </button>
 
-              {/* 기호 목록 */}
-              <button type="button" className="toolbar-btn" title="기호 목록"
-                onMouseDown={(e) => { e.preventDefault(); insertList('ul'); }}>
-                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                  <circle cx="5" cy="6" r="1.5" fill="currentColor" stroke="none"/>
-                  <circle cx="5" cy="12" r="1.5" fill="currentColor" stroke="none"/>
-                  <circle cx="5" cy="18" r="1.5" fill="currentColor" stroke="none"/>
-                  <line x1="9" y1="6" x2="21" y2="6"/>
-                  <line x1="9" y1="12" x2="21" y2="12"/>
-                  <line x1="9" y1="18" x2="21" y2="18"/>
+              {/* 가운데 정렬 */}
+              <button type="button" className="toolbar-btn" title="가운데 정렬"
+                onMouseDown={(e) => { e.preventDefault();  toggleCenter();}}>
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                  <path d="M7 15v2h10v-2H7zm-4 6h18v-2H3v2zm0-8h18v-2H3v2zm4-6v2h10V7H7zM3 3v2h18V3H3z"/>
                 </svg>
               </button>
 
               <div className="toolbar-divider" />
+
 
               {/* 이미지 삽입 - 파일 선택 후 handleImageInsert 호출 */}
               <label className="toolbar-btn" title="이미지 삽입">
@@ -1378,24 +1357,26 @@ const handleEditorInput = () => {
                 </svg>
                 <input type="file" accept="image/*" multiple onChange={handleImageInsert} style={{ display: 'none' }} />
               </label>
-
-              {/* 가운데 정렬 */}
-              <button type="button" className="toolbar-btn" title="가운데 정렬"
-                onMouseDown={(e) => { e.preventDefault(); execCmd('justifyCenter'); }}>
-                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-                  <path d="M7 15v2h10v-2H7zm-4 6h18v-2H3v2zm0-8h18v-2H3v2zm4-6v2h10V7H7zM3 3v2h18V3H3z"/>
-                </svg>
-              </button>
             </div>
+            
 
             {/* WYSIWYG 에디터 본문 */}
             <div
-              ref={editorRef}
-              className="blog-editor-wysiwyg"
-              contentEditable="true"
-              suppressContentEditableWarning={true}
-              onInput={handleEditorInput}
-            ></div>
+             ref={editorRef}
+             className="blog-editor-wysiwyg"
+             contentEditable
+             suppressContentEditableWarning
+             onInput={handleEditorInput}
+             onFocus={() => {
+               const editor = editorRef.current;
+               if (!editor) return;
+
+               if (!isCleared) {
+                 editor.innerHTML = '';
+                 setIsCleared(true);
+               }
+              }}
+            />
           </div>
         </div>
 
@@ -1413,5 +1394,6 @@ const handleEditorInput = () => {
     </div>
   );
 }
+
 
 export default WritePage;

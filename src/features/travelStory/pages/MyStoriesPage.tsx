@@ -1,6 +1,8 @@
 import StoryCard from '../components/StoryCard';
+import { useState } from 'react';
 import '../styles/travelStory.css';
 import '../styles/MyStoriesPage.css';
+
 
 interface MyStoriesPageProps {
   goBack: () => void;
@@ -17,6 +19,7 @@ interface MyStoriesPageProps {
   setShowLikesModal: (show: boolean) => void;
 }
 
+
 // 내 여행기 페이지 - 작성한 스토리 목록 및 통계(조회수, 좋아요, 저장 일정) 표시
 function MyStoriesPage({
   goBack,
@@ -32,6 +35,8 @@ function MyStoriesPage({
   setFollowedStories,
   setShowLikesModal
 }: MyStoriesPageProps) {
+
+  const [writeType, setWriteType] = useState<"FREE" | "REVIEW">("FREE");
   const stories = myStories;
 
   return (
@@ -48,6 +53,15 @@ function MyStoriesPage({
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style={{ width: '24px', height: '24px', fill: '#000' }}>
             <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
           </svg>
+        </button>
+
+        <button
+          onClick={() => {
+            setWriteType("REVIEW");     // 타입 먼저 설정
+            navigateToPage("write");    // 페이지 이동
+          }}
+        >
+          후기 작성 테스트
         </button>
 
         {/* 통계 카드 - 작성한 여행기 수, 총 조회수, 받은 좋아요 수, 저장한 일정 수 */}

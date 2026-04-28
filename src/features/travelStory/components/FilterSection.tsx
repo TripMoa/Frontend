@@ -14,6 +14,9 @@ interface FilterSectionProps {
     tags: string[];
   };
   setFilters: (filters: any) => void;
+
+  selectedType: 'ALL' | 'FREE' | 'REVIEW';
+  setSelectedType: (type: 'ALL' | 'FREE' | 'REVIEW') => void;
 }
 
 // 공통 드롭다운 선택 컴포넌트 (여행 기간, 예산대)
@@ -84,7 +87,12 @@ function CustomSelect({
   );
 }
 
-function FilterSection({ filters, setFilters }: FilterSectionProps) {
+function FilterSection({
+  filters,
+  setFilters,
+  selectedType,
+  setSelectedType
+}: FilterSectionProps) {
   const [travelStyles, setTravelStyles] = useState<Tag[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -140,13 +148,42 @@ function FilterSection({ filters, setFilters }: FilterSectionProps) {
   return (
     <div className="filter-section">
       <div className="filter-header">
-        <span className="filter-header-title">FILTERS</span>
+
+        {/* 타입 필터*/}
+    <div className="filter-tags-container">
+      <button
+        className={`filter-tag ${selectedType === 'ALL' ? 'selected' : ''}`}
+        onClick={() => setSelectedType('ALL')}
+      >
+        전체
+      </button>
+
+      <button
+        className={`filter-tag ${selectedType === 'FREE' ? 'selected' : ''}`}
+        onClick={() => setSelectedType('FREE')}
+      >
+        자유글
+      </button>
+
+      <button
+        className={`filter-tag ${selectedType === 'REVIEW' ? 'selected' : ''}`}
+        onClick={() => setSelectedType('REVIEW')}
+      >
+        여행후기
+      </button>
+    </div>
+        
         {hasActiveFilters && (
           <button className="filter-reset-btn" onClick={resetFilters}>
             [ RESET ALL ]
           </button>
         )}
       </div>
+
+        {/* <p className="filter-label">POST TYPE</p> */}
+
+    <span className="filter-header-title">FILTERS</span>
+
 
       <div className="filter-selects">
 
@@ -178,6 +215,9 @@ function FilterSection({ filters, setFilters }: FilterSectionProps) {
           </div>
         </div>
 
+        
+
+
         <CustomSelect
           label="여행 기간"
           value={filters.duration || '전체'}
@@ -192,6 +232,8 @@ function FilterSection({ filters, setFilters }: FilterSectionProps) {
           onChange={(val) => updateFilter('minBudget', val)}
         />
       </div>
+
+
 
       <div className="filter-divider">
         <span className="filter-style-label">TRAVEL STYLE</span>

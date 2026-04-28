@@ -432,11 +432,10 @@
 }
 
 /* 에디터 비어있을 때 placeholder - 사진 업로드 가이드 포함 */
-.blog-editor-wysiwyg:empty:before {
-  content: '여행 이야기를 자유롭게 작성해주세요...\A\A 사진 업로드 TIP\A• 최대 10장까지 업로드 가능\A• 슬라이더 형식으로 자동 정렬\A• COVER 버튼으로 대표 이미지 설정';
-  color: var(--text-gray);
-  white-space: pre-wrap;
-  line-height: 1.8;
+.blog-editor-wysiwyg:empty::before { 
+  content: attr(data-placeholder); 
+  color: #999; 
+  pointer-events: none; 
 }
 
 /* 에디터 내 이미지 슬라이더 래퍼 */
@@ -630,4 +629,14 @@
   background: #e5e5e5;
   border: 2px solid #000;
   font-weight: 700;
+}
+
+.toolbar-btn.active {
+  background-color: #e8e8e8;
+  color: #000;
+  border-radius: 4px;
+}
+
+.tip-box {
+  margin-top: 24px; 
 }

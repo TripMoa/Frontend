@@ -37,7 +37,7 @@ interface Draft {
   date: string;
 }
 
-function useTravelStory() {
+function useTravelStory(type: "FREE" | "REVIEW") {
   // 현재 페이지 상태 - URL 해시 또는 localStorage에서 복원
   const [currentPage, setCurrentPageState] = useState(() => {
     const hash = window.location.hash.slice(1);
@@ -436,6 +436,7 @@ function useTravelStory() {
     const expensesJson = publishData?.expenses || '';
 
     const draftData = {
+      type,
       title,
       description: content,
       destination,

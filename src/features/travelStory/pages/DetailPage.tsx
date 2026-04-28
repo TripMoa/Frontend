@@ -41,6 +41,9 @@ function DetailPage({
   onEdit,
   onDelete
 }: DetailPageProps) {
+
+  console.log("DETAIL TYPE:", story?.type);
+
   // 조회수 중복 증가 방지용 플래그
   const hasIncrementedViews = useRef(false);
   // props의 isFollowed가 없으면 followedStories 배열로 fallback
@@ -320,24 +323,30 @@ function DetailPage({
             <div className="detail-action-tooltip">LIKES</div>
           </div>
 
-          {/* 일정 저장 버튼 + 팝업 메뉴 */}
-          <div className="detail-action-tooltip-wrapper" ref={itineraryMenuRef}>
-            <button
-              onClick={() => setShowItineraryMenu(!showItineraryMenu)}
-              className={`detail-action-btn ${isFollowed ? 'active' : ''}`}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style={{ 
-                width: '20px', height: '20px',
-                fill: 'none',
-                stroke: isFollowed ? '#fff' : '#000',
-                strokeWidth: '3'
-              }}>
-                <line x1="12" y1="5" x2="12" y2="19"/>
-                <line x1="5" y1="12" x2="19" y2="12"/>
-              </svg>
-            </button>
-            <div className="detail-action-tooltip">USE THIS ITINERARY</div>
+        {/* 일정 저장 버튼 + 팝업 메뉴 */}
+        {story?.type === "REVIEW" && (
+          <>
+            <div className="detail-action-tooltip-wrapper" ref={itineraryMenuRef}>
+              <button
+                onClick={() => setShowItineraryMenu(!showItineraryMenu)}
+                className={`detail-action-btn ${isFollowed ? 'active' : ''}`}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style={{ 
+                  width: '20px', height: '20px',
+                  fill: 'none',
+                  stroke: isFollowed ? '#fff' : '#000',
+                  strokeWidth: '3'
+                  }}>
+                  <line x1="12" y1="5" x2="12" y2="19"/>
+                  <line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+              </button>   
 
+              <div className="detail-action-tooltip">
+                USE THIS ITINERARY
+              </div>
+            </div> {/* 👈 이거 추가 (닫기!) */}
+        
             {/* 저장/제거 선택 팝업 */}
             {showItineraryMenu && (
               <div className="itinerary-menu">
@@ -367,7 +376,8 @@ function DetailPage({
                 </button>
               </div>
             )}
-          </div>
+          </>
+        )}  
 
           <div className="detail-date-info">
             <div className="detail-views-text">{story.views} VIEWS</div>

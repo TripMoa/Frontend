@@ -16,6 +16,7 @@ const SORT_OPTIONS = ['기본 순서', '예산 높은 순', '예산 낮은 순',
 // 여행 스토리 기능 전체를 관리하는 루트 컴포넌트 (페이지 라우팅, 정렬, 페이지네이션 포함)
 function TravelStory() {
   const hook = useTravelStory();
+  const [selectedType, setSelectedType] = useState<'ALL' | 'FREE' | 'REVIEW'>('ALL');
   const [hoveredDraftId, setHoveredDraftId] = useState<number | null>(null);
   const [deleteHoverId, setDeleteHoverId] = useState<number | null>(null);
   const [sortBy, setSortBy] = useState('기본 순서');
@@ -84,12 +85,27 @@ function TravelStory() {
   }
 
   // 페이지네이션 계산 - 정렬된 스토리를 ITEMS_PER_PAGE 단위로 분할
+  // 정렬
   const sortedStories = getSortedStories();
-  const totalPages = Math.ceil(sortedStories.length / ITEMS_PER_PAGE);
-  const pagedStories = sortedStories.slice(
+
+  // 타입 필터 (정렬된 기준으로!)
+  const filteredStories = sortedStories.filter((story: any) => {
+    console.log(story.type);
+
+    if (selectedType === 'ALL') return true;
+    return story.type === selectedType;
+  });
+
+
+
+  // 페이지네이션 (필터 기준)
+  const pagedStories = filteredStories.slice(
     (currentPageNum - 1) * ITEMS_PER_PAGE,
     currentPageNum * ITEMS_PER_PAGE
   );
+
+  // 4️totalPages도 필터 기준으로 바꿔야 함
+  const totalPages = Math.ceil(filteredStories.length / ITEMS_PER_PAGE);
 
   // API 오류 발생 시 에러 표시
   if (hook.error) {
@@ -134,10 +150,14 @@ function TravelStory() {
             </div>
           </div>
 
+          
+
           {/* 여행지, 기간, 예산, 태그 필터 */}
           <FilterSection
             filters={hook.filters}
             setFilters={hook.setFilters}
+            selectedType={selectedType}
+            setSelectedType={setSelectedType}
           />
 
           {/* 정렬 드롭다운 및 검색 결과 수 표시 */}

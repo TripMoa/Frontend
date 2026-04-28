@@ -2,6 +2,7 @@ import '../styles/travelStory.css';
 import '../styles/MainPage.css';
 import StoryCard from '../components/StoryCard';
 import FilterSection from '../components/FilterSection';
+import { useState } from 'react';
 
 interface MainPageProps {
   stories: any[];
@@ -23,6 +24,7 @@ interface MainPageProps {
 
 // 메인 페이지 - 헤더 / 필터 / 스토리 카드 목록 렌더링
 function MainPage({
+  
   stories,
   likedStories,
   setLikedStories,
@@ -33,7 +35,17 @@ function MainPage({
   filters,
   setFilters
 }: MainPageProps) {
+
+  const [selectedType, setSelectedType] = useState<'ALL' | 'FREE' | 'REVIEW'>('ALL');
+
+  const filteredStories = stories.filter((story) => {
+    if (selectedType === 'ALL') return true;
+    return story.type === selectedType;
+  });
+
   return (
+
+    
     <div className="travel-story-app container">
 
       {/* 상단 헤더 - 페이지 제목 + MY STORIES / WRITE 버튼 */}
@@ -55,6 +67,7 @@ function MainPage({
             MY STORIES
           </button>
 
+
           {/* 글쓰기 페이지 이동 버튼 */}
           <button
             onClick={() => navigateToPage('write')}
@@ -68,12 +81,18 @@ function MainPage({
         </div>
       </div>
 
+
       {/* 필터 섹션 - 목적지 / 기간 / 예산 / 태그 */}
-      <FilterSection filters={filters} setFilters={setFilters} />
+      <FilterSection
+        filters={filters}
+        setFilters={setFilters}
+        selectedType={selectedType}
+        setSelectedType={setSelectedType}
+      />
 
       {/* 스토리 카드 목록 */}
       <div className="posts-grid">
-        {stories.map((story) => (
+       {filteredStories.map((story) => (
           <StoryCard
             key={story.id}
             story={story}
@@ -87,7 +106,7 @@ function MainPage({
       </div>
 
       {/* 스토리 없을 때 빈 상태 안내 */}
-      {stories.length === 0 && (
+      {filteredStories.length === 0 && (
         <div className="main-empty">
           <div className="main-empty-text">여행기가 없습니다.</div>
           <div className="main-empty-subtext">첫 번째 여행기를 작성해보세요!</div>
