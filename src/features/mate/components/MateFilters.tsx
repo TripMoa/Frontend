@@ -4,7 +4,8 @@ import "react-datepicker/dist/react-datepicker.css";
 import "../styles/datepicker.css";
 import "../styles/MateFilters.css";
 import { MapPin, Calendar, ChevronDown } from "lucide-react";
-import { ALL_TAGS, GENDER_OPTIONS, AGE_OPTIONS } from "../hooks/mate.constants";
+import { GENDER_OPTIONS, AGE_GROUP_OPTIONS } from "../hooks/mate.constants";
+import { getTravelStyles } from "../../../api/auth.api";
 
 interface MateFiltersProps {
   locationFilter: string;
@@ -35,6 +36,13 @@ export function MateFilters({
 }: MateFiltersProps) {
   const [showGenderDropdown, setShowGenderDropdown] = useState(false);
   const [showAgeDropdown, setShowAgeDropdown] = useState(false);
+  const [tags, setTags] = useState<string[]>([]);
+
+  useEffect(() => {
+    getTravelStyles()
+      .then((res) => setTags(res.data.map((s) => s.name)))
+      .catch(() => setTags([]));
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent): void => {
@@ -146,7 +154,7 @@ export function MateFilters({
 
           {showAgeDropdown && (
             <div className={`absolute top-full left-0 right-0 mt-1 bg-white z-50 overflow-hidden dropdown`}>
-              {AGE_OPTIONS.map((option, idx) => (
+              {AGE_GROUP_OPTIONS.map((option, idx) => (
                 <button
                   key={option}
                   type="button"
@@ -156,7 +164,7 @@ export function MateFilters({
                     setCurrentPage(1);
                   }}
                   className={`w-full px-4 py-2.5 text-left text-sm font-mono font-bold transition-colors ${
-                    idx !== AGE_OPTIONS.length - 1 ? "border-b border-black/10" : ""
+                    idx !== AGE_GROUP_OPTIONS.length - 1 ? "border-b border-black/10" : ""
                   } ${ageFilter === option ? "bgActive" : "bg-white text-black hover:bg-[#eee]"}`}
                 >
                   {option}
@@ -172,7 +180,7 @@ export function MateFilters({
       {/* Tags */}
       <div className="flex items-center gap-2 flex-wrap">
         <span className="text-xs font-bold text-black/50 uppercase mr-1">TAGS</span>
-        {ALL_TAGS.map((tag) => (
+        {tags.map((tag) => (
           <button
             key={tag}
             onClick={() => toggleTag(tag)}
