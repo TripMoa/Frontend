@@ -3,22 +3,13 @@
 import { useNavigate } from "react-router-dom";
 import { logout } from "../../api/auth.api";
 import { useAuth } from "../../features/user/pages/AuthContext";
-import { useUserProfile } from "../../features/user/hooks/useUserSetting";
 import { useAccessGuard } from "../hooks/useAccessGuard";
 import { ActionPromptModal } from "./ActionPromptModal";
 
 function HeaderProfileMenu() {
   const navigate = useNavigate();
-  const { profile } = useUserProfile();
+  const { profile } = useAuth();
 
-  const fallbackProfile = {
-    profileType: "AVATAR" as const,
-    avatarEmoji: "😊",
-    avatarColor: "#FFE5E5",
-    profileImage: "",
-  };
-
-  const displayProfile = profile ?? fallbackProfile;
   const handleLogout = async () => {
     await logout();
     navigate("/", { replace: true });
@@ -30,6 +21,10 @@ function HeaderProfileMenu() {
     });
   };
 
+  if (!profile) {
+    return <div style={{ width: "40px", height: "40px" }} />;
+  }
+
   return (
     <>
       <button className="nav-item btn-profile" type="button">
@@ -37,19 +32,18 @@ function HeaderProfileMenu() {
           className="profile-circle"
           style={{
             background:
-              displayProfile.profileType === "CUSTOM"
+              profile.profileType === "CUSTOM"
                 ? "transparent"
-                : displayProfile.avatarColor || "#FFE5E5",
+                : profile.avatarColor || "#FFE5E5",
             overflow: "hidden",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
           }}
         >
-          {displayProfile.profileType === "CUSTOM" &&
-          displayProfile.profileImage ? (
+          {profile.profileType === "CUSTOM" && profile.profileImage ? (
             <img
-              src={displayProfile.profileImage}
+              src={profile.profileImage}
               alt="Profile"
               style={{
                 width: "100%",
@@ -59,7 +53,7 @@ function HeaderProfileMenu() {
             />
           ) : (
             <span style={{ fontSize: "1.2rem" }}>
-              {displayProfile.avatarEmoji || "😊"}
+              {profile.avatarEmoji || "😊"}
             </span>
           )}
         </div>
