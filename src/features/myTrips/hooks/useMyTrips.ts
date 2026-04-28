@@ -8,8 +8,7 @@ import {
   getInvitedTrips,
   getMyTrips,
 } from "../../../api/trip.api";
-import { getMyInfo } from "../../../api/auth.api";
-import type { UserResponse } from "../../../types/auth.types";
+import { useAuth } from "../../user/pages/AuthContext";
 import type {
   MyTripSummaryResponse,
   TripCreateRequest,
@@ -61,10 +60,9 @@ export const useMyTrips = () => {
   const [trips, setTrips] = useState<MyTripSummaryResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [currentUser, setCurrentUser] = useState<UserResponse | null>(null);
-
   const [formData, setFormData] = useState<TripCreateFormState>(INITIAL_FORM);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { profile: currentUser } = useAuth();
 
   const resetForm = useCallback(() => {
     setFormData(INITIAL_FORM);
@@ -95,19 +93,6 @@ export const useMyTrips = () => {
   useEffect(() => {
     fetchTrips(filter);
   }, [filter, fetchTrips]);
-
-  useEffect(() => {
-    const loadMyInfo = async () => {
-      try {
-        const response = await getMyInfo();
-        setCurrentUser(response.data);
-      } catch (infoError) {
-        console.error("내 정보 조회 실패:", infoError);
-      }
-    };
-
-    loadMyInfo();
-  }, []);
 
   const removeTrip = useCallback(
     async (tripId: number) => {
