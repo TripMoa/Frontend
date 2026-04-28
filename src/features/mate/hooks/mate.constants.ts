@@ -1,13 +1,9 @@
 // mate.constants.ts
 export const POSTS_PER_PAGE = 5;
 
-export const ALL_TAGS = ["맛집탐방", "액티비티", "힐링", "문화탐방", "쇼핑", "자연", "사진", "야경"];
-
 // 프론트엔드 표시용 옵션들
 export const GENDER_OPTIONS = ["남성", "여성", "무관"];
-export const AGE_OPTIONS = ["전체", "20대", "30대", "40대", "50대+"];
 export const TRANSPORT_OPTIONS = ["비행기", "버스", "기차", "자차", "도보", "렌트카", "택시"];
-export const TRAVEL_TYPE_OPTIONS = ["맛집탐방", "액티비티", "힐링", "문화탐방", "쇼핑", "자연", "사진", "야경"];
 export const AGE_GROUP_OPTIONS = ["전체", "20대", "30대", "40대", "50대+"];
 
 // 백엔드 enum 매핑 (한글 -> 영문 enum)
@@ -72,37 +68,6 @@ export const getAgeGroupLabel = (value: string): string => {
   return AGE_GROUP_REVERSE_MAP[value] || value || "전체";
 };
 
-// // 공항 코드 매핑 (필요한 경우 사용)
-// export const AIRPORT_MAP: { [key: string]: string } = {
-//   ICN: "인천",
-//   GMP: "김포",
-//   PUS: "부산",
-//   CJU: "제주",
-//   SEL: "서울",
-// };
-
-// export const getAirportDisplay = (code: string): string => {
-//   return AIRPORT_MAP[code] || code;
-// };
-
-// 현재 사용자 정보 가져오기 (API에서 가져오는 것으로 변경 필요)
-export const getCurrentUserId = (): number => {
-  const userId = localStorage.getItem('userId');
-  return userId ? parseInt(userId) : 0;
-};
-
-export const CURRENT_USER_ID = getCurrentUserId();
-
-/**
- * 여행 기간 계산 (startDate와 endDate로부터 "N박 M일" 형식 생성)
- * @param startDate - 시작일 (YYYY-MM-DD 형식)
- * @param endDate - 종료일 (YYYY-MM-DD 형식)
- * @returns "N박 M일" 형식의 문자열
- * 
- * @example
- * calculateDuration("2024-03-15", "2024-03-20") // "5박 6일"
- * calculateDuration("2024-03-15", "2024-03-15") // "당일치기"
- */
 export const calculateDuration = (startDate: string, endDate: string): string => {
   try {
     const start = new Date(startDate);
@@ -137,12 +102,6 @@ export const calculateDuration = (startDate: string, endDate: string): string =>
   }
 };
 
-/**
- * 여행 기간을 일수로만 반환
- * @param startDate - 시작일 (YYYY-MM-DD 형식)
- * @param endDate - 종료일 (YYYY-MM-DD 형식)
- * @returns 일수
- */
 export const calculateDays = (startDate: string, endDate: string): number => {
   try {
     const start = new Date(startDate);
