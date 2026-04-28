@@ -144,7 +144,13 @@ const mapUserResponseToProfile = (data: UserResponse): UserProfile => {
 export function useUserProfile() {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const { isAuthenticated, authReady, clearAuth } = useAuth();
+
+  const {
+    isAuthenticated,
+    authReady,
+    clearAuth,
+    setProfile: setAuthProfile,
+  } = useAuth();
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
@@ -252,6 +258,7 @@ export function useUserProfile() {
       const mapped = mapUserResponseToProfile(refreshed.data);
       setProfile(mapped);
       setOriginalProfile(mapped);
+      setAuthProfile(refreshed.data);
 
       return true;
     } catch {
