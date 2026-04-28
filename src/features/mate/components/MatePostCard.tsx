@@ -2,7 +2,6 @@ import type { MouseEvent } from "react";
 import { Heart, X, Eye, RotateCcw, Trash2 } from "lucide-react";
 import type { Post } from "../hooks/mate.types";
 import { 
-  getCurrentUserId,
   TRANSPORT_REVERSE_MAP,
   GENDER_PREFERENCE_REVERSE_MAP,
   AGE_GROUP_REVERSE_MAP
