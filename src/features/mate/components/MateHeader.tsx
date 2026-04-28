@@ -1,7 +1,7 @@
 import { PenSquare, Inbox, User } from "lucide-react";
-import { useAuthGuard } from "../hooks/useAuthGuard";
-import { LoginPromptModal } from "./LoginPromptModal";
-import { ProfileIncompleteModal } from "./ProfileIncompleteModal";
+import { ActionPromptModal } from "../../../shared/components";
+import { useAccessGuard } from "../../../shared/hooks";
+import { useUserProfile } from "../../user/hooks";
 import "../styles/MateHeader.css";
 
 interface MateHeaderProps {
@@ -22,10 +22,30 @@ export function MateHeader({
   receivedPendingCount,
 }: MateHeaderProps){
 
+  const { profile } = useUserProfile();
+
   const {
-    withLoginCheck, showLoginModal, closeLoginModal, goToLogin,
-    withProfileCheck, showProfileModal, closeProfileModal, goToProfileEdit,
-  } = useAuthGuard();
+    showLoginModal,
+    showAdultModal,
+    closeLoginModal,
+    closeAdultModal,
+    moveToLogin,
+    moveToMypageForVerification,
+    requireLogin,
+    requireAdultVerified,
+  } = useAccessGuard(profile);
+
+  const handleWriteClick = () => {
+    if (requireAdultVerified()) onWriteClick();
+  };
+
+  const handleMySentClick = () => {
+    if (requireLogin()) onMySentClick();
+  };
+
+  const handleReceivedClick = () => {
+    if (requireLogin()) onReceivedClick();
+  };
 
   return (
     <>
@@ -38,7 +58,7 @@ export function MateHeader({
         <div className="flex gap-3">
           <button 
             className="flex items-center gap-2 bg-white text-black px-5 py-2.5 transition-colors font-bold text-sm uppercase tracking-wide button"
-            onClick={() => withProfileCheck(onWriteClick)}
+            onClick={handleWriteClick}
           >
             <PenSquare className="w-4 h-4" />
             WRITE
@@ -46,7 +66,7 @@ export function MateHeader({
 
           <button 
             className="flex items-center gap-2 bg-white text-black px-5 py-2.5 transition-colors font-bold text-sm uppercase tracking-wide relative button"
-            onClick={() => withLoginCheck(onMySentClick)}
+            onClick={handleMySentClick}
           >
             <Inbox className="w-4 h-4" />
             MY SENT
@@ -59,7 +79,7 @@ export function MateHeader({
 
           <button 
             className="flex items-center gap-2 px-5 py-2.5 transition-colors font-bold text-sm uppercase tracking-wide relative button buttonDark"
-            onClick={() => withLoginCheck(onReceivedClick)}
+            onClick={handleReceivedClick}
           >
             <User className="w-4 h-4" />
             RECEIVED
@@ -73,16 +93,27 @@ export function MateHeader({
       </div>
     </div>
 
-    {showProfileModal && (
-      <ProfileIncompleteModal
-        onClose={closeProfileModal}
-        onGoToEdit={goToProfileEdit}
-      />
-    )}
+    <ActionPromptModal
+      open={showLoginModal}
+      title=">> LOGIN REQUIRED"
+      headline="Members Only"
+      description="이 기능은 로그인 후 이용할 수 있습니다"
+      cancelText="취소"
+      confirmText="로그인"
+      onClose={closeLoginModal}
+      onConfirm={moveToLogin}
+    />
 
-    {showLoginModal && (
-      <LoginPromptModal onClose={closeLoginModal} onLogin={goToLogin} />
-    )}
+    <ActionPromptModal
+      open={showAdultModal}
+      title=">> PROFILE INCOMPLETE"
+      headline="Complete Your Profile"
+      description="성인 인증이 필요한 서비스입니다."
+      cancelText="닫기"
+      confirmText="프로필 설정하기"
+      onClose={closeAdultModal}
+      onConfirm={moveToMypageForVerification}
+    />
     </>
   );
 }

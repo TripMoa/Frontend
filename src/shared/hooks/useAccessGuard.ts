@@ -30,7 +30,7 @@ export function useAccessGuard(profile?: AccessGuardProfile | null) {
 
   const moveToMypageForVerification = useCallback(() => {
     setShowAdultModal(false);
-    navigate("/mypage");
+    navigate("/setting");
   }, [navigate]);
 
   // 비로그인 상태에서 로그인 필요한 경우
