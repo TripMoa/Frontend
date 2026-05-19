@@ -17,11 +17,6 @@ export const useTopOption = () => {
 
   const closeEdit = () => setIsEditOpen(false);
 
-  const downloadPDF = () => {
-    alert("📄 PDF 다운로드를 시작합니다.");
-    close();
-  };
-
   const togglePrivacy = () => {
     setIsPrivate((p) => !p);
     close();
@@ -48,7 +43,6 @@ export const useTopOption = () => {
     toggle,
     openEdit,
     closeEdit,
-    downloadPDF,
     togglePrivacy,
   };
 };
