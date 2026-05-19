@@ -44,7 +44,7 @@ export const useVouchers = () => {
       setVouchers(response.data);
     } catch (error) {
       console.error("바우처 목록 조회 실패:", error);
-      alert("바우처 목록을 불러오지 못했습니다.");
+      setVouchers([]);
     } finally {
       setLoading(false);
     }
@@ -56,8 +56,7 @@ export const useVouchers = () => {
 
   const addVoucher = async (request: VoucherCreateRequest, file: File) => {
     if (!Number.isFinite(tripId) || tripId <= 0) {
-      alert("유효한 여행 정보가 없습니다.");
-      throw new Error("Invalid tripId");
+      throw new Error("유효한 여행 정보가 없습니다.");
     }
 
     try {
@@ -66,7 +65,6 @@ export const useVouchers = () => {
       return response.data;
     } catch (error) {
       console.error("바우처 등록 실패:", error);
-      alert("바우처 등록에 실패했습니다.");
       throw error;
     }
   };
@@ -77,8 +75,7 @@ export const useVouchers = () => {
     file?: File,
   ) => {
     if (!Number.isFinite(tripId) || tripId <= 0) {
-      alert("유효한 여행 정보가 없습니다.");
-      throw new Error("Invalid tripId");
+      throw new Error("유효한 여행 정보가 없습니다.");
     }
 
     try {
@@ -93,16 +90,13 @@ export const useVouchers = () => {
       return response.data;
     } catch (error) {
       console.error("바우처 수정 실패:", error);
-      alert("바우처 수정에 실패했습니다.");
       throw error;
     }
   };
 
   const removeVoucher = async (voucherId: number) => {
-    if (!confirm("정말 삭제하시겠습니까?")) return;
     if (!Number.isFinite(tripId) || tripId <= 0) {
-      alert("유효한 여행 정보가 없습니다.");
-      return;
+      throw new Error("유효한 여행 정보가 없습니다.");
     }
 
     try {
@@ -112,7 +106,7 @@ export const useVouchers = () => {
       );
     } catch (error) {
       console.error("바우처 삭제 실패:", error);
-      alert("바우처 삭제에 실패했습니다.");
+      throw error;
     }
   };
 
@@ -123,8 +117,7 @@ export const useVouchers = () => {
       );
 
       if (!target?.fileUrl) {
-        alert("첨부된 파일이 없습니다.");
-        return;
+        throw new Error("첨부된 파일이 없습니다.");
       }
 
       const link = document.createElement("a");
@@ -135,7 +128,7 @@ export const useVouchers = () => {
       document.body.removeChild(link);
     } catch (error) {
       console.error("바우처 다운로드 실패:", error);
-      alert("파일 다운로드에 실패했습니다.");
+      throw error;
     }
   };
 
@@ -146,8 +139,7 @@ export const useVouchers = () => {
       );
 
       if (!target?.fileUrl) {
-        alert("첨부된 파일이 없습니다.");
-        return;
+        throw new Error("첨부된 파일이 없습니다.");
       }
 
       window.open(
@@ -157,14 +149,13 @@ export const useVouchers = () => {
       );
     } catch (error) {
       console.error("바우처 미리보기 실패:", error);
-      alert("파일 미리보기에 실패했습니다.");
+      throw error;
     }
   };
 
   const fetchVoucherDetail = async (voucherId: number) => {
     if (!Number.isFinite(tripId) || tripId <= 0) {
-      alert("유효한 여행 정보가 없습니다.");
-      throw new Error("Invalid tripId");
+      throw new Error("유효한 여행 정보가 없습니다.");
     }
 
     try {
@@ -172,7 +163,6 @@ export const useVouchers = () => {
       return response.data;
     } catch (error) {
       console.error("바우처 상세 조회 실패:", error);
-      alert("바우처 상세를 불러오지 못했습니다.");
       throw error;
     }
   };

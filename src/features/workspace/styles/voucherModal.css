@@ -135,6 +135,24 @@
   cursor: not-allowed;
 }
 
+.vm-field input.is-error,
+.vm-file-row.is-error {
+  border-color: #ef4444 !important;
+  background: #fff5f5 !important;
+}
+
+.vm-field input.is-error::placeholder {
+  color: #ef4444;
+  font-weight: 700;
+}
+
+.vm-field-error {
+  margin-top: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #ef4444;
+}
+
 /* ===== Responsive ===== */
 @media (max-width: 640px) {
   .vm-modal {

@@ -366,6 +366,16 @@
   border-color: #fca5a5;
 }
 
+.pdm-field input.is-error {
+  border-color: #ef4444 !important;
+  background: #fff5f5 !important;
+}
+
+.pdm-field input.is-error::placeholder {
+  color: #ef4444;
+  font-weight: 700;
+}
+
 /* ===== Responsive ===== */
 @media (max-width: 880px) {
   .pdm-body {
