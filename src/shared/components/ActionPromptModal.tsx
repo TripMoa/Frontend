@@ -1,3 +1,6 @@
+// src/shared/components/ActionPromptModal.tsx
+
+import type { ReactNode } from "react";
 import "../styles/ActionPromptModal.css";
 
 interface ActionPromptModalProps {
@@ -7,8 +10,10 @@ interface ActionPromptModalProps {
   description: string;
   cancelText?: string;
   confirmText?: string;
+  hideCancel?: boolean;
   onClose: () => void;
   onConfirm: () => void;
+  children?: ReactNode;
 }
 
 export function ActionPromptModal({
@@ -18,48 +23,48 @@ export function ActionPromptModal({
   description,
   cancelText = "닫기",
   confirmText = "확인",
+  hideCancel = false,
   onClose,
   onConfirm,
+  children,
 }: ActionPromptModalProps) {
   if (!open) return null;
 
   return (
     <div
-      className="modal-overlay active"
+      className="action-prompt-overlay active"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
       <div
-        className="modal-window detail-window"
+        className="action-prompt-window"
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <div className="modal-header">
-          <span className="mh-title">{title}</span>
+        <div className="action-prompt-header">
+          <span className="action-prompt-title">{title}</span>
         </div>
 
-        <div
-          className="modal-body"
-          style={{ textAlign: "center", padding: "48px 32px" }}
-        >
-          <p className="text-xl font-black uppercase tracking-tight mb-2">
-            {headline}
-          </p>
-          <p className="text-sm text-black/50 font-bold mb-8">{description}</p>
+        <div className="action-prompt-body">
+          <p className="action-prompt-headline">{headline}</p>
+          <p className="action-prompt-description">{description}</p>
 
-          <div className="flex gap-4 justify-center">
-            <button
-              onClick={onClose}
-              className="px-6 py-3 border-3 border-black bg-white font-black uppercase text-sm hover:bg-[#eee] transition-all"
-              style={{ border: "3px solid #000" }}
-              type="button"
-            >
-              {cancelText}
-            </button>
+          {children && <div className="action-prompt-extra">{children}</div>}
+
+          <div className="action-prompt-buttons">
+            {!hideCancel && (
+              <button
+                onClick={onClose}
+                className="action-prompt-cancel-btn"
+                type="button"
+              >
+                {cancelText}
+              </button>
+            )}
 
             <button
               onClick={onConfirm}
-              className="px-6 py-3 font-black uppercase text-sm transition-all button bgBlackHoverable"
+              className="action-prompt-confirm-btn"
               type="button"
             >
               {confirmText}
