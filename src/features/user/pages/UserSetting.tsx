@@ -27,6 +27,13 @@ export default function UserSettings() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showBirthDateModal, setShowBirthDateModal] = useState(false);
 
+  const [saveConfirmModal, setSaveConfirmModal] = useState({
+    open: false,
+    description: "",
+  });
+
+  const [leaveConfirmModal, setLeaveConfirmModal] = useState(false);
+
   const [noticeModal, setNoticeModal] = useState<{
     open: boolean;
     title: string;
@@ -104,25 +111,9 @@ export default function UserSettings() {
     };
   }, [hasChanges]);
 
-  const handleSave = async () => {
-    if (!profile) return;
-
-    const willBeLocked: string[] = [];
-    if (!profile.nameLocked && profile.name) willBeLocked.push("이름");
-    if (!profile.genderLocked && profile.gender) willBeLocked.push("성별");
-    if (!profile.birthLocked && profile.birthDate) {
-      willBeLocked.push("생년월일");
-    }
-
-    if (willBeLocked.length > 0) {
-      const confirmMessage = `${willBeLocked.join(
-        ", ",
-      )} 정보는 저장 후 수정이 불가능합니다.\n정말 저장하시겠습니까?`;
-
-      if (!window.confirm(confirmMessage)) return;
-    }
-
+  const executeSave = async () => {
     const success = await saveProfile();
+
     if (success) {
       showNotice(
         "저장 완료",
@@ -136,6 +127,29 @@ export default function UserSettings() {
         "저장에 실패했습니다. 다시 시도해주세요.",
       );
     }
+  };
+
+  const handleSave = async () => {
+    if (!profile) return;
+
+    const willBeLocked: string[] = [];
+    if (!profile.nameLocked && profile.name) willBeLocked.push("이름");
+    if (!profile.genderLocked && profile.gender) willBeLocked.push("성별");
+    if (!profile.birthLocked && profile.birthDate) {
+      willBeLocked.push("생년월일");
+    }
+
+    if (willBeLocked.length > 0) {
+      setSaveConfirmModal({
+        open: true,
+        description: `${willBeLocked.join(
+          ", ",
+        )} 정보는 저장 후 수정이 불가능합니다. 정말 저장하시겠습니까?`,
+      });
+      return;
+    }
+
+    await executeSave();
   };
 
   const handleVerify = async () => {
@@ -185,20 +199,20 @@ export default function UserSettings() {
       setShowDeleteModal(false);
       navigate("/login", { replace: true });
     } catch (error: any) {
+      setShowDeleteModal(false);
+
       const message =
         error?.response?.data?.message ||
-        "회원 탈퇴에 실패했습니다. 잠시 후 다시 시도해주세요.";
+        "정산이 완료되지 않은 여행 또는 지출/입금 내역이 있어 회원 탈퇴를 진행할 수 없습니다.";
 
-      showNotice("탈퇴 실패", "회원 탈퇴에 실패했습니다", message);
+      showNotice("탈퇴 불가", "회원 탈퇴를 진행할 수 없습니다", message);
     }
   };
 
   const handleClose = () => {
     if (hasChanges) {
-      const confirmLeave = window.confirm(
-        "수정 중인 변경사항이 있습니다. 저장하지 않고 나가시겠습니까?",
-      );
-      if (!confirmLeave) return;
+      setLeaveConfirmModal(true);
+      return;
     }
 
     navigate(location.state?.closeTo ?? "/", { replace: true });
@@ -338,8 +352,37 @@ export default function UserSettings() {
         headline={noticeModal.headline}
         description={noticeModal.description}
         confirmText="확인"
+        hideCancel
         onClose={closeNotice}
         onConfirm={closeNotice}
+      />
+
+      <ActionPromptModal
+        open={saveConfirmModal.open}
+        title="저장 확인"
+        headline="저장 후 수정할 수 없는 정보가 있습니다"
+        description={saveConfirmModal.description}
+        cancelText="취소"
+        confirmText="저장"
+        onClose={() => setSaveConfirmModal({ open: false, description: "" })}
+        onConfirm={async () => {
+          setSaveConfirmModal({ open: false, description: "" });
+          await executeSave();
+        }}
+      />
+
+      <ActionPromptModal
+        open={leaveConfirmModal}
+        title="나가기 확인"
+        headline="저장하지 않은 변경사항이 있습니다"
+        description="수정 중인 변경사항이 있습니다. 저장하지 않고 나가시겠습니까?"
+        cancelText="취소"
+        confirmText="나가기"
+        onClose={() => setLeaveConfirmModal(false)}
+        onConfirm={() => {
+          setLeaveConfirmModal(false);
+          navigate(location.state?.closeTo ?? "/", { replace: true });
+        }}
       />
     </div>
   );

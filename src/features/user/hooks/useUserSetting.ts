@@ -187,6 +187,8 @@ export function useUserProfile() {
   }, [profile, originalProfile]);
 
   useEffect(() => {
+    if (!authReady || !isAuthenticated) return;
+
     getTravelStyles()
       .then((res) => {
         setTravelStyleOptions(res.data.map((style) => style.name));
@@ -194,7 +196,7 @@ export function useUserProfile() {
       .catch((error) => {
         console.error("여행 스타일 목록 조회 실패", error);
       });
-  }, []);
+  }, [authReady, isAuthenticated]);
 
   useEffect(() => {
     if (!authReady) return;
