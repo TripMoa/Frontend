@@ -8,7 +8,7 @@
   height: 100vh;
   background: #fff;
   z-index: 2000;
-  grid-template-columns: 260px 1fr 320px;
+  grid-template-columns: 260px 1fr;
   border-top: none;
 }
 .ws-container.active {
