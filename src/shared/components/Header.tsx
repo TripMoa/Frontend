@@ -1,6 +1,6 @@
 // src/shared/components/Header.tsx
 
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { logout } from "../../api/auth.api";
 import { useAuth } from "../../features/user/pages/AuthContext";
 import { useAccessGuard } from "../hooks/useAccessGuard";
@@ -121,8 +121,12 @@ export default function Header() {
               COMMUNITY ▼
             </button>
             <div className="dropdown-menu">
-              <a href="/travelstory">{">>"} DATA LOGS</a>
-              <a href="/mate">{">>"} MATE FINDER</a>
+              <Link to="/travelstory" className="dropdown-item-link">
+                {">>"} DATA LOGS
+              </Link>
+              <Link to="/mate" className="dropdown-item-link">
+                {">>"} MATE FINDER
+              </Link>
             </div>
           </li>
 
