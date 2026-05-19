@@ -96,17 +96,8 @@ export const useMyTrips = () => {
 
   const removeTrip = useCallback(
     async (tripId: number) => {
-      if (!window.confirm("이 작전을 폐기하시겠습니까?")) {
-        return;
-      }
-
-      try {
-        await deleteTrip(tripId);
-        await fetchTrips(filter);
-      } catch (deleteError) {
-        console.error("여행 삭제 실패:", deleteError);
-        window.alert("여행 삭제에 실패했습니다.");
-      }
+      await deleteTrip(tripId);
+      await fetchTrips(filter);
     },
     [fetchTrips, filter],
   );
@@ -187,12 +178,12 @@ export const useMyTrips = () => {
         navigate(`/workspace/${createdTripId}`);
       } catch (submitError) {
         console.error("여행 생성 실패:", submitError);
-        window.alert("여행 생성에 실패했습니다.");
+        throw submitError;
       } finally {
         setIsSubmitting(false);
       }
     },
-    [fetchTrips, filter, formData, isSubmitting, resetForm],
+    [formData, isSubmitting, navigate, resetForm],
   );
 
   return {

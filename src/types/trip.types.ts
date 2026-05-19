@@ -49,6 +49,16 @@ export interface TripDetailResponse {
   members: TripMemberResponse[];
 }
 
+export interface TripInviteResponse {
+  tripId: number;
+  title: string;
+  tripStartDate: string;
+  tripEndDate: string;
+  ownerNickname: string;
+  memberCount: number;
+  members: TripMemberResponse[];
+}
+
 // ===================
 // Request DTO
 // ===================

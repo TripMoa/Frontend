@@ -4,6 +4,7 @@ import { api } from "./api";
 import type {
   MyTripSummaryResponse,
   TripDetailResponse,
+  TripInviteResponse,
   TripMemberResponse,
   TripCreateRequest,
   TripUpdateRequest,
@@ -53,6 +54,22 @@ export const updateTripMemberNickname = (
     data,
   );
 
+// 초대코드로 여행 정보 조회
+export const getTripInviteInfo = (inviteCode: string) =>
+  api.get<TripInviteResponse>(`/trips/invites/${inviteCode}`);
+
+// 초대코드로 여행 참여
+export const joinTripByInviteCode = (inviteCode: string) =>
+  api.post<TripDetailResponse>(`/trips/invites/${inviteCode}/join`);
+
 // 여행 삭제
 export const deleteTrip = (tripId: number) =>
   api.delete<void>(`/trips/${tripId}`);
+
+// 여행 나가기
+export const leaveTrip = (tripId: number) =>
+  api.delete<void>(`/trips/${tripId}/members/me`);
+
+// 멤버 내보내기 / 탈퇴 유저 기록정리
+export const removeTripMember = (tripId: number, memberId: number) =>
+  api.delete<void>(`/trips/${tripId}/members/${memberId}`);
