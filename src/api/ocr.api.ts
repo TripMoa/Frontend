@@ -18,7 +18,7 @@ export const requestExpenseOcr = (tripId: number, file: File) => {
   );
 };
 
-// OCR 자동채움 + 지출 계산 미리보기 호출 (테스트용)
+// OCR 자동채움 + 지출 계산 미리보기 호출
 export const requestExpenseOcrWithPreview = (
   tripId: number,
   file: File,
@@ -32,7 +32,7 @@ export const requestExpenseOcrWithPreview = (
   );
 
   return api.post<OcrAutofillWithPreviewResponse>(
-    `/trips/${tripId}/expenses/ocr/test`,
+    `/trips/${tripId}/expenses/ocr`,
     formData,
   );
 };
