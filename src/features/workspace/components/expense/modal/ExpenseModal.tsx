@@ -6,6 +6,7 @@ import { requestExpenseOcrWithPreview } from "../../../../../api/ocr.api";
 import BaseModal from "../../../../../shared/components/BaseModal";
 import { useTripContext } from "../../../hooks/useTripContext";
 import type { UseExpensesStore } from "../../../hooks/useExpenses";
+import { ActionPromptModal } from "../../../../../shared/components/ActionPromptModal";
 import type {
   ExpenseItem,
   ExpenseMember,
@@ -117,7 +118,7 @@ const ExpenseModal: React.FC<Props> = ({ store }) => {
   const [date, setDate] = useState("");
   const [storeName, setStoreName] = useState("");
   const [title, setTitle] = useState("");
-  const [costText, setCostText] = useState("0");
+  const [costText, setCostText] = useState("");
   const [ocrLoading, setOcrLoading] = useState(false);
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
 
@@ -136,6 +137,54 @@ const ExpenseModal: React.FC<Props> = ({ store }) => {
   const [splitAmounts, setSplitAmounts] = useState<
     Record<ExpenseMember, number>
   >({});
+
+  type PromptMode = "notice" | "confirm";
+
+  const [submitted, setSubmitted] = useState(false);
+
+  const [prompt, setPrompt] = useState<{
+    open: boolean;
+    mode: PromptMode;
+    title: string;
+    headline: string;
+    description: string;
+    onConfirm?: () => void | Promise<void>;
+  }>({
+    open: false,
+    mode: "notice",
+    title: "",
+    headline: "",
+    description: "",
+  });
+
+  const showNotice = (headline: string, description = "") => {
+    setPrompt({
+      open: true,
+      mode: "notice",
+      title: "안내",
+      headline,
+      description,
+    });
+  };
+
+  const showConfirm = (
+    headline: string,
+    description: string,
+    onConfirm: () => void | Promise<void>,
+  ) => {
+    setPrompt({
+      open: true,
+      mode: "confirm",
+      title: "확인",
+      headline,
+      description,
+      onConfirm,
+    });
+  };
+
+  const closePrompt = () => {
+    setPrompt((prev) => ({ ...prev, open: false }));
+  };
 
   const total = useMemo(() => parseMoney(costText), [costText]);
 
@@ -176,10 +225,11 @@ const ExpenseModal: React.FC<Props> = ({ store }) => {
     if (!isExpenseModalOpen || expenseMembers.length === 0) return;
 
     if (!editingId) {
+      setSubmitted(false);
       setDate(todayISO());
       setStoreName("");
       setTitle("");
-      setCostText("0");
+      setCostText("");
       setCat("FOOD");
       setMethod("CARD");
       setPayer(defaultPayer);
@@ -195,7 +245,7 @@ const ExpenseModal: React.FC<Props> = ({ store }) => {
     }
 
     if (!editingItem) return;
-
+    setSubmitted(false);
     setDate(editingItem.date);
     setStoreName(editingItem.storeName ?? "");
     setTitle(editingItem.title);
@@ -279,15 +329,33 @@ const ExpenseModal: React.FC<Props> = ({ store }) => {
   const saveErrorMessage = useMemo(() => {
     if (!expenseKind) return "지출 유형을 선택해주세요";
     if (!date) return "날짜를 입력해주세요";
+    if (!storeName.trim()) return "상호명을 입력해주세요";
     if (!title.trim()) return "항목을 입력해주세요";
     if (total <= 0) return "금액은 0원보다 커야 해요";
     if (!payer) return "결제자를 선택해주세요";
     if (!involved.length) return "참여자를 선택해주세요";
     if (diff !== 0) return "분할 합계가 총액과 같아야 해요";
     return "";
-  }, [expenseKind, date, title, total, payer, involved.length, diff]);
+  }, [
+    expenseKind,
+    date,
+    storeName,
+    title,
+    total,
+    payer,
+    involved.length,
+    diff,
+  ]);
 
   const canSave = useMemo(() => !saveErrorMessage, [saveErrorMessage]);
+
+  const dateError = submitted && !date;
+  const storeNameError = submitted && !storeName.trim();
+  const titleError = submitted && !title.trim();
+  const amountError = submitted && total <= 0;
+  const payerError = submitted && !payer;
+  const involvedError = submitted && !involved.length;
+  const splitError = submitted && diff !== 0;
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const formRef = useRef<HTMLDivElement | null>(null);
@@ -299,7 +367,10 @@ const ExpenseModal: React.FC<Props> = ({ store }) => {
     if (!file) return;
 
     if (file.size > 3 * 1024 * 1024) {
-      alert("3MB 이하 파일만 업로드 가능합니다.");
+      showNotice(
+        "업로드 용량 초과",
+        "영수증 이미지는 3MB 이하만 업로드 가능합니다.",
+      );
       return;
     }
 
@@ -316,6 +387,8 @@ const ExpenseModal: React.FC<Props> = ({ store }) => {
   };
 
   const toggleInvolved = (member: ExpenseMember) => {
+    setSubmitted(false);
+
     if (autoIncludePayer && member === payer) return;
 
     setInvolved((prev) => {
@@ -331,6 +404,7 @@ const ExpenseModal: React.FC<Props> = ({ store }) => {
   };
 
   const handlePayerChange = (member: ExpenseMember) => {
+    setSubmitted(false);
     setPayer(member);
     if (autoIncludePayer) {
       setInvolved((prev) => (prev.includes(member) ? prev : [...prev, member]));
@@ -339,7 +413,7 @@ const ExpenseModal: React.FC<Props> = ({ store }) => {
 
   const handleCostInput = (v: string) => {
     const n = parseMoney(v);
-    setCostText(fmt(n));
+    setCostText(n ? fmt(n) : "");
   };
 
   const handleAmountInput = (member: ExpenseMember, v: string) => {
@@ -348,10 +422,11 @@ const ExpenseModal: React.FC<Props> = ({ store }) => {
   };
 
   const clearAll = () => {
+    setSubmitted(false);
     setDate(todayISO());
     setStoreName("");
     setTitle("");
-    setCostText("0");
+    setCostText("");
     setCat("FOOD");
     setMethod("CARD");
     setPayer(defaultPayer);
@@ -402,26 +477,27 @@ const ExpenseModal: React.FC<Props> = ({ store }) => {
         });
         setReceiptFile(fileForOcr);
       } catch {
-        alert(
-          "기존 영수증 이미지를 다시 불러오지 못했습니다. 이미지를 다시 업로드해주세요.",
+        showNotice(
+          "영수증 이미지를 다시 불러오지 못했습니다.",
+          "이미지를 다시 업로드한 뒤 OCR 자동 입력을 시도해주세요.",
         );
         return;
       }
     }
 
     if (!fileForOcr) {
-      alert("먼저 영수증 이미지를 업로드해주세요.");
+      showNotice("영수증 이미지를 업로드해주세요.");
       return;
     }
 
     if (!Number.isFinite(tripId) || tripId <= 0) {
-      alert("유효한 여행 ID를 찾을 수 없습니다.");
+      showNotice("유효한 여행 ID를 찾을 수 없습니다.");
       return;
     }
 
     const payerMember = members.find((m) => m.nickname === payer);
     if (!payerMember) {
-      alert("결제자를 찾을 수 없습니다.");
+      showNotice("결제자를 찾을 수 없습니다.");
       return;
     }
 
@@ -447,7 +523,7 @@ const ExpenseModal: React.FC<Props> = ({ store }) => {
 
       const autofill = data?.autofill;
       if (!autofill) {
-        alert("OCR 응답 데이터가 비어 있습니다.");
+        showNotice("OCR 응답 데이터가 비어 있습니다.");
         return;
       }
 
@@ -462,7 +538,7 @@ const ExpenseModal: React.FC<Props> = ({ store }) => {
       if (autofill.payMethod) setMethod(autofill.payMethod);
       if (autofill.category) setCat(autofill.category);
 
-      alert("자동 입력이 완료되었습니다.");
+      showNotice("자동 입력 완료", "영수증 정보가 입력값에 반영되었습니다.");
       console.log("OCR autofill:", data.autofill);
       console.log("OCR preview:", data.preview);
     } catch (err: any) {
@@ -475,32 +551,13 @@ const ExpenseModal: React.FC<Props> = ({ store }) => {
         err?.message ??
         "OCR 요청 중 오류가 발생했습니다.";
 
-      alert(msg);
+      showNotice("OCR 자동 입력 실패", msg);
     } finally {
       setOcrLoading(false);
     }
   };
 
-  const handleSave = async () => {
-    if (!canSave) {
-      alert(saveErrorMessage);
-      return;
-    }
-
-    if (!expenseKind) {
-      alert("지출 유형을 선택해주세요");
-      return;
-    }
-
-    if (needsKindConfirm) {
-      const ok = window.confirm(
-        expenseKind === "PERSONAL"
-          ? "참여자가 전원인데 개인 지출이 맞나요?"
-          : "참여자가 1명인데 공동 지출이 맞나요?",
-      );
-      if (!ok) return;
-    }
-
+  const saveExpense = async () => {
     const inv = involved.length ? involved : payer ? [payer] : [];
 
     const finalSplit: SplitMap =
@@ -516,10 +573,7 @@ const ExpenseModal: React.FC<Props> = ({ store }) => {
       0,
     );
 
-    if (sum !== total) {
-      alert("분할 합계가 총액과 일치해야 합니다.");
-      return;
-    }
+    if (sum !== total) return;
 
     const payload: Omit<ExpenseItem, "id"> = {
       date,
@@ -543,16 +597,58 @@ const ExpenseModal: React.FC<Props> = ({ store }) => {
       } else {
         await createExpense(payload, receiptFile);
       }
-    } catch (error) {
-      console.error(error);
+    } catch (error: any) {
+      showNotice(
+        editingId ? "지출 수정 실패" : "지출 등록 실패",
+        error?.response?.data?.message ??
+          error?.response?.data?.error ??
+          error?.message ??
+          "지출 저장에 실패했습니다.",
+      );
     }
+  };
+
+  const handleSave = async () => {
+    setSubmitted(true);
+
+    if (!expenseKind) {
+      showNotice(
+        "지출 유형을 선택해주세요",
+        "공동 지출 또는 개인 지출 중 하나를 선택해야 저장할 수 있습니다.",
+      );
+      return;
+    }
+
+    if (!canSave) return;
+
+    if (needsKindConfirm) {
+      showConfirm(
+        "지출 유형을 확인해주세요",
+        expenseKind === "PERSONAL"
+          ? "참여자가 전원인데 개인 지출로 선택되어 있습니다. 그대로 저장할까요?"
+          : "참여자가 1명인데 공동 지출로 선택되어 있습니다. 그대로 저장할까요?",
+        async () => {
+          closePrompt();
+          await saveExpense();
+        },
+      );
+      return;
+    }
+
+    await saveExpense();
   };
 
   const handleDelete = async () => {
     if (!editingId) return;
-    const ok = window.confirm("이 지출 내역을 삭제할까요?");
-    if (!ok) return;
-    await deleteExpense(editingId);
+
+    showConfirm(
+      "지출 내역을 삭제할까요?",
+      "삭제한 지출 내역은 다시 복구할 수 없습니다.",
+      async () => {
+        closePrompt();
+        await deleteExpense(editingId);
+      },
+    );
   };
 
   const focusNextOnEnter = (e: React.KeyboardEvent) => {
@@ -582,364 +678,420 @@ const ExpenseModal: React.FC<Props> = ({ store }) => {
   };
 
   return (
-    <BaseModal
-      open={isExpenseModalOpen}
-      title={editingId ? "EDIT EXPENSE" : "ADD EXPENSE"}
-      onClose={closeExpenseModal}
-      className="exp2-modal"
-      width="min(980px, 92vw)"
-      height="96vh"
-    >
-      <div ref={formRef} className="exp2-body" onKeyDown={focusNextOnEnter}>
-        <div className="exp2-left">
-          <div className="exp2-receipt-section">
-            <div
-              className="exp2-upload"
-              onClick={openPicker}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") openPicker();
-              }}
-            >
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleReceipt}
-                className="exp2-file-input"
-              />
+    <>
+      <BaseModal
+        open={isExpenseModalOpen}
+        title={editingId ? "EDIT EXPENSE" : "ADD EXPENSE"}
+        onClose={closeExpenseModal}
+        className="exp2-modal"
+        width="min(980px, 92vw)"
+        height="90vh"
+      >
+        <div ref={formRef} className="exp2-body" onKeyDown={focusNextOnEnter}>
+          <div className="exp2-left">
+            <div className="exp2-receipt-section">
+              {currentFileName && (
+                <div className="exp2-filehint">첨부: {currentFileName}</div>
+              )}
 
-              {currentReceiptBase64 ? (
-                <div className="exp2-preview">
-                  <img
-                    alt="receipt preview"
-                    src={resolveReceiptSrc(currentReceiptBase64)}
-                  />
-                </div>
-              ) : (
-                <div className="exp2-upload-empty">
-                  <div className="exp2-upload-label">
-                    <span style={{ fontSize: 28 }}>📷</span>
-                    <span>UPLOAD RECEIPT</span>
+              <div
+                className="exp2-upload"
+                onClick={openPicker}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") openPicker();
+                }}
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleReceipt}
+                  className="exp2-file-input"
+                />
+
+                {currentReceiptBase64 ? (
+                  <div className="exp2-preview">
+                    <img
+                      alt="receipt preview"
+                      src={resolveReceiptSrc(currentReceiptBase64)}
+                    />
                   </div>
-                  <small>
-                    영수증 업로드 후 AUTO FILL 버튼을 누르면
-                    <br />
-                    데이터가 자동으로 입력됩니다.
-                  </small>
+                ) : (
+                  <div className="exp2-upload-empty">
+                    <div className="exp2-upload-label">
+                      <span style={{ fontSize: 28 }}>📷</span>
+                      <span>UPLOAD RECEIPT</span>
+                    </div>
+                    <small>
+                      영수증 업로드 후 AUTO FILL 버튼을 누르면
+                      <br />
+                      데이터가 자동으로 입력됩니다.
+                    </small>
+                  </div>
+                )}
+              </div>
+
+              <div className="exp2-info-box">
+                ⚠ 왼쪽 영역은 자동 입력 대상이 아닙니다.
+              </div>
+
+              {currentReceiptBase64 && (
+                <div className="exp2-upload-actions">
+                  <button
+                    className="exp2-btn exp2-btn--ghost"
+                    type="button"
+                    onClick={requestOcrAutofill}
+                    disabled={ocrLoading}
+                  >
+                    {ocrLoading ? "자동 입력 중..." : "AUTO FILL"}
+                  </button>
+                  <button
+                    className="exp2-btn exp2-btn--ghost"
+                    type="button"
+                    onClick={clearAll}
+                  >
+                    CLEAR
+                  </button>
                 </div>
               )}
             </div>
 
-            <div className="exp2-info-box">
-              ⚠ 왼쪽 영역은 자동 입력 대상이 아닙니다.
-            </div>
-
-            {currentReceiptBase64 && (
-              <div className="exp2-upload-actions">
-                <button
-                  className="exp2-btn exp2-btn--ghost"
-                  type="button"
-                  onClick={requestOcrAutofill}
-                  disabled={ocrLoading}
-                >
-                  {ocrLoading ? "자동 입력 중..." : "AUTO FILL"}
-                </button>
-                <button
-                  className="exp2-btn exp2-btn--ghost"
-                  type="button"
-                  onClick={clearAll}
-                >
-                  CLEAR
-                </button>
+            <div className="exp2-left-box">
+              <div className="exp2-box-title">
+                WHO PAID? <span className="exp2-hint">(결제자)</span>
               </div>
-            )}
-          </div>
 
-          <div className="exp2-left-box">
-            <div className="exp2-box-title">
-              WHO PAID? <span className="exp2-hint">(결제자)</span>
-            </div>
-
-            <select
-              className="exp2-select"
-              value={payer}
-              onChange={(e) =>
-                handlePayerChange(e.target.value as ExpenseMember)
-              }
-            >
-              {expenseMembers.map((member) => (
-                <option key={member} value={member}>
-                  {member}
-                </option>
-              ))}
-            </select>
-
-            <div className="exp2-mini">
-              <label>
-                <input
-                  type="checkbox"
-                  checked={autoIncludePayer}
-                  onChange={(e) => setAutoIncludePayer(e.target.checked)}
-                />{" "}
-                결제자를 참여자에 자동 포함
-              </label>
-            </div>
-
-            <div style={{ height: 14 }} />
-
-            <div className="exp2-box-title">
-              WHO JOINED? <span className="exp2-hint">(참여자)</span>
-            </div>
-
-            <div className="exp2-pill-row">
-              {expenseMembers.map((member) => {
-                const on = involved.includes(member);
-                return (
-                  <div
-                    key={member}
-                    className={`exp2-pill ${on ? "" : "is-off"}`}
-                    onClick={() => toggleInvolved(member)}
-                    role="button"
-                    tabIndex={0}
-                  >
+              <select
+                className={`exp2-select ${payerError ? "is-error" : ""}`}
+                value={payer}
+                onChange={(e) =>
+                  handlePayerChange(e.target.value as ExpenseMember)
+                }
+              >
+                {expenseMembers.map((member) => (
+                  <option key={member} value={member}>
                     {member}
-                  </div>
-                );
-              })}
-            </div>
-
-            <div style={{ height: 20 }} />
-
-            <div className="exp2-box-title">
-              EXPENSE TYPE <span className="exp2-hint">(지출 유형)</span>
-            </div>
-
-            <div
-              className="exp2-seg"
-              role="radiogroup"
-              aria-label="expense type"
-            >
-              <button
-                type="button"
-                className={expenseKind === "SHARED" ? "active" : ""}
-                aria-pressed={expenseKind === "SHARED"}
-                onClick={() => setExpenseKind("SHARED")}
-              >
-                공동 지출
-              </button>
-
-              <button
-                type="button"
-                className={expenseKind === "PERSONAL" ? "active" : ""}
-                aria-pressed={expenseKind === "PERSONAL"}
-                onClick={() => setExpenseKind("PERSONAL")}
-              >
-                개인 지출
-              </button>
-            </div>
-
-            {kindWarningMessage && (
-              <div className="exp2-inline-warning">{kindWarningMessage}</div>
-            )}
-          </div>
-
-          <div className="exp2-info-box">
-            <div className="exp2-info-row">
-              정산 모드: <strong>통합 버전</strong>
-            </div>
-            <div className="exp2-info-row">
-              잔액 분배:{" "}
-              <strong>
-                {settings?.roundingRule === "SEQUENTIAL"
-                  ? "순차 분배"
-                  : settings?.roundingRule === "RANDOM"
-                    ? "랜덤 분배"
-                    : "결제자 우선"}
-              </strong>
-            </div>
-          </div>
-        </div>
-
-        <div className="exp2-form">
-          <div className="exp2-row-2">
-            <div className="exp2-field">
-              <label>DATE</label>
-              <input
-                className="exp2-input"
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-              />
-            </div>
-
-            <div className="exp2-field">
-              <label>AMOUNT</label>
-              <input
-                className="exp2-input"
-                type="text"
-                inputMode="numeric"
-                value={costText}
-                onChange={(e) => handleCostInput(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <div className="exp2-field">
-            <label>STORE NAME</label>
-            <input
-              className="exp2-input"
-              type="text"
-              value={storeName}
-              onChange={(e) => setStoreName(e.target.value)}
-            />
-          </div>
-
-          <div className="exp2-field">
-            <label>ITEM</label>
-            <input
-              className="exp2-input"
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-            />
-          </div>
-
-          <div className="exp2-row-2">
-            <div className="exp2-field">
-              <label>CATEGORY</label>
-              <select
-                className="exp2-select"
-                value={cat}
-                onChange={(e) => setCat(e.target.value)}
-              >
-                <option value="FOOD">식비 (FOOD)</option>
-                <option value="TRANS">교통 (TRANS)</option>
-                <option value="STAY">숙소 (STAY)</option>
-                <option value="SHOP">쇼핑 (SHOP)</option>
-                <option value="TICKET">관광/티켓 (TICKET)</option>
-                <option value="ETC">기타 (ETC)</option>
+                  </option>
+                ))}
               </select>
-            </div>
+              {payerError && (
+                <div className="exp2-field-error">결제자를 선택해주세요.</div>
+              )}
 
-            <div className="exp2-field">
-              <label>METHOD</label>
-              <select
-                className="exp2-select"
-                value={method}
-                onChange={(e) => setMethod(e.target.value)}
-              >
-                <option value="CARD">신용카드 (CARD)</option>
-                <option value="CASH">현금 (CASH)</option>
-                <option value="QR">QR/간편결제 (QR)</option>
-              </select>
-            </div>
-          </div>
+              <div className="exp2-mini">
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={autoIncludePayer}
+                    onChange={(e) => setAutoIncludePayer(e.target.checked)}
+                  />{" "}
+                  결제자를 참여자에 자동 포함
+                </label>
+              </div>
 
-          <div className="exp2-split-card">
-            <div className="exp2-split-head">
-              <div className="exp2-split-title">SPLIT CALC</div>
+              <div style={{ height: 14 }} />
+
+              <div className="exp2-box-title">
+                WHO JOINED? <span className="exp2-hint">(참여자)</span>
+              </div>
+
+              <div className="exp2-pill-row">
+                {expenseMembers.map((member) => {
+                  const on = involved.includes(member);
+                  return (
+                    <div
+                      key={member}
+                      className={`exp2-pill ${on ? "" : "is-off"}`}
+                      onClick={() => toggleInvolved(member)}
+                      role="button"
+                      tabIndex={0}
+                    >
+                      {member}
+                    </div>
+                  );
+                })}
+              </div>
+              {involvedError && (
+                <div className="exp2-field-error">참여자를 선택해주세요.</div>
+              )}
+
+              <div style={{ height: 20 }} />
+
+              <div className="exp2-box-title">
+                EXPENSE TYPE <span className="exp2-hint">(지출 유형)</span>
+              </div>
 
               <div
-                className="exp2-toggle"
-                role="tablist"
-                aria-label="split type"
+                className="exp2-seg"
+                role="radiogroup"
+                aria-label="expense type"
               >
                 <button
                   type="button"
-                  className={splitMode === "EQUAL" ? "active" : ""}
-                  aria-selected={splitMode === "EQUAL"}
-                  onClick={() => setSplitMode("EQUAL")}
+                  className={expenseKind === "SHARED" ? "active" : ""}
+                  aria-pressed={expenseKind === "SHARED"}
+                  onClick={() => setExpenseKind("SHARED")}
                 >
-                  균등 (1/N)
+                  공동 지출
                 </button>
+
                 <button
                   type="button"
-                  className={splitMode === "AMOUNT" ? "active" : ""}
-                  aria-selected={splitMode === "AMOUNT"}
-                  onClick={() => setSplitMode("AMOUNT")}
+                  className={expenseKind === "PERSONAL" ? "active" : ""}
+                  aria-pressed={expenseKind === "PERSONAL"}
+                  onClick={() => setExpenseKind("PERSONAL")}
                 >
-                  금액 입력
+                  개인 지출
                 </button>
               </div>
-            </div>
 
-            <div className="exp2-split-grid">
-              {participants.map((p) => (
-                <div key={p.member} className="exp2-split-row">
-                  <div className="exp2-who">
-                    <strong>{p.member}</strong>
-                    {p.member === payer && (
-                      <span className="exp2-tag">PAYER</span>
-                    )}
-                  </div>
-
-                  <div className="exp2-amt">
-                    {splitMode === "EQUAL" ? (
-                      <div className="exp2-amt-text">{fmt(p.amount)}원</div>
-                    ) : (
-                      <>
-                        <input
-                          type="text"
-                          inputMode="numeric"
-                          value={fmt(splitAmounts[p.member] ?? 0)}
-                          onChange={(e) =>
-                            handleAmountInput(p.member, e.target.value)
-                          }
-                        />
-                        <span className="exp2-won">원</span>
-                      </>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="exp2-split-summary">
-              <div className="exp2-summary-left">
-                <div className="exp2-kv">
-                  <span className="k">총액</span>
-                  <span className="v">{fmt(total)}원</span>
-                </div>
-                <div className="exp2-kv">
-                  <span className="k">분할합계</span>
-                  <span className="v">{fmt(splitSum)}원</span>
-                </div>
-                <div className="exp2-kv">
-                  <span className="k">차이</span>
-                  <span className="v">
-                    {diff >= 0 ? fmt(diff) : `-${fmt(Math.abs(diff))}`}원
-                  </span>
-                </div>
-              </div>
-
-              <div className={`exp2-delta ${canSave ? "ok" : "bad"}`}>
-                {canSave ? "OK: 저장 가능" : saveErrorMessage}
-              </div>
+              {kindWarningMessage && (
+                <div className="exp2-inline-warning">{kindWarningMessage}</div>
+              )}
             </div>
           </div>
 
-          <div className="exp2-footer">
-            <button
-              className="exp2-delete"
-              style={{ display: editingId ? "block" : "none" }}
-              onClick={handleDelete}
-            >
-              DELETE
-            </button>
+          <div className="exp2-form">
+            <div className="exp2-row-2">
+              <div className="exp2-field">
+                <label>DATE</label>
+                <input
+                  className={`exp2-input ${dateError ? "is-error" : ""}`}
+                  type="date"
+                  value={date}
+                  min="1900-01-01"
+                  max="9999-12-31"
+                  onChange={(e) => {
+                    setSubmitted(false);
+                    setDate(e.target.value);
+                  }}
+                />
+                {dateError && (
+                  <div className="exp2-field-error">날짜를 입력해주세요.</div>
+                )}
+              </div>
 
-            <button className="exp2-save" onClick={handleSave}>
-              SAVE RECORD
-            </button>
+              <div className="exp2-field">
+                <label>AMOUNT</label>
+                <input
+                  className={`exp2-input ${amountError ? "is-error" : ""}`}
+                  type="text"
+                  inputMode="numeric"
+                  value={amountError ? "" : costText}
+                  placeholder={
+                    amountError ? "금액은 0원보다 커야 해요." : "금액 입력"
+                  }
+                  onChange={(e) => {
+                    setSubmitted(false);
+                    handleCostInput(e.target.value);
+                  }}
+                />
+              </div>
+            </div>
+
+            <div className="exp2-field">
+              <label>STORE NAME</label>
+              <input
+                className={`exp2-input ${storeNameError ? "is-error" : ""}`}
+                type="text"
+                value={storeNameError ? "" : storeName}
+                placeholder={
+                  storeNameError ? "상호명을 입력해주세요." : "상호명 입력"
+                }
+                onChange={(e) => {
+                  setSubmitted(false);
+                  setStoreName(e.target.value);
+                }}
+              />
+            </div>
+
+            <div className="exp2-field">
+              <label>ITEM</label>
+              <input
+                className={`exp2-input ${titleError ? "is-error" : ""}`}
+                type="text"
+                value={titleError ? "" : title}
+                placeholder={titleError ? "항목을 입력해주세요." : "항목 입력"}
+                onChange={(e) => {
+                  setSubmitted(false);
+                  setTitle(e.target.value);
+                }}
+              />
+            </div>
+
+            <div className="exp2-row-2">
+              <div className="exp2-field">
+                <label>CATEGORY</label>
+                <select
+                  className="exp2-select"
+                  value={cat}
+                  onChange={(e) => setCat(e.target.value)}
+                >
+                  <option value="FOOD">식비 (FOOD)</option>
+                  <option value="TRANS">교통 (TRANS)</option>
+                  <option value="STAY">숙소 (STAY)</option>
+                  <option value="SHOP">쇼핑 (SHOP)</option>
+                  <option value="TICKET">관광/티켓 (TICKET)</option>
+                  <option value="ETC">기타 (ETC)</option>
+                </select>
+              </div>
+
+              <div className="exp2-field">
+                <label>METHOD</label>
+                <select
+                  className="exp2-select"
+                  value={method}
+                  onChange={(e) => setMethod(e.target.value)}
+                >
+                  <option value="CARD">신용카드 (CARD)</option>
+                  <option value="CASH">현금 (CASH)</option>
+                  <option value="QR">QR/간편결제 (QR)</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="exp2-split-card">
+              <div className="exp2-split-head">
+                <div className="exp2-split-title">SPLIT CALC</div>
+
+                <div
+                  className="exp2-toggle"
+                  role="tablist"
+                  aria-label="split type"
+                >
+                  <button
+                    type="button"
+                    className={splitMode === "EQUAL" ? "active" : ""}
+                    aria-selected={splitMode === "EQUAL"}
+                    onClick={() => setSplitMode("EQUAL")}
+                  >
+                    균등 (1/N)
+                  </button>
+                  <button
+                    type="button"
+                    className={splitMode === "AMOUNT" ? "active" : ""}
+                    aria-selected={splitMode === "AMOUNT"}
+                    onClick={() => setSplitMode("AMOUNT")}
+                  >
+                    금액 입력
+                  </button>
+                </div>
+              </div>
+
+              <div className="exp2-split-grid">
+                {participants.map((p) => (
+                  <div key={p.member} className="exp2-split-row">
+                    <div className="exp2-who">
+                      <strong>{p.member}</strong>
+                      {p.member === payer && (
+                        <span className="exp2-tag">PAYER</span>
+                      )}
+                    </div>
+
+                    <div className="exp2-amt">
+                      {splitMode === "EQUAL" ? (
+                        <div className="exp2-amt-text">{fmt(p.amount)}원</div>
+                      ) : (
+                        <>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            value={fmt(splitAmounts[p.member] ?? 0)}
+                            onChange={(e) =>
+                              handleAmountInput(p.member, e.target.value)
+                            }
+                          />
+                          <span className="exp2-won">원</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="exp2-split-summary">
+                <div className="exp2-summary-left">
+                  <div className="exp2-kv">
+                    <span className="k">총액</span>
+                    <span className="v">{fmt(total)}원</span>
+                  </div>
+                  <div className="exp2-kv">
+                    <span className="k">분할합계</span>
+                    <span className="v">{fmt(splitSum)}원</span>
+                  </div>
+                  <div className="exp2-kv">
+                    <span className="k">차이</span>
+                    <span className="v">
+                      {diff >= 0 ? fmt(diff) : `-${fmt(Math.abs(diff))}`}원
+                    </span>
+                  </div>
+                </div>
+
+                <div className={`exp2-delta ${canSave ? "ok" : "bad"}`}>
+                  {canSave ? "OK: 저장 가능" : saveErrorMessage}
+                </div>
+                {splitError && (
+                  <div className="exp2-field-error">
+                    분할 합계가 총액과 같아야 해요.
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="exp2-info-box">
+              <div className="exp2-info-row">
+                정산 모드: <strong>통합 버전</strong>
+              </div>
+              <div className="exp2-info-row">
+                잔액 분배:{" "}
+                <strong>
+                  {settings?.roundingRule === "SEQUENTIAL"
+                    ? "순차 분배"
+                    : settings?.roundingRule === "RANDOM"
+                      ? "랜덤 분배"
+                      : "결제자 우선"}
+                </strong>
+              </div>
+            </div>
+
+            <div className="exp2-footer">
+              <button
+                className="exp2-delete"
+                style={{ display: editingId ? "block" : "none" }}
+                onClick={handleDelete}
+              >
+                DELETE
+              </button>
+
+              <button className="exp2-save" onClick={handleSave}>
+                SAVE RECORD
+              </button>
+            </div>
           </div>
-
-          {currentFileName && (
-            <div className="exp2-filehint">첨부: {currentFileName}</div>
-          )}
         </div>
-      </div>
-    </BaseModal>
+      </BaseModal>
+
+      <ActionPromptModal
+        open={prompt.open}
+        title={prompt.title}
+        headline={prompt.headline}
+        description={prompt.description}
+        hideCancel={prompt.mode === "notice"}
+        cancelText="취소"
+        confirmText="확인"
+        onClose={closePrompt}
+        onConfirm={async () => {
+          if (prompt.mode === "confirm" && prompt.onConfirm) {
+            await prompt.onConfirm();
+            return;
+          }
+
+          closePrompt();
+        }}
+      />
+    </>
   );
 };
 
