@@ -24,6 +24,7 @@ export interface TripInfo {
   title: string;
   startDate: string;
   endDate: string;
+  inviteCode: string;
 }
 
 interface WorkspaceCoreState {
@@ -105,7 +106,7 @@ const useWorkspaceCoreInternal = (): WorkspaceCoreState => {
     } catch {
       /* 파싱 실패 무시 */
     }
-    return { title: "", startDate: "", endDate: "" };
+    return { title: "", startDate: "", endDate: "", inviteCode: "" };
   });
   const [tripMembers, setTripMembers] = useState<TripMemberResponse[]>([]);
   const [isTripLoading, setIsTripLoading] = useState(false);
@@ -128,6 +129,7 @@ const useWorkspaceCoreInternal = (): WorkspaceCoreState => {
           title: d.title,
           startDate: d.tripStartDate,
           endDate: d.tripEndDate,
+          inviteCode: d.inviteCode,
         };
         setTrip(t);
         setTripMembers(d.members ?? []);

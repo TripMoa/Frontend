@@ -32,16 +32,7 @@ const WorkspaceContent: React.FC = () => {
       <WorkspaceLayout>
         <WorkspaceSidebar />
 
-        {/* 핵심: 2열 화면일 때 center가 오른쪽 칸까지 먹음 */}
-        <div
-          style={
-            isTwoColumn
-              ? { gridColumn: "2 / -1" } // col2 ~ 마지막
-              : undefined
-          }
-        >
-          <WorkspaceCenter noticeStore={noticeStore} />
-        </div>
+        <WorkspaceCenter noticeStore={noticeStore} />
 
         {/* WorkspaceRight 미사용 */}
       </WorkspaceLayout>
