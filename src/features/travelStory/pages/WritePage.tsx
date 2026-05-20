@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import ConfirmModal from '../components/modals/ConfirmModal';
 import { useImageUpload } from '../hooks/useImageUpload';
-import { getTags } from '../../../api/travelTags.api';
-import type { Tag } from '../../../api/travelTags.api';
+import { getTravelStyles } from "../../../api/auth.api";
+import type { TravelStyleOption } from "../../../types/auth.types";
 import '../styles/travelStory.css';
 import '../styles/WritePage.css';
 
@@ -167,7 +167,7 @@ function WritePage({
   const [confirmAction, setConfirmAction] = useState<'back' | null>(null);
   const [activeHeading, setActiveHeading] = useState<'h2' | 'h3' | null>(null);
   const [activeList, setActiveList] = useState<'ol' | 'ul' | null>(null);
-  const [travelStyles, setTravelStyles] = useState<Tag[]>([]);
+  const [travelStyles, setTravelStyles] = useState<TravelStyleOption[]>([]);
   const [selectedTags, setSelectedTags] = useState<number[]>([]);
   const [duration, setDuration] = useState(editingStory?.duration || currentDraft?.duration || '선택하세요');
   const [departureDate, setDepartureDate] = useState(editingStory?.departureDate || currentDraft?.departureDate || '');  // 여기
@@ -217,7 +217,7 @@ function WritePage({
   useEffect(() => {
     const fetchTags = async () => {
       try {
-        const response = await getTags();
+        const response = await getTravelStyles();
         setTravelStyles(response.data);
       } catch (error) {
         setTravelStyles([
