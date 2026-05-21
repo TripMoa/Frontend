@@ -42,6 +42,12 @@ const LOGOUT_SYNC_KEY = "logout-event";
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
+const PUBLIC_PATHS = ["/", "/login", "/travelstory", "/mate"];
+
+const isPublicPath = () => {
+  return PUBLIC_PATHS.some((path) => location.pathname === path);
+};
+
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authReady, setAuthReady] = useState(false);
@@ -117,6 +123,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         await checkSanction();
       }
 
+      if (!success && isPublicPath()) {
+        setLogoutMessage(null);
+      }
+
       setAuthReady(true);
     };
 
@@ -136,6 +146,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       clearAuth();
 
       if (reason === "refresh-expired") {
+        if (isPublicPath()) {
+          setLogoutMessage(null);
+          return;
+        }
+
+        setLogoutHeadline("세션 만료");
         setLogoutMessage("세션이 만료되어 다시 로그인해주세요.");
         return;
       }

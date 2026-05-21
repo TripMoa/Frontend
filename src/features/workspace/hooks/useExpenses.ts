@@ -458,12 +458,7 @@ export const useExpenses = () => {
       closeExpenseModal();
     } catch (error: any) {
       console.error("지출 생성 실패", error);
-      console.error("응답 바디", error?.response?.data);
-      alert(
-        error?.response?.data?.message ??
-          error?.response?.data?.error ??
-          "지출 생성에 실패했습니다.",
-      );
+      throw error;
     }
   };
 
@@ -485,12 +480,7 @@ export const useExpenses = () => {
       closeExpenseModal();
     } catch (error: any) {
       console.error("지출 수정 실패", error);
-      console.error("응답 바디", error?.response?.data);
-      alert(
-        error?.response?.data?.message ??
-          error?.response?.data?.error ??
-          "지출 수정에 실패했습니다.",
-      );
+      throw error;
     }
   };
 

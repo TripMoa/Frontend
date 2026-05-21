@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { getTags } from '../../../api/travelTags.api';
-import type { Tag } from '../../../api/travelTags.api';
+import { getTravelStyles } from "../../../api/auth.api";
+import type { TravelStyleOption } from "../../../types/auth.types";
 import '../styles/travelStory.css';
 import '../styles/FilterSection.css';
 
@@ -85,7 +85,7 @@ function CustomSelect({
 }
 
 function FilterSection({ filters, setFilters }: FilterSectionProps) {
-  const [travelStyles, setTravelStyles] = useState<Tag[]>([]);
+  const [travelStyles, setTravelStyles] = useState<TravelStyleOption[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // 태그 목록 로드 (실패 시 하드코딩된 기본값으로 fallback)
@@ -93,7 +93,7 @@ function FilterSection({ filters, setFilters }: FilterSectionProps) {
     const fetchTags = async () => {
       try {
         setIsLoading(true);
-        const response = await getTags();
+        const response = await getTravelStyles();
         setTravelStyles(response.data);
       } catch (error) {
         setTravelStyles([

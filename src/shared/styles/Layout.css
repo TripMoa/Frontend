@@ -19,15 +19,6 @@ main {
   min-height: calc(100vh - 70px);
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
 .section-header {
   margin-bottom: 40px;
   border-bottom: 2px solid #000;
@@ -48,94 +39,6 @@ main {
   font-size: 14px;
   color: #666;
   font-weight: 500;
-}
-
-/* 공통 버튼 스타일 */
-.btn-sm {
-  font-size: 12px;
-  font-weight: bold;
-  padding: 5px 10px;
-  border: 1px solid #000;
-  background: #fff;
-}
-.btn-sm:hover {
-  background: #000;
-  color: #fff;
-}
-
-/* === [공통 컴포넌트: 카드 & 태그] === */
-/* Mate.html과 MyTrips.html에서 공유하는 티켓 형태의 카드 */
-.mate-ticket {
-  background: #fff;
-  border: 2px solid #000;
-  display: flex;
-  align-items: center;
-  transition: 0.2s;
-  cursor: pointer;
-}
-.mate-ticket:hover {
-  box-shadow: var(--shadow-hard);
-  transform: translateX(-3px);
-}
-
-.mt-side {
-  background: #111;
-  color: #fff;
-  width: 100px;
-  padding: 20px 0;
-  text-align: center;
-  font-family: var(--font-mono);
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-}
-.mt-side span:first-child {
-  font-size: 14px;
-  opacity: 0.7;
-}
-.mt-side span:last-child {
-  font-size: 28px;
-  font-weight: bold;
-  line-height: 1.1;
-}
-
-.mt-center {
-  flex: 1;
-  padding: 20px;
-}
-
-.tag-wrap {
-  margin-bottom: 8px;
-}
-
-/* 태그 스타일 (Mate, MyTrips, Workspace 등에서 사용) */
-.sys-tag {
-  font-size: 12px;
-  font-weight: bold;
-  border: 1px solid #000;
-  padding: 2px 6px;
-  margin-right: 5px;
-  background: #f0f0f0;
-  font-family: var(--font-mono);
-}
-
-.mt-tit {
-  font-size: 18px;
-  font-weight: 800;
-  margin-bottom: 4px;
-  margin-top: 0;
-}
-.mt-txt {
-  font-size: 14px;
-  color: #666;
-  margin: 0;
-}
-
-.mt-end {
-  padding: 20px;
-  border-left: 2px dashed #000;
-  text-align: center;
-  min-width: 120px;
 }
 
 /* === [공통 모달 베이스 (Modal)] === */
@@ -203,4 +106,13 @@ main {
   padding: 0;
   position: relative;
   overflow-y: auto;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }

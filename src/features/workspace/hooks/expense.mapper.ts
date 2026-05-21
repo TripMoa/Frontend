@@ -181,7 +181,6 @@ export const mapExpenseResponseToItem = (
   row: ExpenseResponse,
   members: TripMemberResponse[],
 ): ExpenseItem => {
-  const memberNames = members.map((member) => member.nickname);
   const payerNickname =
     members.find((member) => member.memberId === row.payerMemberId)?.nickname ??
     String(row.payerMemberId);
