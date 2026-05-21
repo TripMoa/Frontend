@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { getMyReportHistory } from "../../../api/report.api";
 import type { MyReportHistoryResponse } from "../../../types";
 import styles from "../styles/UserSetting.module.css";
+import { ActionPromptModal } from "../../../shared/components/ActionPromptModal";
 
 const locationLabel = {
   COMMENT: "댓글",
@@ -16,6 +17,12 @@ export default function ReportManagementTab() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [page, setPage] = useState(0);
+
+  const [emailModal, setEmailModal] = useState({
+    open: false,
+    headline: "",
+    description: "",
+  });
 
   useEffect(() => {
     const loadReportHistory = async () => {
@@ -38,6 +45,25 @@ export default function ReportManagementTab() {
   }, [page]);
 
   const reports = reportHistory?.reports ?? [];
+
+  const handleCopySupportEmail = async () => {
+    const email = import.meta.env.VITE_SUPPORT_EMAIL;
+
+    try {
+      await navigator.clipboard.writeText(email);
+      setEmailModal({
+        open: true,
+        headline: "문의 이메일이 복사되었습니다.",
+        description: email,
+      });
+    } catch {
+      setEmailModal({
+        open: true,
+        headline: "문의 이메일을 확인해주세요.",
+        description: email,
+      });
+    }
+  };
 
   return (
     <>
@@ -159,20 +185,26 @@ export default function ReportManagementTab() {
           type="button"
           className={styles.secondaryButton}
           style={{ width: "100%" }}
-          onClick={async () => {
-            const email = import.meta.env.VITE_SUPPORT_EMAIL;
-
-            try {
-              await navigator.clipboard.writeText(email);
-              alert(`문의 이메일이 복사되었습니다.\n${email}`);
-            } catch {
-              alert(`문의 이메일: ${email}`);
-            }
-          }}
+          onClick={handleCopySupportEmail}
         >
           신고 관련 이메일 문의하기
         </button>
       </section>
+
+      <ActionPromptModal
+        open={emailModal.open}
+        title="문의 이메일 안내"
+        headline={emailModal.headline}
+        description={emailModal.description}
+        hideCancel
+        confirmText="확인"
+        onClose={() =>
+          setEmailModal({ open: false, headline: "", description: "" })
+        }
+        onConfirm={() =>
+          setEmailModal({ open: false, headline: "", description: "" })
+        }
+      />
     </>
   );
 }

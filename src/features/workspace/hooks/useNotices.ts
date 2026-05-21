@@ -227,20 +227,19 @@ export const useNotices = (): UseNoticesStore => {
       closeNotice();
     } catch (error) {
       console.error("공지 저장 실패:", error);
-      alert("공지 저장에 실패했습니다.");
+      throw error;
     }
   };
 
   const deleteNotice = async (id: number) => {
     if (!Number.isFinite(tripId) || tripId <= 0) return;
-    if (!confirm("정말 삭제하시겠습니까?")) return;
 
     try {
       await deleteNoticeItem(tripId, id);
       await Promise.all([reloadNotices(), reloadTags(), reloadNoticeGroups()]);
     } catch (error) {
       console.error("공지 삭제 실패:", error);
-      alert("공지 삭제에 실패했습니다.");
+      throw error;
     }
   };
 
@@ -260,7 +259,7 @@ export const useNotices = (): UseNoticesStore => {
       await reloadNotices();
     } catch (error) {
       console.error("공지 고정 상태 변경 실패:", error);
-      alert("공지 고정 상태 변경에 실패했습니다.");
+      throw error;
     }
   };
 
@@ -270,14 +269,12 @@ export const useNotices = (): UseNoticesStore => {
     const target = tags.find((item) => item.name === tag);
     if (!target) return;
 
-    if (!confirm(`'${tag}' 태그를 삭제하시겠습니까?`)) return;
-
     try {
       await deleteNoticeTag(tripId, target.tagId);
       await reloadTags();
     } catch (error) {
       console.error("공지 태그 삭제 실패:", error);
-      alert("공지 태그 삭제에 실패했습니다.");
+      throw error;
     }
   };
 

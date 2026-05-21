@@ -210,6 +210,18 @@
   transform: translateY(1px);
 }
 
+.nm-field input.is-error,
+.nm-field textarea.is-error {
+  border-color: #ef4444 !important;
+  background: #fff5f5 !important;
+}
+
+.nm-field input.is-error::placeholder,
+.nm-field textarea.is-error::placeholder {
+  color: #ef4444;
+  font-weight: 700;
+}
+
 /* ===== Responsive ===== */
 @media (max-width: 640px) {
   .nm-modal {

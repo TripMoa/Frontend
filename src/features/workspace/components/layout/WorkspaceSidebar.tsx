@@ -1,11 +1,22 @@
 // src/features/workspace/components/layout/WorkspaceSidebar.tsx
-import React from "react";
+import React, { useState } from "react";
 import "../../styles/sidebar.css";
 import { useWorkspaceCore } from "../../hooks/useWorkspaceCore";
 import { useTripContext } from "../../hooks/useTripContext";
+import { ActionPromptModal } from "../../../../shared/components/ActionPromptModal";
 
 const WorkspaceSidebar: React.FC = () => {
   const { isOwner } = useTripContext();
+
+  const [inviteModal, setInviteModal] = useState<{
+    open: boolean;
+    headline: string;
+    description: string;
+  }>({
+    open: false,
+    headline: "",
+    description: "",
+  });
 
   const {
     dateLogs,
@@ -44,6 +55,34 @@ const WorkspaceSidebar: React.FC = () => {
     );
     if (diff <= 0) return "당일치기";
     return `${diff}박 ${diff + 1}일`;
+  };
+
+  const handleCopyInviteLink = async () => {
+    if (!trip?.inviteCode) {
+      setInviteModal({
+        open: true,
+        headline: "초대코드를 찾을 수 없습니다",
+        description: "여행 정보를 다시 불러온 뒤 시도해주세요.",
+      });
+      return;
+    }
+
+    const inviteLink = `${window.location.origin}/invite/${trip.inviteCode}`;
+
+    try {
+      await navigator.clipboard.writeText(inviteLink);
+      setInviteModal({
+        open: true,
+        headline: "초대 링크가 복사되었습니다",
+        description: "친구에게 공유해 여행에 초대해보세요.",
+      });
+    } catch {
+      setInviteModal({
+        open: true,
+        headline: "초대 링크 복사 실패",
+        description: "브라우저 권한 또는 보안 설정을 확인해주세요.",
+      });
+    }
   };
 
   return (
@@ -234,15 +273,20 @@ const WorkspaceSidebar: React.FC = () => {
           </div>
         </div>
 
-        <button
-          className="btn-invite"
-          onClick={() => {
-            alert("초대 링크가 복사되었습니다!");
-          }}
-        >
+        <button className="btn-invite" onClick={handleCopyInviteLink}>
           <i className="fa-solid fa-share-nodes"></i> INVITE FRIENDS
         </button>
       </div>
+      <ActionPromptModal
+        open={inviteModal.open}
+        title="INVITE FRIENDS"
+        headline={inviteModal.headline}
+        description={inviteModal.description}
+        hideCancel
+        confirmText="확인"
+        onClose={() => setInviteModal((prev) => ({ ...prev, open: false }))}
+        onConfirm={() => setInviteModal((prev) => ({ ...prev, open: false }))}
+      />
     </div>
   );
 };

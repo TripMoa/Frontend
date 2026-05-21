@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "./AuthContext";
+import styles from "../styles/Login.module.css";
 
 /**
  * OAuthSuccess 컴포넌트.
@@ -42,5 +43,10 @@ export default function OAuthSuccess() {
     run();
   }, [navigate, refreshAuth]);
 
-  return <p>로그인 처리 중입니다...</p>;
+  return (
+    <div className={styles.oauthLoading}>
+      <div className={styles.spinner}></div>
+      <p>로그인 처리 중입니다...</p>
+    </div>
+  );
 }

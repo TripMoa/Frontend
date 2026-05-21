@@ -3,8 +3,8 @@ import ConfirmModal from '../components/modals/ConfirmModal';
 import { useLocation } from "react-router-dom";
 import { createDraft } from "../../../api/drafts.api"; 
 import { useImageUpload } from '../hooks/useImageUpload';
-import { getTags } from '../../../api/travelTags.api';
-import type { Tag } from '../../../api/travelTags.api';
+import { getTravelStyles } from "../../../api/auth.api";
+import type { TravelStyleOption } from "../../../types/auth.types";
 import '../styles/travelStory.css';
 import '../styles/WritePage.css';
 
@@ -203,6 +203,10 @@ const defaultContent = `
   const [confirmAction, setConfirmAction] = useState<'back' | null>(null);
   const [travelStyles, setTravelStyles] = useState<Tag[]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [activeHeading, setActiveHeading] = useState<'h2' | 'h3' | null>(null);
+  const [activeList, setActiveList] = useState<'ol' | 'ul' | null>(null);
+  const [travelStyles, setTravelStyles] = useState<TravelStyleOption[]>([]);
+  const [selectedTags, setSelectedTags] = useState<number[]>([]);
   const [duration, setDuration] = useState(editingStory?.duration || currentDraft?.duration || '선택하세요');
   const [departureDate, setDepartureDate] = useState(editingStory?.departureDate || currentDraft?.departureDate || '');  // 여기
   const [expenses, setExpenses] = useState({
@@ -256,7 +260,7 @@ const toggleCenter = () => {
   useEffect(() => {
     const fetchTags = async () => {
       try {
-        const response = await getTags();
+        const response = await getTravelStyles();
         setTravelStyles(response.data);
       } catch (error) {
         setTravelStyles([

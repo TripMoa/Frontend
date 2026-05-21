@@ -14,6 +14,7 @@ export function useAccessGuard(profile?: AccessGuardProfile | null) {
 
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showAdultModal, setShowAdultModal] = useState(false);
+  const [showUnderageModal, setShowUnderageModal] = useState(false);
 
   const closeLoginModal = useCallback(() => {
     setShowLoginModal(false);
@@ -21,6 +22,10 @@ export function useAccessGuard(profile?: AccessGuardProfile | null) {
 
   const closeAdultModal = useCallback(() => {
     setShowAdultModal(false);
+  }, []);
+
+  const closeUnderageModal = useCallback(() => {
+    setShowUnderageModal(false);
   }, []);
 
   const moveToLogin = useCallback(() => {
@@ -51,7 +56,7 @@ export function useAccessGuard(profile?: AccessGuardProfile | null) {
 
     // 미성년자 먼저 차단
     if (profile?.ageVerificationStatus === "UNDERAGE") {
-      alert("만 19세 미만은 이용할 수 없습니다.");
+      setShowUnderageModal(true);
       return false;
     }
 
@@ -67,8 +72,10 @@ export function useAccessGuard(profile?: AccessGuardProfile | null) {
   return {
     showLoginModal,
     showAdultModal,
+    showUnderageModal,
     closeLoginModal,
     closeAdultModal,
+    closeUnderageModal,
     moveToLogin,
     moveToMypageForVerification,
     requireLogin,

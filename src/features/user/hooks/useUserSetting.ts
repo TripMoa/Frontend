@@ -144,7 +144,13 @@ const mapUserResponseToProfile = (data: UserResponse): UserProfile => {
 export function useUserProfile() {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const { isAuthenticated, authReady, clearAuth } = useAuth();
+
+  const {
+    isAuthenticated,
+    authReady,
+    clearAuth,
+    setProfile: setAuthProfile,
+  } = useAuth();
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
@@ -181,6 +187,8 @@ export function useUserProfile() {
   }, [profile, originalProfile]);
 
   useEffect(() => {
+    if (!authReady || !isAuthenticated) return;
+
     getTravelStyles()
       .then((res) => {
         setTravelStyleOptions(res.data.map((style) => style.name));
@@ -188,7 +196,7 @@ export function useUserProfile() {
       .catch((error) => {
         console.error("여행 스타일 목록 조회 실패", error);
       });
-  }, []);
+  }, [authReady, isAuthenticated]);
 
   useEffect(() => {
     if (!authReady) return;
@@ -252,6 +260,7 @@ export function useUserProfile() {
       const mapped = mapUserResponseToProfile(refreshed.data);
       setProfile(mapped);
       setOriginalProfile(mapped);
+      setAuthProfile(refreshed.data);
 
       return true;
     } catch {

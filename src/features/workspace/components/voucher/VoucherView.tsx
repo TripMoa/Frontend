@@ -1,4 +1,6 @@
 // src/features/workspace/components/voucher/VoucherView.tsx
+import { useState } from "react";
+import { ActionPromptModal } from "../../../../shared/components/ActionPromptModal";
 import "../../styles/center.css";
 import type { VoucherResponse } from "../../../../types/voucher.types";
 import { useTripContext } from "../../hooks/useTripContext";
@@ -39,8 +41,59 @@ const VoucherView: React.FC<Props> = ({
 }) => {
   const { isOwner } = useTripContext();
 
+  const [deletePrompt, setDeletePrompt] = useState({
+    open: false,
+    voucherId: null as number | null,
+  });
+
+  const [noticePrompt, setNoticePrompt] = useState({
+    open: false,
+    headline: "",
+    description: "",
+  });
+
+  const closeNoticePrompt = () => {
+    setNoticePrompt((prev) => ({ ...prev, open: false }));
+    setDeletePrompt({ open: false, voucherId: null });
+  };
+
+  const getErrorMessage = (error: any, fallback: string) =>
+    error?.response?.data?.message ?? error?.message ?? fallback;
+
+  const requestDeleteVoucher = (voucherId: number) => {
+    if (!isOwner) {
+      setNoticePrompt({
+        open: true,
+        headline: "삭제 권한이 없습니다.",
+        description: "문서 삭제는 여행 소유주만 할 수 있습니다.",
+      });
+      return;
+    }
+
+    setDeletePrompt({
+      open: true,
+      voucherId,
+    });
+  };
+
+  const confirmDeleteVoucher = async () => {
+    if (deletePrompt.voucherId == null) return;
+
+    try {
+      await onDelete(deletePrompt.voucherId);
+      setDeletePrompt({ open: false, voucherId: null });
+    } catch (error: any) {
+      setDeletePrompt({ open: false, voucherId: null });
+      setNoticePrompt({
+        open: true,
+        headline: "문서 삭제 실패",
+        description: getErrorMessage(error, "문서 삭제에 실패했습니다."),
+      });
+    }
+  };
+
   return (
-    <div id="view-voucher" className="content-view active">
+    <>
       <h2
         style={{
           fontSize: "24px",
@@ -106,7 +159,7 @@ const VoucherView: React.FC<Props> = ({
                   }}
                   onClick={(e) => {
                     e.stopPropagation();
-                    onDelete(v.voucherId);
+                    requestDeleteVoucher(v.voucherId);
                   }}
                 >
                   <i className="fa-solid fa-trash"></i>
@@ -127,7 +180,29 @@ const VoucherView: React.FC<Props> = ({
           <span>UPLOAD NEW DOC</span>
         </div>
       </div>
-    </div>
+
+      <ActionPromptModal
+        open={deletePrompt.open}
+        title="문서 삭제"
+        headline="문서를 삭제할까요?"
+        description="삭제한 문서는 다시 복구할 수 없습니다."
+        cancelText="취소"
+        confirmText="삭제"
+        onClose={() => setDeletePrompt({ open: false, voucherId: null })}
+        onConfirm={() => void confirmDeleteVoucher()}
+      />
+
+      <ActionPromptModal
+        open={noticePrompt.open}
+        title="안내"
+        headline={noticePrompt.headline}
+        description={noticePrompt.description}
+        hideCancel
+        confirmText="확인"
+        onClose={closeNoticePrompt}
+        onConfirm={closeNoticePrompt}
+      />
+    </>
   );
 };
 

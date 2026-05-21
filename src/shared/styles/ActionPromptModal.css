@@ -1,185 +1,123 @@
-/* ========== 외부 구조 (workspace 스타일) ========== */
-.modal-overlay {
+.action-prompt-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: none;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 9999;
+  padding: 22px;
+  box-sizing: border-box;
 }
 
-.modal-overlay.active {
-  display: flex;
-}
-
-.modal-window {
-  background: white;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-  overflow: hidden;
+.action-prompt-window {
+  width: min(500px, 92vw);
   max-height: 90vh;
+  background: #fff;
+  border: 2px solid #000;
+  box-shadow: 7px 7px 0 rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+}
+
+.action-prompt-header {
+  background: linear-gradient(#111, #000);
+  color: #fff;
+  padding: 14px 18px;
+}
+
+.action-prompt-title {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.action-prompt-body {
+  background: #fff;
+  padding: 40px 32px;
+  text-align: center;
+  font-family: var(--font-mono);
+}
+
+.action-prompt-headline {
+  margin: 0 0 10px;
+  font-size: 20px;
+  font-weight: 900;
+}
+
+.action-prompt-description {
+  margin: 0 0 32px;
+  color: #222;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.6;
+}
+
+.action-prompt-extra {
+  margin-bottom: 20px;
   display: flex;
   flex-direction: column;
-}
-
-.write-window {
-  width: 90%;
-  max-width: 800px;
-}
-
-.sent-window {
-  width: 90%;
-  max-width: 700px;
-}
-
-.received-window {
-  width: 90%;
-  max-width: 900px;
-}
-
-.detail-window {
-  width: 90%;
-  max-width: 500px;
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 20px 24px;
-  background: #000;
-  color: #fff;
-  border-bottom: 2px solid #000;
 }
 
-.mh-title {
-  font-family: "Share Tech Mono", monospace;
-  font-size: 18px;
-  font-weight: bold;
+.action-prompt-buttons {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
 }
 
-.mh-close {
-  background: none;
-  border: 2px solid #fff;
-  color: #fff;
-  padding: 6px 12px;
-  font-family: "Share Tech Mono", monospace;
-  font-weight: bold;
+.action-prompt-cancel-btn,
+.action-prompt-confirm-btn {
+  min-width: 100px;
+  border: 2px solid #000;
+  padding: 10px 20px;
+  font-weight: 900;
+  font-size: 14px;
   cursor: pointer;
-  transition: 0.2s;
+  font-family: var(--font-mono);
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease;
 }
 
-.mh-close:hover {
+.action-prompt-cancel-btn {
   background: #fff;
   color: #000;
 }
 
-/* ========== 내부 컨텐츠 (원래 neobrutalism 디자인) ========== */
-.modal-body {
-  padding: 24px;
-  overflow-y: auto;
-  background: #fff;
-  font-family: var(--font-mono);
+.action-prompt-confirm-btn {
+  background: #000;
+  color: #fff;
 }
 
-/* Neobrutalism 스타일 유지 */
-.modal {
-  border: 3px solid #000;
+.action-prompt-cancel-btn:hover,
+.action-prompt-confirm-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.5);
 }
 
-.header {
-  border-bottom: 3px solid #000;
+.action-prompt-cancel-btn:active,
+.action-prompt-confirm-btn:active {
+  transform: translateY(0);
+  box-shadow: none;
 }
 
-.infoBox {
+.modal-input {
+  width: 100%;
+  max-width: 360px;
+  padding: 14px 16px;
   border: 2px solid #000;
+  background-color: #fff;
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: 800;
+  text-align: center;
+  outline: none;
 }
 
-.infoBoxLarge {
-  border: 3px solid #000;
-}
-
-.button {
-  border: 3px solid #000;
-  box-shadow: 4px 4px 0px rgba(0, 0, 0, 1);
-}
-
-.card {
-  border: 3px solid #000;
-}
-
-.cardApproved {
-  box-shadow: 0 0 0 4px #22c55e;
-}
-
-.cardRejected {
-  box-shadow: 0 0 0 4px #ef4444;
-}
-
-.bgBlack {
-  background-color: #000 !important;
-  color: #fff !important;
-}
-
-.bgBlackHoverable {
-  background-color: #000 !important;
-  color: #fff !important;
-}
-
-.bgBlackHoverable:hover {
-  background-color: #fff !important;
-  color: #000 !important;
-}
-
-.bgWhiteHoverable:hover {
-  background-color: #000 !important;
-  color: #fff !important;
-}
-
-.bgGreen {
-  background-color: #22c55e !important;
-  color: #fff !important;
-}
-
-.bgRed {
-  background-color: #ef4444 !important;
-  color: #fff !important;
-}
-
-.overlay {
-  background-color: rgba(0, 0, 0, 0.5);
-}
-
-.badge {
-  background-color: #000 !important;
-  color: #fff !important;
-}
-
-@keyframes shake {
-  0%,
-  100% {
-    transform: translateX(0);
-  }
-  20% {
-    transform: translateX(-8px);
-  }
-  40% {
-    transform: translateX(8px);
-  }
-  60% {
-    transform: translateX(-5px);
-  }
-  80% {
-    transform: translateX(5px);
-  }
-}
-
-.animate-shake {
-  animation: shake 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
-  transform: translate3d(0, 0, 0);
-  backface-visibility: hidden;
-  perspective: 1000px;
+.modal-error-text {
+  margin-top: 8px;
+  color: #ef4444;
+  font-size: 0.8rem;
+  font-weight: bold;
 }

@@ -1,6 +1,5 @@
 // src/features/myTrips/components/TripCard.tsx
 
-import React from "react";
 import { useNavigate } from "react-router-dom";
 import type { MyTripSummaryResponse } from "../../../types";
 import type { TripStatusInfo } from "./../hooks/useMyTrips";
@@ -8,7 +7,7 @@ import type { TripStatusInfo } from "./../hooks/useMyTrips";
 interface TripCardProps {
   trip: MyTripSummaryResponse;
   status: TripStatusInfo;
-  onDelete: (id: number) => void;
+  onDelete: (trip: MyTripSummaryResponse) => void;
   isInvited: boolean;
 }
 
@@ -84,7 +83,7 @@ export const TripCard = ({
               className="delete-trip-btn"
               onClick={(e) => {
                 e.stopPropagation();
-                onDelete(trip.tripId);
+                onDelete(trip);
               }}
             >
               <i className="fa-solid fa-trash-can"></i>

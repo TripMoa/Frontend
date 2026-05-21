@@ -51,6 +51,18 @@
   width: 100%;
 }
 
+.filter-left {
+  display: flex;
+  gap: 10px;
+}
+
+.filter-right {
+  margin-left: auto;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
 .filter-btn {
   font-family: var(--font-mono);
   font-weight: 800;
@@ -73,10 +85,6 @@
   color: #fff;
   box-shadow: none;
   transform: none;
-}
-
-.filter-tabs .filter-btn:last-child {
-  margin-left: auto;
 }
 
 /* === [2. 여행 목록 그리드 및 카드] === */
@@ -117,6 +125,49 @@
 }
 
 /* === [3. 카드 내부 컴포넌트] === */
+.mate-ticket {
+  background: #fff;
+  border: 2px solid #000;
+  display: flex;
+  align-items: center;
+  transition: 0.2s;
+  cursor: pointer;
+}
+.mate-ticket:hover {
+  box-shadow: var(--shadow-hard);
+  transform: translateX(-3px);
+}
+
+.mt-side {
+  background: #111;
+  color: #fff;
+  width: 100px;
+  padding: 20px 0;
+  text-align: center;
+  font-family: var(--font-mono);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.mt-side span:first-child {
+  font-size: 14px;
+  opacity: 0.7;
+}
+.mt-side span:last-child {
+  font-size: 28px;
+  font-weight: bold;
+  line-height: 1.1;
+}
+
+.mt-center {
+  flex: 1;
+  padding: 20px;
+}
+
+.tag-wrap {
+  margin-bottom: 8px;
+}
+
 .top-badges {
   display: flex;
   align-items: center;
@@ -188,6 +239,36 @@
 .delete-trip-btn:hover {
   color: #ff4d4d;
   transform: scale(1.1);
+}
+
+/* 태그 스타일 (Mate, MyTrips, Workspace 등에서 사용) */
+.sys-tag {
+  font-size: 12px;
+  font-weight: bold;
+  border: 1px solid #000;
+  padding: 2px 6px;
+  margin-right: 5px;
+  background: #f0f0f0;
+  font-family: var(--font-mono);
+}
+
+.mt-tit {
+  font-size: 18px;
+  font-weight: 800;
+  margin-bottom: 4px;
+  margin-top: 0;
+}
+.mt-txt {
+  font-size: 14px;
+  color: #666;
+  margin: 0;
+}
+
+.mt-end {
+  padding: 20px;
+  border-left: 2px dashed #000;
+  text-align: center;
+  min-width: 120px;
 }
 
 /* === [4. FAB 및 미디어 쿼리] === */
@@ -282,6 +363,24 @@
 
 .p-avatar-emoji {
   font-size: 18px;
+}
+
+.invite-join-btn {
+  font-family: var(--font-mono);
+  font-weight: 800;
+  border: 2px solid #000;
+  background: #fff;
+  color: #000;
+  padding: 8px 18px;
+  cursor: pointer;
+  transition: all 0.1s;
+}
+
+.invite-join-btn:hover {
+  transform: translate(-3px, -3px);
+  box-shadow: 3px 3px 0px #000;
+  background: #f0f0f0;
+  color: #000;
 }
 
 @media (max-width: 850px) {

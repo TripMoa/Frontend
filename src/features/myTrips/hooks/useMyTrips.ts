@@ -8,8 +8,7 @@ import {
   getInvitedTrips,
   getMyTrips,
 } from "../../../api/trip.api";
-import { getMyInfo } from "../../../api/auth.api";
-import type { UserResponse } from "../../../types/auth.types";
+import { useAuth } from "../../user/pages/AuthContext";
 import type {
   MyTripSummaryResponse,
   TripCreateRequest,
@@ -61,10 +60,9 @@ export const useMyTrips = () => {
   const [trips, setTrips] = useState<MyTripSummaryResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [currentUser, setCurrentUser] = useState<UserResponse | null>(null);
-
   const [formData, setFormData] = useState<TripCreateFormState>(INITIAL_FORM);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { profile: currentUser } = useAuth();
 
   const resetForm = useCallback(() => {
     setFormData(INITIAL_FORM);
@@ -96,32 +94,10 @@ export const useMyTrips = () => {
     fetchTrips(filter);
   }, [filter, fetchTrips]);
 
-  useEffect(() => {
-    const loadMyInfo = async () => {
-      try {
-        const response = await getMyInfo();
-        setCurrentUser(response.data);
-      } catch (infoError) {
-        console.error("내 정보 조회 실패:", infoError);
-      }
-    };
-
-    loadMyInfo();
-  }, []);
-
   const removeTrip = useCallback(
     async (tripId: number) => {
-      if (!window.confirm("이 작전을 폐기하시겠습니까?")) {
-        return;
-      }
-
-      try {
-        await deleteTrip(tripId);
-        await fetchTrips(filter);
-      } catch (deleteError) {
-        console.error("여행 삭제 실패:", deleteError);
-        window.alert("여행 삭제에 실패했습니다.");
-      }
+      await deleteTrip(tripId);
+      await fetchTrips(filter);
     },
     [fetchTrips, filter],
   );
@@ -202,12 +178,12 @@ export const useMyTrips = () => {
         navigate(`/workspace/${createdTripId}`);
       } catch (submitError) {
         console.error("여행 생성 실패:", submitError);
-        window.alert("여행 생성에 실패했습니다.");
+        throw submitError;
       } finally {
         setIsSubmitting(false);
       }
     },
-    [fetchTrips, filter, formData, isSubmitting, resetForm],
+    [formData, isSubmitting, navigate, resetForm],
   );
 
   return {

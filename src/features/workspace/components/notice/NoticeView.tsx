@@ -1,6 +1,7 @@
 // src/features/workspace/components/notice/NoticeView.tsx
 
-import React from "react";
+import React, { useState } from "react";
+import { ActionPromptModal } from "../../../../shared/components/ActionPromptModal";
 import type { NoticeItem } from "../../hooks/useNotices";
 import { useTripContext } from "../../hooks/useTripContext";
 
@@ -22,6 +23,74 @@ const NoticeView: React.FC<Props> = ({
   onTogglePin,
 }) => {
   const { isOwner } = useTripContext();
+
+  const [deletePrompt, setDeletePrompt] = useState({
+    open: false,
+    noticeId: null as number | null,
+  });
+
+  const [noticePrompt, setNoticePrompt] = useState({
+    open: false,
+    headline: "",
+    description: "",
+  });
+
+  const closeNoticePrompt = () => {
+    setNoticePrompt((prev) => ({ ...prev, open: false }));
+    setDeletePrompt({ open: false, noticeId: null });
+  };
+
+  const getErrorMessage = (error: any, fallback: string) =>
+    error?.response?.data?.message ?? error?.message ?? fallback;
+
+  const confirmDeleteNotice = async () => {
+    if (deletePrompt.noticeId == null) return;
+
+    try {
+      await onDelete(deletePrompt.noticeId);
+      setDeletePrompt({ open: false, noticeId: null });
+    } catch (error: any) {
+      setDeletePrompt({ open: false, noticeId: null });
+      setNoticePrompt({
+        open: true,
+        headline: "공지 삭제 실패",
+        description: getErrorMessage(error, "공지 삭제에 실패했습니다."),
+      });
+    }
+  };
+
+  const handleTogglePin = async (notice: NoticeItem) => {
+    if (notice.isPinned && !isOwner) return;
+
+    try {
+      await onTogglePin(notice.id);
+    } catch (error: any) {
+      setNoticePrompt({
+        open: true,
+        headline: "고정 상태 변경 실패",
+        description: getErrorMessage(
+          error,
+          "공지 고정 상태 변경에 실패했습니다.",
+        ),
+      });
+    }
+  };
+
+  const requestDeleteNotice = (noticeId: number) => {
+    if (!isOwner) {
+      setNoticePrompt({
+        open: true,
+        headline: "삭제 권한이 없습니다.",
+        description: "공지 삭제는 여행 소유주만 할 수 있습니다.",
+      });
+      return;
+    }
+
+    setDeletePrompt({
+      open: true,
+      noticeId,
+    });
+  };
 
   return (
     <>
@@ -85,10 +154,7 @@ const NoticeView: React.FC<Props> = ({
                 className={`nc-pin-btn ${notice.isPinned ? "active" : ""} ${
                   notice.isPinned && !isOwner ? "disabled" : ""
                 }`}
-                onClick={() => {
-                  if (notice.isPinned && !isOwner) return;
-                  void onTogglePin(notice.id);
-                }}
+                onClick={() => void handleTogglePin(notice)}
                 title={
                   notice.isPinned
                     ? isOwner
@@ -117,7 +183,7 @@ const NoticeView: React.FC<Props> = ({
                 {isOwner && (
                   <span
                     className="nc-btn del"
-                    onClick={() => void onDelete(notice.id)}
+                    onClick={() => requestDeleteNotice(notice.id)}
                   >
                     DELETE
                   </span>
@@ -127,6 +193,28 @@ const NoticeView: React.FC<Props> = ({
           ))
         )}
       </div>
+
+      <ActionPromptModal
+        open={deletePrompt.open}
+        title="공지 삭제"
+        headline="공지를 삭제할까요?"
+        description="삭제한 공지는 다시 복구할 수 없습니다."
+        cancelText="취소"
+        confirmText="삭제"
+        onClose={() => setDeletePrompt({ open: false, noticeId: null })}
+        onConfirm={() => void confirmDeleteNotice()}
+      />
+
+      <ActionPromptModal
+        open={noticePrompt.open}
+        title="안내"
+        headline={noticePrompt.headline}
+        description={noticePrompt.description}
+        hideCancel
+        confirmText="확인"
+        onClose={closeNoticePrompt}
+        onConfirm={closeNoticePrompt}
+      />
     </>
   );
 };

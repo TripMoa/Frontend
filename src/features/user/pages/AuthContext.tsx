@@ -16,13 +16,16 @@ import {
   notifyAuthLogout,
 } from "../../../api/api";
 import { getMySanctionStatus } from "../../../api/sanction.api";
-import { ActionPromptModal } from "../../../shared/components/ActionPromptModal";
 import { markWarningPopupRead } from "../../../api/sanction.api";
+import type { UserResponse } from "../../../types/auth.types";
+import { ActionPromptModal } from "../../../shared/components/ActionPromptModal";
 
 type AuthContextType = {
   isAuthenticated: boolean;
   authReady: boolean;
   userId: number | null;
+  profile: UserResponse | null;
+  setProfile: (profile: UserResponse | null) => void;
   logoutMessage: string | null;
   setAuthenticated: (value: boolean) => void;
   setUserId: (id: number | null) => void;
@@ -39,10 +42,17 @@ const LOGOUT_SYNC_KEY = "logout-event";
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
+const PUBLIC_PATHS = ["/", "/login", "/travelstory", "/mate"];
+
+const isPublicPath = () => {
+  return PUBLIC_PATHS.some((path) => location.pathname === path);
+};
+
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authReady, setAuthReady] = useState(false);
   const [userId, setUserId] = useState<number | null>(null);
+  const [profile, setProfile] = useState<UserResponse | null>(null);
   const [logoutMessage, setLogoutMessage] = useState<string | null>(null);
   const didBootstrap = useRef(false);
   const [warningMessage, setWarningMessage] = useState<string | null>(null);
@@ -56,6 +66,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     clearAuthState();
     setIsAuthenticated(false);
     setUserId(null);
+    setProfile(null);
   }, []);
 
   const clearLogoutMessage = useCallback(() => {
@@ -76,6 +87,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       const response = await getMyInfo();
       setUserId(response.data.id);
+      setProfile(response.data);
       setIsAuthenticated(true);
       return true;
     } catch {
@@ -111,6 +123,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         await checkSanction();
       }
 
+      if (!success && isPublicPath()) {
+        setLogoutMessage(null);
+      }
+
       setAuthReady(true);
     };
 
@@ -130,6 +146,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       clearAuth();
 
       if (reason === "refresh-expired") {
+        if (isPublicPath()) {
+          setLogoutMessage(null);
+          return;
+        }
+
+        setLogoutHeadline("세션 만료");
         setLogoutMessage("세션이 만료되어 다시 로그인해주세요.");
         return;
       }
@@ -208,6 +230,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         isAuthenticated,
         authReady,
         userId,
+        profile,
+        setProfile,
         logoutMessage,
         setUserId,
         setAuthenticated: setIsAuthenticated,
