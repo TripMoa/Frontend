@@ -617,15 +617,25 @@ export function ChatSlideModal({
           onClose={() => setShowReport(false)}
           onSubmit={async (reason, detail) => {
             const otherUser = getOtherUser(selectedChat.chat);
+
+            const targetMessage = selectedChat.chat.messages
+              .filter((msg) => msg.senderId === otherUser.id)
+              .at(-1);
+
+            if (!targetMessage) {
+              alert("신고할 상대방 메시지가 없습니다.");
+              return;
+            }
+
             await submitReport({
               reportedUserId: otherUser.id,
               location: "CHAT",
-              targetId: Number(selectedChat.chat.id),
+              targetId: Number(targetMessage.id),
               reason,
               detail,
-              contentSnapshot: selectedChat.chat.messages.at(-1)?.content,
-              reportedNickname: otherUser.name,
             });
+
+            setShowReport(false);
           }}
         />
       )}
