@@ -25,7 +25,7 @@ export default function MateDetail() {
 
   const hasLoadedRef = useRef(false);
 
-  const { userId } = useAuth();
+  const { userId, profile } = useAuth();
   const isAuthor = post?.author?.id === userId;
   const token = getAccessToken();
 
@@ -38,7 +38,7 @@ export default function MateDetail() {
     moveToMypageForVerification,
     requireLogin,
     requireAdultVerified,
-  } = useAccessGuard();
+  } = useAccessGuard(profile);
 
   const handleApplyClick = () => {
     if (requireAdultVerified()) setShowApplyForm(true);

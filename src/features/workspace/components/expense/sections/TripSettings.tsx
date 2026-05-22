@@ -169,7 +169,7 @@ const TripSettings: React.FC<TripSettingsProps> = ({
   const appliedSettings = appliedSettingsRef.current;
 
   const hasPendingSettingsChange =
-    sharedBudgetInput !== formatWon(appliedSettings.sharedBudget) ||
+    parseWon(sharedBudgetInput) !== appliedSettings.sharedBudget ||
     settings.paymentMode !== appliedSettings.paymentMode ||
     settings.roundingRule !== appliedSettings.roundingRule ||
     settings.remainingRule !== appliedSettings.remainingRule;
