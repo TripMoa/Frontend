@@ -25,7 +25,7 @@ import {
 import "../styles/Mate.css";
 import "../../chat/styles/ChatFAB.css";
 import type { MateTabKey } from "../components/MateTabs";
-import { getTodayKST, isPostExpired } from "../hooks/mate.util";
+import { isPostExpired } from "../hooks/mate.util";
 import { getAccessToken } from "../../../api/api";
 
 export default function Mate() {
@@ -101,15 +101,15 @@ export default function Mate() {
           !passedIdSet.has(p.id) && !isPostExpired(p)
         );
     }
-  }, [activeTab, filteredPosts, passedPosts, expiredPosts, passedIdSet, getTodayKST()]);
+  }, [activeTab, filteredPosts, passedPosts, expiredPosts, passedIdSet]);
 
-  const counts = {
-    all: filteredPosts.filter(p => !passedIdSet.has(p.id) && p.endDate >= getTodayKST()).length,
+  const counts = useMemo (() => ({
+    all: filteredPosts.filter(p => !passedIdSet.has(p.id) && !isPostExpired(p)).length,
     passed: passedPosts.length,
     expired: expiredPosts.length,
     liked: posts.filter(p => p.liked).length,
     my: posts.filter(p => p.author.id === userId).length,
-  };
+  }), [filteredPosts, passedIdSet, passedPosts, expiredPosts, posts, userId]);
 
   const { currentPage, setCurrentPage, totalPages, visiblePosts } = usePagination(
     displayedPosts,
