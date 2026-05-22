@@ -75,7 +75,12 @@ const ExpenseView: React.FC<Props> = ({ store, onOpenSettleDetail }) => {
   const [dayOpen, setDayOpen] = useState(false);
   const [calMonth, setCalMonth] = useState(() => new Date());
   const [daySelectedDates, setDaySelectedDates] = useState<string[]>([]);
-  const [sharedBudgetInput, setSharedBudgetInput] = useState<string>("");
+
+  const [sharedBudgetInput, setSharedBudgetInput] = useState<string>(() => {
+    const n = settings?.sharedBudget ?? 0;
+    return n ? `₩ ${n.toLocaleString("ko-KR")}` : "";
+  });
+
   const [activeCat, setActiveCat] = useState<string>("ALL");
   const [visibleCount, setVisibleCount] = useState(10);
   const [activePayer, setActivePayer] = useState<string>("ALL");
