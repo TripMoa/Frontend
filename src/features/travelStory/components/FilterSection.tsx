@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from "react";
 import { getTravelStyles } from "../../../api/auth.api";
 import type { TravelStyleOption } from "../../../types/auth.types";
-import '../styles/travelStory.css';
-import '../styles/FilterSection.css';
+import "../styles/travelStory.css";
+import "../styles/FilterSection.css";
 
 interface FilterSectionProps {
   filters: {
@@ -11,12 +11,16 @@ interface FilterSectionProps {
     duration: string;
     minBudget: string;
     maxBudget: string;
-    tags: string[];
+    tags: number[];
   };
   setFilters: (filters: any) => void;
 
-  selectedType: 'ALL' | 'FREE' | 'REVIEW';
-  setSelectedType: (type: 'ALL' | 'FREE' | 'REVIEW') => void;
+  selectedType: "FREE" | "REVIEW" | "ALL";
+  setSelectedType: React.Dispatch<
+    React.SetStateAction<"FREE" | "REVIEW" | "ALL">
+  >;
+
+  tags: TravelStyleOption[];
 }
 
 // 공통 드롭다운 선택 컴포넌트 (여행 기간, 예산대)
@@ -41,12 +45,12 @@ function CustomSelect({
         setOpen(false);
       }
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   // '전체' 또는 빈 값이 아닐 때 활성 상태로 표시
-  const isActive = value !== '전체' && value !== '';
+  const isActive = value !== "전체" && value !== "";
 
   return (
     <div className="filter-select-group" ref={ref}>
@@ -54,15 +58,27 @@ function CustomSelect({
       <div className="custom-select-wrapper">
         <button
           type="button"
-          className={`custom-select-trigger ${open ? 'open' : ''} ${isActive && !open ? 'active' : ''}`}
+          className={`custom-select-trigger ${open ? "open" : ""} ${isActive && !open ? "active" : ""}`}
           onClick={() => setOpen(!open)}
         >
-          <span>{value || '전체'}</span>
+          <span>{value || "전체"}</span>
           <svg
-            width="16" height="16" viewBox="0 0 24 24" fill="none"
-            style={{ transform: open ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            style={{
+              transform: open ? "rotate(180deg)" : "rotate(0deg)",
+              transition: "transform 0.2s",
+            }}
           >
-            <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+            <path
+              d="M6 9l6 6 6-6"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
           </svg>
         </button>
 
@@ -71,7 +87,7 @@ function CustomSelect({
             {options.map((opt) => (
               <div
                 key={opt}
-                className={`custom-select-option ${value === opt ? 'selected' : ''}`}
+                className={`custom-select-option ${value === opt ? "selected" : ""}`}
                 onClick={() => {
                   onChange(opt);
                   setOpen(false);
@@ -87,14 +103,7 @@ function CustomSelect({
   );
 }
 
-function FilterSection({
-  filters,
-  setFilters,
-  selectedType,
-  setSelectedType
-}: FilterSectionProps) {
-  const [travelStyles, setTravelStyles] = useState<Tag[]>([]);
-function FilterSection({ filters, setFilters }: FilterSectionProps) {
+function FilterSection({ filters, setFilters, selectedType, setSelectedType }: FilterSectionProps) {
   const [travelStyles, setTravelStyles] = useState<TravelStyleOption[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -107,14 +116,22 @@ function FilterSection({ filters, setFilters }: FilterSectionProps) {
         setTravelStyles(response.data);
       } catch (error) {
         setTravelStyles([
-          { id: 1, name: '힐링여행' }, { id: 2, name: '액티비티' },
-          { id: 3, name: '맛집탐방' }, { id: 4, name: '문화탐방' },
-          { id: 5, name: '쇼핑' },    { id: 6, name: '자연' },
-          { id: 7, name: '사진' },    { id: 8, name: '야경' },
-          { id: 9, name: '로컬체험' }, { id: 10, name: '카페투어' },
-          { id: 11, name: '축제' },   { id: 12, name: '역사탐방' },
-          { id: 13, name: '야외활동' }, { id: 14, name: '미식투어' },
-          { id: 15, name: '럭셔리' }, { id: 16, name: '배낭여행' }
+          { id: 1, name: "힐링여행" },
+          { id: 2, name: "액티비티" },
+          { id: 3, name: "맛집탐방" },
+          { id: 4, name: "문화탐방" },
+          { id: 5, name: "쇼핑" },
+          { id: 6, name: "자연" },
+          { id: 7, name: "사진" },
+          { id: 8, name: "야경" },
+          { id: 9, name: "로컬체험" },
+          { id: 10, name: "카페투어" },
+          { id: 11, name: "축제" },
+          { id: 12, name: "역사탐방" },
+          { id: 13, name: "야외활동" },
+          { id: 14, name: "미식투어" },
+          { id: 15, name: "럭셔리" },
+          { id: 16, name: "배낭여행" },
         ]);
       } finally {
         setIsLoading(false);
@@ -130,51 +147,27 @@ function FilterSection({ filters, setFilters }: FilterSectionProps) {
 
   // 하나 이상의 필터가 적용된 상태인지 확인 (RESET ALL 버튼 표시 여부)
   const hasActiveFilters =
-    (filters.destination && filters.destination !== '전체') ||
-    (filters.duration && filters.duration !== '전체') ||
-    (filters.minBudget && filters.minBudget !== '전체') ||
+    (filters.destination && filters.destination !== "전체") ||
+    (filters.duration && filters.duration !== "전체") ||
+    (filters.minBudget && filters.minBudget !== "전체") ||
     filters.tags.length > 0;
 
   // 모든 필터 초기화
   const resetFilters = () => {
     setFilters({
       ...filters,
-      destination: '',
-      duration: '',
-      minBudget: '',
-      maxBudget: '',
-      tags: []
+      destination: "",
+      duration: "",
+      minBudget: "",
+      maxBudget: "",
+      tags: [],
     });
   };
 
   return (
     <div className="filter-section">
       <div className="filter-header">
-
-        {/* 타입 필터*/}
-    <div className="filter-tags-container">
-      <button
-        className={`filter-tag ${selectedType === 'ALL' ? 'selected' : ''}`}
-        onClick={() => setSelectedType('ALL')}
-      >
-        전체
-      </button>
-
-      <button
-        className={`filter-tag ${selectedType === 'FREE' ? 'selected' : ''}`}
-        onClick={() => setSelectedType('FREE')}
-      >
-        자유글
-      </button>
-
-      <button
-        className={`filter-tag ${selectedType === 'REVIEW' ? 'selected' : ''}`}
-        onClick={() => setSelectedType('REVIEW')}
-      >
-        여행후기
-      </button>
-    </div>
-        
+        <span className="filter-header-title">FILTERS</span>
         {hasActiveFilters && (
           <button className="filter-reset-btn" onClick={resetFilters}>
             [ RESET ALL ]
@@ -182,13 +175,7 @@ function FilterSection({ filters, setFilters }: FilterSectionProps) {
         )}
       </div>
 
-        {/* <p className="filter-label">POST TYPE</p> */}
-
-    <span className="filter-header-title">FILTERS</span>
-
-
       <div className="filter-selects">
-
         {/* 여행지 - 텍스트 검색 */}
         <div className="filter-select-group">
           <label className="filter-select-label">여행지</label>
@@ -197,45 +184,57 @@ function FilterSection({ filters, setFilters }: FilterSectionProps) {
               className="filter-search-icon"
               xmlns="http://www.w3.org/2000/svg"
               viewBox="0 0 24 24"
-              width="16" height="16"
+              width="16"
+              height="16"
               fill="none"
               stroke="currentColor"
               strokeWidth="2"
               strokeLinecap="round"
               strokeLinejoin="round"
             >
-              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
-              <circle cx="12" cy="9" r="2.5"/>
+              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" />
+              <circle cx="12" cy="9" r="2.5" />
             </svg>
             <input
               type="text"
-              className={`filter-search-input ${filters.destination ? 'active' : ''}`}
+              className={`filter-search-input ${filters.destination ? "active" : ""}`}
               placeholder="장소 검색..."
               value={filters.destination}
-              onChange={(e) => updateFilter('destination', e.target.value)}
+              onChange={(e) => updateFilter("destination", e.target.value)}
             />
           </div>
         </div>
 
-        
-
-
         <CustomSelect
           label="여행 기간"
-          value={filters.duration || '전체'}
-          options={['전체', '당일치기', '1박 2일', '2박 3일', '3박 4일', '4박 5일', '5박 6일', '1주일 이상']}
-          onChange={(val) => updateFilter('duration', val)}
+          value={filters.duration || "전체"}
+          options={[
+            "전체",
+            "당일치기",
+            "1박 2일",
+            "2박 3일",
+            "3박 4일",
+            "4박 5일",
+            "5박 6일",
+            "1주일 이상",
+          ]}
+          onChange={(val) => updateFilter("duration", val)}
         />
 
         <CustomSelect
           label="예산대"
-          value={filters.minBudget || '전체'}
-          options={['전체', '10만원 이하', '10-30만원', '30-50만원', '50-100만원', '100만원 이상']}
-          onChange={(val) => updateFilter('minBudget', val)}
+          value={filters.minBudget || "전체"}
+          options={[
+            "전체",
+            "10만원 이하",
+            "10-30만원",
+            "30-50만원",
+            "50-100만원",
+            "100만원 이상",
+          ]}
+          onChange={(val) => updateFilter("minBudget", val)}
         />
       </div>
-
-
 
       <div className="filter-divider">
         <span className="filter-style-label">TRAVEL STYLE</span>
@@ -246,17 +245,17 @@ function FilterSection({ filters, setFilters }: FilterSectionProps) {
         {!isLoading && (
           <div className="filter-tags-container">
             {travelStyles.map((tag) => {
-              const isSelected = filters.tags.includes(tag.name);
+              const isSelected = filters.tags.includes(tag.id);
               return (
                 <button
                   key={tag.id}
-                  className={`filter-tag ${isSelected ? 'selected' : ''}`}
+                  className={`filter-tag ${isSelected ? "selected" : ""}`}
                   onClick={() =>
                     updateFilter(
-                      'tags',
+                      "tags",
                       isSelected
-                        ? filters.tags.filter(t => t !== tag.name)
-                        : [...filters.tags, tag.name]
+                        ? filters.tags.filter((t) => t !== tag.id)
+                        : [...filters.tags, tag.id],
                     )
                   }
                 >

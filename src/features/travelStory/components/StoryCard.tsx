@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import '../styles/StoryCard.css';
+import type { Story } from '../../../api/stories.api';
 
 interface StoryCardProps {
-  story: any;
-  onCardClick: (story: any) => void;
+  story: Story;
+  onCardClick: (story: Story) => void;
   likedStories: number[];
   setLikedStories: (ids: number[] | ((prev: number[]) => number[])) => void;
   followedStories: number[];
@@ -57,11 +58,7 @@ function StoryCard({
   };
 
   // tags가 문자열이면 쉼표로 분리, 배열이면 그대로 사용
-  const tags = typeof story.tags === 'string' 
-    ? story.tags.split(',').map((t: string) => t.trim()).filter(Boolean)
-    : Array.isArray(story.tags) 
-    ? story.tags 
-    : [];
+  const tags = Array.isArray(story.tags) ? story.tags : [];
 
   // description에서 이미지 URL 추출 (src 속성 또는 직접 URL 패턴 순으로 탐색)
   const getImageFromDescription = (desc: string) => {
@@ -89,44 +86,69 @@ function StoryCard({
     return `http://localhost:8080${url.startsWith('/') ? '' : '/'}${url}`;
   };
 
-  // 커버 이미지 우선 사용, 없으면 description에서 추출, 그것도 없으면 기본 이미지
-  const imageUrl = 
-    (story.imageUrl && !story.imageUrl.includes('unsplash')) 
-      ? story.imageUrl  // 커버이미지 먼저
-      : getImageFromDescription(story.description) || 
-        story.imageUrl ||
-        'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=800';
+  // FREE 타입이고 이미지 없으면 그레이, 아니면 기존 unsplash 이미지
+    const imageUrl = (() => {
+      if (story.imageUrl && !story.imageUrl.includes('unsplash')) return story.imageUrl;
+      const fromDesc = getImageFromDescription(story.description);
+      if (fromDesc) return fromDesc;
+      if (story.type === 'FREE') return null;
+      return 'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=800';
+    })();
 
-  return (
-    <div className="story-card" onClick={() => onCardClick(story)}>
-      <div className="story-card-image-wrapper">
-        <img 
-          src={imageUrl}                   
-          alt={story.title}                 
-          className="story-card-image"      
-        />
-        <div className="story-card-views">
-          {story.views || 0}
-        </div>
-      </div>
+  const typeLabelMap = {
+  FREE: 'FREE',
+  REVIEW: 'REVIEW',
+};
+
+return (  
+  <div className="story-card" onClick={() => onCardClick(story)}>
+
+    <div className="story-card-image-wrapper">
+    {imageUrl ? (
+      <img src={imageUrl} alt={story.title} className="story-card-image" />
+    ) : (
+      <div style={{
+        width: '100%', height: '100%',
+        background: '#888888',
+      }} />
+    )}
+
+  {/* 아래 기존 코드들 그대로 유지 */}
+  <div className="story-type-badge">
+    {typeLabelMap[story.type] || 'OTHER'}
+  </div>
+  <div className="story-card-views">
+    {story.views || 0}
+  </div>
+</div>
 
       <div className="story-card-content">
         <div className="story-card-author">
-          {story.author?.avatar ? (
-            <img 
-              src={normalizeImageUrl(story.author.avatar)}
-              alt={story.author?.name}
-              className="story-card-avatar"
-              onError={(e) => {
-                (e.target as HTMLImageElement).style.display = 'none';
-              }}
-            />
-          ) : (
-            <div className="story-card-avatar-placeholder">
-              {(story.author?.nickname || story.author?.name)?.charAt(0) || '?'}
-            </div>
-          )}
-          <span className="story-card-author-name">{story.author?.nickname || story.author?.name}</span>
+          {(() => {
+            const a = story.author as any;
+            if (a?.profileType === 'CUSTOM' && a?.profileImage) {
+              return (
+                <img src={a.profileImage} alt={a.name}
+                  className="story-card-avatar"
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                />
+              );
+            }
+            if (a?.avatarEmoji) {
+              return (
+                <div className="story-card-avatar-placeholder"
+                  style={{ background: a.avatarColor || '#e0e0e0', fontSize: '20px' }}>
+                  {a.avatarEmoji}
+                </div>
+              );
+            }
+            return (
+              <div className="story-card-avatar-placeholder">
+                {a?.name?.charAt(0)?.toUpperCase() || '?'}
+              </div>
+            );
+          })()}
+          <span className="story-card-author-name">{story.author?.name}</span>
         </div>
 
         <div className="story-card-divider"></div>
@@ -175,15 +197,17 @@ function StoryCard({
             </button>
 
             {/* 일정 저장 버튼 */}
-            <button 
-              onClick={toggleFollow}
-              className={`story-card-stat-btn ${followedStories.includes(story.id) ? 'active' : ''}`}
-            >
-              <svg viewBox="0 0 24 24" width="16" height="16">
-                <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" fill="currentColor"/>
-              </svg>
-              <span>USE THIS ITINERARY</span>
-            </button>
+            {story.type === 'REVIEW' && (
+              <button
+                onClick={toggleFollow}
+                className={`story-card-stat-btn ${followedStories.includes(story.id) ? 'active' : ''}`}
+              >
+                <svg viewBox="0 0 24 24" width="16" height="16">
+                  <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" fill="currentColor"/>
+                </svg>
+                <span>USE THIS ITINERARY</span>
+              </button>
+            )}
 
             {/* 댓글 수 */}
             <button className="story-card-stat-btn">

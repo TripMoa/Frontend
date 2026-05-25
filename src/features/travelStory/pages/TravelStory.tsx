@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from 'react';
 import FilterSection from '../components/FilterSection';
 import StoryCard from '../components/StoryCard';
@@ -6,23 +7,105 @@ import DetailPage from './DetailPage';
 import MyStoriesPage from './MyStoriesPage';
 import DraftModal from '../components/modals/DraftModal';
 import SavedItinerariesModal from '../components/modals/SavedItinerariesModal';
+import { useAccessGuard } from "../../../shared/hooks/useAccessGuard";
+import { ActionPromptModal } from "../../../shared/components/ActionPromptModal";
+import type { Story } from '../../../api/stories.api';
 import CustomAlert from '../components/modals/CustomAlert';
+import { User } from 'lucide-react';
 import DeleteModal from '../components/modals/DeleteModal';
 import { useTravelStory } from '../hooks';
 import '../styles/travelStory.css';
 
 const SORT_OPTIONS = ['기본 순서', '예산 높은 순', '예산 낮은 순', '조회수 높은 순', '좋아요 많은 순'];
 
+function EmptyState() {
+  return (
+    <div className="bg-white p-12 text-center emptyState" style={{ marginTop: '40px' }}>
+      <User className="w-16 h-16 mx-auto mb-4 text-black/30" />
+      <p className="text-black/60 text-lg font-bold uppercase">
+        NO POSTS FOUND
+      </p>
+    </div>
+  );
+}
+
 // 여행 스토리 기능 전체를 관리하는 루트 컴포넌트 (페이지 라우팅, 정렬, 페이지네이션 포함)
 function TravelStory() {
   const hook = useTravelStory();
-  const [selectedType, setSelectedType] = useState<'ALL' | 'FREE' | 'REVIEW'>('ALL');
+
+  const filteredStories = (hook.stories || []).filter((story) => {
+  // 타입 필터
+  if (hook.selectedType !== "ALL" && story.type !== hook.selectedType) return false;
+
+  // 여행지 필터
+  if (hook.filters.destination) {
+    if (!story.destination?.includes(hook.filters.destination)) return false;
+  }
+
+  // 기간 필터
+  if (hook.filters.duration && hook.filters.duration !== "전체") {
+    if (story.duration !== hook.filters.duration) return false;
+  }
+
+  // 예산 필터
+  if (hook.filters.minBudget && hook.filters.minBudget !== "전체") {
+    const total = story.expenses?.total || 0;
+    const budgetMap: Record<string, [number, number]> = {
+      "10만원 이하":   [0, 100000],
+      "10-30만원":     [100000, 300000],
+      "30-50만원":     [300000, 500000],
+      "50-100만원":    [500000, 1000000],
+      "100만원 이상":  [1000000, Infinity],
+    };
+    const range = budgetMap[hook.filters.minBudget];
+    if (range && (total < range[0] || total >= range[1])) return false;
+  }
+
+  // 태그 필터
+  if (hook.filters.tags.length > 0) {
+    // 태그 ID → 이름으로 변환 후 비교
+    const storyTags = typeof story.tags === 'string'
+      ? (story.tags as string).split(',').map((t: string) => t.trim())
+      : (story.tags || []);
+    const selectedTagNames = hook.filters.tags
+      .map((id: number) => hook.tags.find((t: any) => t.id === id)?.name)
+      .filter(Boolean);
+    const hasTag = selectedTagNames.some((name: any) => storyTags.includes(name));
+    if (!hasTag) return false;
+  }
+
+  return true;
+});
+
+  
   const [hoveredDraftId, setHoveredDraftId] = useState<number | null>(null);
   const [deleteHoverId, setDeleteHoverId] = useState<number | null>(null);
+  const {
+    requireLogin,
+    showLoginModal,
+    closeLoginModal,
+    moveToLogin
+  } = useAccessGuard();
+
+  const handleMyStoriesClick = () => {
+    if (!requireLogin()) return;
+    hook.navigateToPage('myStories');
+  };
+
+  const handleWriteClick = () => {
+    if (!requireLogin()) return;
+    hook.setEditingStory(null);    
+    hook.setCurrentDraft(null);    
+    hook.setCurrentDraftId(null);
+    hook.setWriteType("FREE");
+    hook.navigateToPage('write');
+  };
+  
   const [sortBy, setSortBy] = useState('기본 순서');
   const [sortOpen, setSortOpen] = useState(false);
   const [currentPageNum, setCurrentPageNum] = useState(1);
   const ITEMS_PER_PAGE = 6;
+
   const sortRef = useRef<HTMLDivElement>(null);
 
   // 정렬 드롭다운 외부 클릭 시 닫기
@@ -47,8 +130,8 @@ function TravelStory() {
   };
 
   // 필터링된 스토리를 선택한 정렬 기준에 따라 정렬
-  const getSortedStories = () => {
-    const filtered = hook.getFilteredStories();
+  const getSortedStories = (data: Story[]) => {
+    const filtered = data;
     
     switch (sortBy) {
       case '예산 높은 순':
@@ -85,27 +168,12 @@ function TravelStory() {
   }
 
   // 페이지네이션 계산 - 정렬된 스토리를 ITEMS_PER_PAGE 단위로 분할
-  // 정렬
-  const sortedStories = getSortedStories();
-
-  // 타입 필터 (정렬된 기준으로!)
-  const filteredStories = sortedStories.filter((story: any) => {
-    console.log(story.type);
-
-    if (selectedType === 'ALL') return true;
-    return story.type === selectedType;
-  });
-
-
-
-  // 페이지네이션 (필터 기준)
-  const pagedStories = filteredStories.slice(
+  const sortedStories = getSortedStories(filteredStories);
+  const totalPages = Math.ceil(sortedStories.length / ITEMS_PER_PAGE);
+  const pagedStories = sortedStories.slice(
     (currentPageNum - 1) * ITEMS_PER_PAGE,
     currentPageNum * ITEMS_PER_PAGE
   );
-
-  // 4️totalPages도 필터 기준으로 바꿔야 함
-  const totalPages = Math.ceil(filteredStories.length / ITEMS_PER_PAGE);
 
   // API 오류 발생 시 에러 표시
   if (hook.error) {
@@ -117,6 +185,7 @@ function TravelStory() {
   }
 
   return (
+   <> 
     <div className="travel-story-app">
       {/* ================= MAIN PAGE ================= */}
       {hook.currentPage === 'main' && (
@@ -132,7 +201,7 @@ function TravelStory() {
             <div className="ts-actions">
               <button
                 className="ts-btn outline"
-                onClick={() => hook.navigateToPage('myStories')}
+                onClick={handleMyStoriesClick}
               >
                 <svg viewBox="0 0 24 24">
                   <path d="M12 12c2.7 0 5-2.3 5-5s-2.3-5-5-5-5 2.3-5 5 2.3 5 5 5zm0 2c-3.3 0-10 1.7-10 5v3h20v-3c0-3.3-6.7-5-10-5z" fill="currentColor"/>
@@ -140,7 +209,7 @@ function TravelStory() {
                 MY STORIES
               </button>
 
-              <button className="ts-btn solid" onClick={() => hook.navigateToPage('write')}>
+              <button className="ts-btn solid" onClick={handleWriteClick}>
                 <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                   <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
@@ -150,14 +219,38 @@ function TravelStory() {
             </div>
           </div>
 
-          
+           <div className="type-filter">
+                <button
+                  onClick={() => hook.setSelectedType("ALL")}
+                  className={hook.selectedType === "ALL" ? "active" : ""}
+                >
+                  ALL
+                </button>
+
+                <button
+                  onClick={() => {
+                    hook.setSelectedType("FREE");
+                  }}
+                  className={hook.selectedType === "FREE" ? "active" : ""}
+                >
+                  FREE
+                </button>
+
+                <button
+                  onClick={() => hook.setSelectedType("REVIEW")}
+                  className={hook.selectedType === "REVIEW" ? "active" : ""}
+                >
+                  REVIEW
+                </button>
+              </div>
 
           {/* 여행지, 기간, 예산, 태그 필터 */}
           <FilterSection
             filters={hook.filters}
             setFilters={hook.setFilters}
-            selectedType={selectedType}
-            setSelectedType={setSelectedType}
+            selectedType={hook.selectedType}        
+            setSelectedType={hook.setSelectedType}
+            tags={hook.tags}
           />
 
           {/* 정렬 드롭다운 및 검색 결과 수 표시 */}
@@ -208,27 +301,15 @@ function TravelStory() {
 
           {/* 스토리 목록 - 전체 없음 / 검색 결과 없음 / 카드 그리드 분기 */}
           {hook.allStories.length === 0 ? (
-            <div className="ts-empty" style={{ marginTop: '50px' }}>
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="rgba(0,0,0,0.2)" strokeWidth="1.5">
-                <circle cx="11" cy="11" r="8"/>
-                <path d="M21 21l-4.35-4.35"/>
-              </svg>
-              <div className="ts-empty-text">아직 작성된 여행기가 없습니다.</div>
-              <div className="ts-empty-subtext">첫 여행기를 작성해보세요!</div>
-            </div>
+            <EmptyState />
           ) : sortedStories.length === 0 ? (
-            <div className="ts-empty" style={{ marginTop: '50px' }}>
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="rgba(0,0,0,0.2)" strokeWidth="1.5">
-                <circle cx="11" cy="11" r="8"/>
-                <path d="M21 21l-4.35-4.35"/>
-              </svg>
-              <div className="ts-empty-text">검색 결과가 없습니다.</div>
-              <div className="ts-empty-subtext">다른 조건으로 검색해보세요.</div>
-            </div>
+            <EmptyState />
           ) : (
             <>
+           
+
               <div className="posts-grid">
-                {pagedStories.map(story => (
+                {pagedStories.map((story: Story) => (
                   <StoryCard
                     key={story.id}
                     story={story}
@@ -291,11 +372,13 @@ function TravelStory() {
         />
       )}
 
+
       {/* ================= WRITE ================= */}
       {hook.currentPage === 'write' && (
         // key를 editingStory ID로 지정해 수정/신규 전환 시 컴포넌트 완전 초기화
         <WritePage
           key={hook.editingStory?.id || 'new'}
+          type={hook.writeType}
           goBack={hook.goBack}
           onPublish={hook.handlePublish}
           onSaveDraft={hook.handleSaveDraft}
@@ -312,7 +395,6 @@ function TravelStory() {
           goBack={hook.goBack}
           navigateToPage={hook.navigateToPage}
           myStories={hook.myStories}
-          getFilteredStories={hook.getFilteredStories}
           handleStoryClick={hook.handleStoryClick}
           handleEdit={hook.handleEdit}
           handleDelete={hook.handleDelete}
@@ -321,8 +403,10 @@ function TravelStory() {
           followedStories={hook.followedStories}
           setFollowedStories={hook.setFollowedStories}
           setShowLikesModal={hook.setShowLikesModal}
+          setWriteType={hook.setWriteType}
         />
       )}
+
 
       {/* MODALS */}
       {/* 임시저장 목록 모달 */}
@@ -334,6 +418,7 @@ function TravelStory() {
           hook.setCurrentDraft(draft);
           hook.setCurrentDraftId(draft.id);
           hook.setShowDraftModal(false);
+          hook.setWriteType("FREE"); 
           hook.navigateToPage('write');
         }}
         onDeleteDraft={hook.deleteDraft}
@@ -362,13 +447,25 @@ function TravelStory() {
       />
 
       {/* 스토리 삭제 확인 모달 */}
-      <DeleteModal
+      <DeleteModal             
         show={hook.showDeleteModal}
         onClose={() => hook.setShowDeleteModal(false)}
         onConfirm={hook.confirmDelete}
       />
     </div>
-  );
+
+       <ActionPromptModal
+      open={showLoginModal}
+      title="LOGIN REQUIRED"
+      headline="MEMBERS ONLY"
+      description="이 기능은 로그인 후 이용할 수 있습니다"
+      cancelText="취소"
+      confirmText="로그인"
+      onClose={closeLoginModal}
+      onConfirm={moveToLogin}
+    />
+  </>
+);
 }
 
 export default TravelStory;

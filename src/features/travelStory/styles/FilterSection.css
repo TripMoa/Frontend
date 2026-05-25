@@ -194,16 +194,15 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-bottom: 12px;
 }
 
 /* 태그 칩 */
 .filter-tag {
-  padding: 10px 18px;
-  border: 2px solid #000;
-  background: #fff;
-  color: #000;
-  font-size: 13px;
+  padding: 6px 14px;
+  border: 2px solid var(--border-color);
+  background: var(--secondary-color);
+  color: var(--primary-color);
+  font-size: 11px;
   font-weight: 700;
   font-family: var(--font-mono);
   cursor: pointer;
@@ -211,7 +210,11 @@
 }
 
 .filter-tag:hover {
-  background: #f0f0f0;
+  background: var(--bg-light);
+}
+
+.filter-tag-section {
+  margin-bottom: 24px;
 }
 
 /* 선택된 태그*/

@@ -2,13 +2,13 @@ import StoryCard from '../components/StoryCard';
 import { useState } from 'react';
 import '../styles/travelStory.css';
 import '../styles/MyStoriesPage.css';
+import { User } from 'lucide-react';
 
 
 interface MyStoriesPageProps {
   goBack: () => void;
   navigateToPage: (page: string) => void;
   myStories: any[];
-  getFilteredStories: () => any[];
   handleStoryClick: (story: any) => void;
   handleEdit: (story: any) => void;
   handleDelete: (id: number) => void;
@@ -17,6 +17,7 @@ interface MyStoriesPageProps {
   followedStories: number[];
   setFollowedStories: (ids: number[] | ((prev: number[]) => number[])) => void;
   setShowLikesModal: (show: boolean) => void;
+  setWriteType: (type: "FREE" | "REVIEW") => void;
 }
 
 
@@ -24,20 +25,28 @@ interface MyStoriesPageProps {
 function MyStoriesPage({
   goBack,
   navigateToPage,
-  myStories,
-  getFilteredStories,
   handleStoryClick,
   handleEdit,
   handleDelete,
+  myStories,
   likedStories,
   setLikedStories,
   followedStories,
   setFollowedStories,
-  setShowLikesModal
+  setShowLikesModal,
+  setWriteType,
 }: MyStoriesPageProps) {
 
-  const [writeType, setWriteType] = useState<"FREE" | "REVIEW">("FREE");
+
   const stories = myStories;
+  const ITEMS_PER_PAGE = 6;
+  const [currentPageNum, setCurrentPageNum] = useState(1);
+
+  const totalPages = Math.ceil(stories.length / ITEMS_PER_PAGE);
+  const pagedStories = stories.slice(
+  (currentPageNum - 1) * ITEMS_PER_PAGE,
+  currentPageNum * ITEMS_PER_PAGE
+);
 
   return (
     <div className="container">
@@ -57,7 +66,7 @@ function MyStoriesPage({
 
         <button
           onClick={() => {
-            setWriteType("REVIEW");     // 타입 먼저 설정
+            setWriteType("REVIEW");
             navigateToPage("write");    // 페이지 이동
           }}
         >
@@ -73,7 +82,7 @@ function MyStoriesPage({
               </svg>
             </div>
             <div className="mystories-stat-value">{stories.length}</div>
-            <div className="mystories-stat-label">작성한 여행기</div>
+            <div className="mystories-stat-label">작성한 게시글</div>
           </div>
 
           <div className="mystories-stat-card">
@@ -84,7 +93,7 @@ function MyStoriesPage({
             </div>
             {/* 전체 스토리 조회수 합산 */}
             <div className="mystories-stat-value">
-              {stories.reduce((sum, story) => sum + parseInt(story.views || '0'), 0)}
+              {stories.reduce((sum: number, story: any) => sum + parseInt(story.views || '0'), 0)}
             </div>
             <div className="mystories-stat-label">총 조회수</div>
           </div>
@@ -97,7 +106,7 @@ function MyStoriesPage({
             </div>
             {/* 전체 스토리 좋아요 수 합산 */}
             <div className="mystories-stat-value">
-              {stories.reduce((sum, story) => sum + (story.likes || 0), 0)}
+              {stories.reduce((sum: number, story: any) => sum + (story.likes || 0), 0)}
             </div>
             <div className="mystories-stat-label">받은 좋아요</div>
           </div>
@@ -121,7 +130,7 @@ function MyStoriesPage({
 
       {/* 내 스토리 카드 목록 - 수정/삭제 버튼 포함 */}
       <div className="posts-grid">
-        {stories.map((story: any) => (
+        {pagedStories.map((story: any) => (
           <StoryCard 
             key={story.id}
             story={story}
@@ -137,18 +146,40 @@ function MyStoriesPage({
         ))}
       </div>
 
-      {/* 작성한 스토리가 없을 때 안내 메시지 */}
-      {stories.length === 0 && (
-        <div className="ts-empty" style={{ marginTop: '80px' }}>
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="rgba(0,0,0,0.2)" strokeWidth="1.5">
-                <circle cx="11" cy="11" r="8"/>
-                <path d="M21 21l-4.35-4.35"/>
-              </svg>
-          <div className="my-stories-empty-text">작성한 여행기가 없습니다.</div>
-          <div className="my-stories-empty-sub">첫 여행기를 작성해보세요!</div>
+      {totalPages > 1 && (
+        <div className="ts-pagination">
+          <button
+            className="ts-page-btn"
+            onClick={() => setCurrentPageNum(p => Math.max(1, p - 1))}
+            disabled={currentPageNum === 1}
+          >{'<'}</button>
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+            <button
+              key={page}
+              className={`ts-page-btn ${currentPageNum === page ? 'active' : ''}`}
+              onClick={() => setCurrentPageNum(page)}
+            >{page}</button>
+          ))}
+          <button
+            className="ts-page-btn"
+            onClick={() => setCurrentPageNum(p => Math.min(totalPages, p + 1))}
+            disabled={currentPageNum === totalPages}
+          >{'>'}</button>
         </div>
       )}
-    </div>
+
+      {/* 작성한 스토리가 없을 때 안내 메시지 */}
+      {stories.length === 0 && (
+        <div className="bg-white p-12 text-center emptyState" style={{ marginTop: '40px' }}>
+          <User className="w-16 h-16 mx-auto mb-4 text-black/30" />
+          <p className="text-black/60 text-lg font-bold uppercase">
+            NO POSTS FOUND
+          </p>
+        </div>
+      )}
+            </div>
+
+    
   );
 }
 

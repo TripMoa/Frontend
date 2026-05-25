@@ -1,6 +1,6 @@
 // report/hooks/report.types.ts
 
-export type ReportLocation = "COMMENT" | "CHAT";
+export type ReportLocation = "COMMENT" | "CHAT" | "STORY";
 
 export type ReportRequest = {
   reportedUserId: number;

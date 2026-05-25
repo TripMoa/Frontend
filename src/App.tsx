@@ -17,6 +17,8 @@ import NoticePage from "./features/user/pages/NoticePage";
 import FaqPage from "./features/user/pages/FaqPage";
 
 export default function App() {
+
+  
   return (
     <AuthProvider>
       <Routes>
