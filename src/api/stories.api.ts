@@ -26,6 +26,8 @@ export interface Story {
   createdAt: string;
   updatedAt: string;
 
+  type: 'FREE' | 'REVIEW';
+
   expenses?: {
     transportation: number;
     accommodation: number;

@@ -173,8 +173,8 @@
 /* TRAVEL STYLE 태그 영역 구분선 */
 .filter-divider {
   border-top: 2px dashed rgba(0, 0, 0, 0.2);
-  margin-top: 16px;
-  padding-top: 16px;
+  margin-top : 28px;
+  margin-bottom: 5px;
 }
 
 /* TRAVEL STYLE 레이블 */
@@ -199,9 +199,9 @@
 /* 태그 칩 */
 .filter-tag {
   padding: 6px 14px;
-  border: 2px solid #000;
-  background: #fff;
-  color: #000;
+  border: 2px solid var(--border-color);
+  background: var(--secondary-color);
+  color: var(--primary-color);
   font-size: 11px;
   font-weight: 700;
   font-family: var(--font-mono);
@@ -210,15 +210,19 @@
 }
 
 .filter-tag:hover {
-  background: #f0f0f0;
+  background: var(--bg-light);
+}
+
+.filter-tag-section {
+  margin-bottom: 24px;
 }
 
 /* 선택된 태그*/
 .filter-tag.selected {
   background: #000;
   color: #fff;
-  box-shadow: 2px 2px 0px rgba(0, 0, 0, 1);
-  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0px rgba(0, 0, 0, 1);
+  transform: translate(-2px, -2px);
 }
 
 /* 태그 로딩/빈 상태 안내 텍스트 */
@@ -264,3 +268,6 @@
 .custom-select-trigger.active svg path {
   stroke: #fff;
 }
+
+
+

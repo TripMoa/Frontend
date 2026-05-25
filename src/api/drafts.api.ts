@@ -1,8 +1,11 @@
+//  임시저장 관련 API 정의
+
 import { api } from "./api";
 
 export interface Draft {
   id: number;
   userId: number;
+  type: "FREE" | "REVIEW";
   title: string;
   description: string;
   destination: string;
@@ -16,6 +19,7 @@ export interface Draft {
 }
 
 export interface CreateDraftData {
+  type: "FREE" | "REVIEW";
   title: string;
   description: string;
   destination: string;

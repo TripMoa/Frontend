@@ -2,9 +2,12 @@ import '../styles/travelStory.css';
 import '../styles/MainPage.css';
 import StoryCard from '../components/StoryCard';
 import FilterSection from '../components/FilterSection';
+import type { Story } from '../../../api/stories.api';
+import type { TravelStyleOption } from "../../../types/auth.types";
 
 interface MainPageProps {
-  stories: any[];
+  hook: any;
+  stories: Story[];
   likedStories: number[];
   setLikedStories: (ids: number[] | ((prev: number[]) => number[])) => void;
   followedStories: number[];
@@ -16,13 +19,23 @@ interface MainPageProps {
     duration: string;
     minBudget: string;
     maxBudget: string;
-    tags: string[];
+    tags: number[];
   };
+  
   setFilters: (filters: any) => void;
+
+  selectedType: "ALL" | "FREE" | "REVIEW";
+
+  setSelectedType: React.Dispatch<
+    React.SetStateAction<"ALL" | "FREE" | "REVIEW">
+  >;
+
+  tags: TravelStyleOption[];
 }
 
 // 메인 페이지 - 헤더 / 필터 / 스토리 카드 목록 렌더링
 function MainPage({
+  hook,
   stories,
   likedStories,
   setLikedStories,
@@ -31,9 +44,21 @@ function MainPage({
   onStoryClick,
   navigateToPage,
   filters,
-  setFilters
+  setFilters,
+  selectedType,
+  setSelectedType,
+  tags
 }: MainPageProps) {
+
+
+ const filteredStories = stories.filter((story) => {
+  if (selectedType === 'ALL') return true;
+  return story.type === selectedType;
+});
+
   return (
+
+    
     <div className="travel-story-app container">
 
       {/* 상단 헤더 - 페이지 제목 + MY STORIES / WRITE 버튼 */}
@@ -55,9 +80,13 @@ function MainPage({
             MY STORIES
           </button>
 
+
           {/* 글쓰기 페이지 이동 버튼 */}
           <button
-            onClick={() => navigateToPage('write')}
+            onClick={() => {
+              hook.setWriteType("FREE");
+              hook.navigateToPage('write'); // navigate도 hook 붙여!
+            }}
             className="main-action-btn primary"
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style={{ width: '18px', height: '18px', fill: 'currentColor' }}>
@@ -68,12 +97,19 @@ function MainPage({
         </div>
       </div>
 
+
       {/* 필터 섹션 - 목적지 / 기간 / 예산 / 태그 */}
-      <FilterSection filters={filters} setFilters={setFilters} />
+      <FilterSection
+        filters={filters}
+        setFilters={setFilters}
+        selectedType={selectedType}
+        setSelectedType={setSelectedType}
+        tags={tags}
+      />
 
       {/* 스토리 카드 목록 */}
       <div className="posts-grid">
-        {stories.map((story) => (
+       {filteredStories.map((story) => (
           <StoryCard
             key={story.id}
             story={story}
@@ -87,7 +123,7 @@ function MainPage({
       </div>
 
       {/* 스토리 없을 때 빈 상태 안내 */}
-      {stories.length === 0 && (
+      {filteredStories.length === 0 && (
         <div className="main-empty">
           <div className="main-empty-text">여행기가 없습니다.</div>
           <div className="main-empty-subtext">첫 번째 여행기를 작성해보세요!</div>
