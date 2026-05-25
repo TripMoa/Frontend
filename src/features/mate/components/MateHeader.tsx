@@ -27,8 +27,10 @@ export function MateHeader({
   const {
     showLoginModal,
     showAdultModal,
+    showUnderageModal,
     closeLoginModal,
     closeAdultModal,
+    closeUnderageModal,
     moveToLogin,
     moveToMypageForVerification,
     requireLogin,
@@ -114,6 +116,18 @@ export function MateHeader({
       onClose={closeAdultModal}
       onConfirm={moveToMypageForVerification}
     />
+
+    <ActionPromptModal
+      open={showUnderageModal}
+      title=">> ACCESS DENIED"
+      headline="Age Restricted"
+      description="만 19세 이상만 이용할 수 있는 서비스입니다."
+      cancelText="닫기"
+      confirmText="확인"
+      onClose={closeUnderageModal}
+      onConfirm={closeUnderageModal}
+    />
+    
     </>
   );
 }

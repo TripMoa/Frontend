@@ -10,6 +10,7 @@ import { useAccessGuard } from "../../../shared/hooks";
 import { ActionPromptModal } from "../../../shared/components";
 import "../styles/MateDetail.css";
 import { getAccessToken } from "../../../api/api";
+import { applyMatePost } from "../../../api/mate.api";
 
 export default function MateDetail() {
   const { postId } = useParams<{ postId: string }>();
@@ -24,7 +25,7 @@ export default function MateDetail() {
 
   const hasLoadedRef = useRef(false);
 
-  const { userId } = useAuth();
+  const { userId, profile } = useAuth();
   const isAuthor = post?.author?.id === userId;
   const token = getAccessToken();
 
@@ -37,7 +38,7 @@ export default function MateDetail() {
     moveToMypageForVerification,
     requireLogin,
     requireAdultVerified,
-  } = useAccessGuard();
+  } = useAccessGuard(profile);
 
   const handleApplyClick = () => {
     if (requireAdultVerified()) setShowApplyForm(true);
@@ -118,24 +119,11 @@ export default function MateDetail() {
         content: applyMessage,
       };
 
-      const response = await fetch(`http://localhost:8080/api/mate/${postId}/apply/applicant`, {
-        method: 'POST',
-        headers: { 
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify(requestBody),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || '신청에 실패했습니다.');
-      }
+      await applyMatePost(Number(postId), requestBody);
 
       setPost(prev => prev ? {
         ...prev,
-        hasApplied: true, // 신청 완료 상태로 변경
-        currentParticipant: prev.currentParticipant + 1 // 필요시 참여 인원 수도 즉시 반영
+        hasApplied: true,
       } : null);
 
       setShowApplyForm(false);
