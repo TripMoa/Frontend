@@ -1,6 +1,7 @@
 //src\features\workspace\components\schedule\DayDetailView.tsx
 
 import React, { useMemo, useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import PlaceDetailModal from "../schedule/modal/PlaceDetailModal";
 import AddPlaceModal from "../schedule/modal/AddPlaceModal";
 import { useNaverMap } from "../../hooks/useNaverMap";
@@ -14,7 +15,6 @@ interface PlaceInfo {
   rating?: number;
   category?: string;
   description?: string;
-  memo?: string;
   lat?: number;
   lng?: number;
 }
@@ -23,6 +23,9 @@ interface TimelineNode {
   time: string;
   title: string;
   desc: string;
+  travelMinutes?: number;
+  travelPayment?: number;
+  travelTransfer?: number;
   placeInfo?: PlaceInfo;
 }
 
@@ -34,6 +37,51 @@ interface SavedPlace {
   rating?: number;
   lat?: number;
   lng?: number;
+}
+
+// 가까운 장소끼리 핀이 겹치지 않도록 렌더링 전용 좌표에 작은 원형 오프셋을 적용
+// (원본 place.lat/lng는 건드리지 않음 — 정보창/실제 위치는 그대로 유지)
+const DECONFLICT_THRESHOLD_DEG = 0.00018; // 약 20m 이내면 같은 그룹으로 취급
+const DECONFLICT_OFFSET_DEG = 0.00009; // 약 10m 반경으로 벌림
+
+function deconflictPositions(
+  places: { lat?: number; lng?: number }[]
+): { lat: number; lng: number }[] {
+  const original = places.map((p) => ({ lat: p.lat!, lng: p.lng! }));
+  const used = new Set<number>();
+  const groups: number[][] = [];
+
+  original.forEach((pos, i) => {
+    if (used.has(i)) return;
+    const group = [i];
+    used.add(i);
+    for (let j = i + 1; j < original.length; j++) {
+      if (used.has(j)) continue;
+      if (
+        Math.abs(original[j].lat - pos.lat) < DECONFLICT_THRESHOLD_DEG &&
+        Math.abs(original[j].lng - pos.lng) < DECONFLICT_THRESHOLD_DEG
+      ) {
+        group.push(j);
+        used.add(j);
+      }
+    }
+    groups.push(group);
+  });
+
+  const result = original.map((p) => ({ ...p }));
+  groups.forEach((group) => {
+    if (group.length < 2) return;
+    group.forEach((idx, k) => {
+      if (k === 0) return; // 그룹의 첫 장소는 원래 좌표 유지
+      const angle = (2 * Math.PI * k) / group.length;
+      result[idx] = {
+        lat: original[idx].lat + DECONFLICT_OFFSET_DEG * Math.sin(angle),
+        lng: original[idx].lng + DECONFLICT_OFFSET_DEG * Math.cos(angle),
+      };
+    });
+  });
+
+  return result;
 }
 
 interface DayDetailViewProps {
@@ -53,7 +101,6 @@ interface DayDetailViewProps {
     lat?: number;
     lng?: number;
     description?: string;
-    memo?: string;
     rating?: number;
   }) => Promise<void>;
   addPlace: (place: Omit<SavedPlace, "id">) => Promise<void>;
@@ -81,19 +128,21 @@ const DayDetailView: React.FC<DayDetailViewProps> = ({
 }) => {
   const [selectedPlace, setSelectedPlace] = useState<PlaceInfo | null>(null);
   const [isAddNodeModalOpen, setIsAddNodeModalOpen] = useState(false);
-  const [mapSelectedPlace, setMapSelectedPlace] = useState<SavedPlace | null>(null);
 
   const { mapLoaded, mapKey } = useNaverMap();
 
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
+  const markerByIdxRef = useRef<Record<number, any>>({});
+  const polylineRef = useRef<any>(null);
   const infoWindowRef = useRef<any>(null);
 
   const dragFromIdx = React.useRef<number | null>(null);
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [lockTooltipIdx, setLockTooltipIdx] = useState<number | null>(null);
+  const [travelPopover, setTravelPopover] = useState<{ idx: number; top: number; left: number } | null>(null);
 
   // 현재 날짜 계산
   const currentDate = useMemo(() => {
@@ -142,6 +191,14 @@ const DayDetailView: React.FC<DayDetailViewProps> = ({
       .filter((p): p is SavedPlace & { _idx: number; _time: string } => p !== null && p.lat != null && p.lng != null);
   }, [nodes, savedPlaces]);
 
+  // 오늘 지도에 실제로 등장하는 카테고리만 범례에 표시
+  // (교통은 일반 선택 카테고리는 아니지만 출발지/복귀 지점 핀으로는 나올 수 있어서
+  //  CATEGORY_LIST가 아니라 색상표에 있는 전체 카테고리 기준으로 필터링)
+  const presentCategories = useMemo(
+    () => Object.keys(CATEGORY_COLOR).filter((cat) => mapPlaces.some((p) => p.category === cat)),
+    [mapPlaces]
+  );
+
   // 지도 초기화 및 마커 그리기
   useEffect(() => {
     if (!mapLoaded || !mapRef.current) return;
@@ -178,7 +235,33 @@ const DayDetailView: React.FC<DayDetailViewProps> = ({
   const clearMarkers = () => {
     markersRef.current.forEach((m) => m.setMap(null));
     markersRef.current = [];
+    markerByIdxRef.current = {};
+    polylineRef.current?.setMap(null);
+    polylineRef.current = null;
     infoWindowRef.current?.close();
+  };
+
+  // 핀 클릭 / "지도에서 보기" 양쪽에서 재사용하는 정보창 오픈 로직
+  const buildInfoHtml = (place: SavedPlace & { _time: string }) => {
+    const color = CATEGORY_COLOR[place.category] || "#333";
+    return `
+      <div style="padding:12px 16px;min-width:180px;max-width:240px;font-family:inherit">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+          <span style="background:${color};color:#fff;padding:2px 7px;border-radius:3px;font-size:11px;font-weight:bold">
+            ${getCategoryIcon(place.category)} ${place.category}
+          </span>
+          ${place.rating ? `<span style="font-size:12px;color:#ff9800;font-weight:bold">⭐ ${place.rating}</span>` : ""}
+        </div>
+        <div style="font-size:11px;color:#888;margin-bottom:2px">${place._time}</div>
+        <div style="font-weight:bold;font-size:14px;margin-bottom:4px">${place.name}</div>
+        <div style="font-size:11px;color:#666">${place.address || ""}</div>
+      </div>
+    `;
+  };
+
+  const openPlaceInfo = (place: SavedPlace & { _time: string }, marker: any) => {
+    infoWindowRef.current.setContent(buildInfoHtml(place));
+    infoWindowRef.current.open(mapInstanceRef.current, marker);
   };
 
   const drawMarkers = (places: (SavedPlace & { _idx: number; _time: string })[]) => {
@@ -187,10 +270,13 @@ const DayDetailView: React.FC<DayDetailViewProps> = ({
 
     if (!places.length) return;
 
+    const renderPositions = deconflictPositions(places);
     const bounds = new window.naver.maps.LatLngBounds();
+    const pathCoords: any[] = [];
 
     places.forEach((place, i) => {
-      const pos = new window.naver.maps.LatLng(place.lat!, place.lng!);
+      const { lat, lng } = renderPositions[i];
+      const pos = new window.naver.maps.LatLng(lat, lng);
       const color = CATEGORY_COLOR[place.category] || "#333";
 
       const marker = new window.naver.maps.Marker({
@@ -198,14 +284,26 @@ const DayDetailView: React.FC<DayDetailViewProps> = ({
         map: mapInstanceRef.current,
         icon: {
           content: `
-            <div style="
-              background:${color};color:#fff;
-              border:2px solid #fff;border-radius:50% 50% 50% 0;
-              transform:rotate(-45deg);width:30px;height:30px;
-              display:flex;align-items:center;justify-content:center;
-              box-shadow:0 2px 6px rgba(0,0,0,0.35);cursor:pointer;
-              font-size:11px;font-weight:bold;">
-              <span style="transform:rotate(45deg)">${i + 1}</span>
+            <div style="position:relative;width:30px;height:30px;">
+              <div style="
+                position:absolute;top:0;left:0;
+                background:${color};color:#fff;
+                border:1.5px solid #fff;border-radius:50% 50% 50% 0;
+                transform:rotate(-45deg);width:30px;height:30px;
+                display:flex;align-items:center;justify-content:center;
+                box-shadow:0 3px 8px rgba(0,0,0,0.25);cursor:pointer;
+                font-size:14px;">
+                <span style="transform:rotate(45deg)">${getCategoryIcon(place.category)}</span>
+              </div>
+              <div style="
+                position:absolute;top:-4px;right:-4px;
+                width:15px;height:15px;border-radius:50%;
+                background:#fff;border:1.5px solid ${color};
+                display:flex;align-items:center;justify-content:center;
+                font-size:9px;font-weight:bold;color:${color};
+                box-shadow:0 1px 3px rgba(0,0,0,0.25);">
+                ${i + 1}
+              </div>
             </div>`,
           anchor: new window.naver.maps.Point(15, 30),
         },
@@ -213,29 +311,28 @@ const DayDetailView: React.FC<DayDetailViewProps> = ({
       });
 
       window.naver.maps.Event.addListener(marker, "click", () => {
-        infoWindowRef.current.setContent(`
-          <div style="padding:12px 16px;min-width:180px;max-width:240px;font-family:inherit">
-            <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
-              <span style="background:${color};color:#fff;padding:2px 7px;border-radius:3px;font-size:11px;font-weight:bold">
-                ${getCategoryIcon(place.category)} ${place.category}
-              </span>
-              ${place.rating ? `<span style="font-size:12px;color:#ff9800;font-weight:bold">⭐ ${place.rating}</span>` : ""}
-            </div>
-            <div style="font-size:11px;color:#888;margin-bottom:2px">${place._time}</div>
-            <div style="font-weight:bold;font-size:14px;margin-bottom:4px">${place.name}</div>
-            <div style="font-size:11px;color:#666">${place.address || ""}</div>
-          </div>
-        `);
-        infoWindowRef.current.open(mapInstanceRef.current, marker);
-        setMapSelectedPlace(place);
+        openPlaceInfo(place, marker);
       });
 
+      markerByIdxRef.current[place._idx] = marker;
       bounds.extend(pos);
+      pathCoords.push(pos);
       markersRef.current.push(marker);
     });
 
+    // 방문 순서 경로선 — 실제 도로 경로가 아니라 동선 흐름 안내용 점선
+    polylineRef.current = new window.naver.maps.Polyline({
+      map: mapInstanceRef.current,
+      path: pathCoords,
+      strokeColor: "#888",
+      strokeOpacity: 0.55,
+      strokeWeight: 3,
+      strokeStyle: "shortdash",
+      zIndex: 50,
+    });
+
     if (places.length === 1) {
-      mapInstanceRef.current.setCenter(new window.naver.maps.LatLng(places[0].lat!, places[0].lng!));
+      mapInstanceRef.current.setCenter(pathCoords[0]);
       mapInstanceRef.current.setZoom(15);
     } else {
       mapInstanceRef.current.fitBounds(bounds, { top: 60, right: 40, bottom: 80, left: 40 });
@@ -319,11 +416,11 @@ const DayDetailView: React.FC<DayDetailViewProps> = ({
                   const color = CATEGORY_COLOR[n.placeInfo?.category ?? ""] || "#d0d0d0";
                   const hasCategory = !!n.placeInfo?.category;
                   const icon = hasCategory ? getCategoryIcon(n.placeInfo!.category!) : null;
-                  const isFixed = n.placeInfo?.category === "출발지" || n.placeInfo?.category === "숙소";
+                  const isFixed = n.placeInfo?.category === "교통" || n.placeInfo?.category === "숙소";
 
                   return (
                     <div key={idx} style={{ display: "flex", alignItems: "stretch", minWidth: 0, overflow: "hidden" }}>
-                      {/* 시간 */}
+                      {/* 시간 + 다음 장소까지 이동시간 */}
                       <div style={{
                         width: "54px",
                         flexShrink: 0,
@@ -336,6 +433,41 @@ const DayDetailView: React.FC<DayDetailViewProps> = ({
                         lineHeight: 1,
                       }}>
                         {n.time}
+
+                        {n.travelMinutes != null && n.travelMinutes > 0 && (
+                          <div style={{ marginTop: "5px" }}>
+                            {n.travelPayment != null || n.travelTransfer != null ? (
+                              <span
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const rect = e.currentTarget.getBoundingClientRect();
+                                  setTravelPopover((prev) =>
+                                    prev?.idx === idx
+                                      ? null
+                                      : { idx, top: rect.bottom + 6, left: rect.left }
+                                  );
+                                }}
+                                style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: "2px",
+                                  fontSize: "10px",
+                                  fontWeight: 600,
+                                  color: "#1976d2",
+                                  cursor: "pointer",
+                                  textDecoration: "underline dotted",
+                                  textDecorationColor: "#90caf9",
+                                }}
+                              >
+                                🚇{n.travelMinutes}분
+                              </span>
+                            ) : (
+                              <span style={{ fontSize: "10px", color: "#bbb" }}>
+                                +{n.travelMinutes}분
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </div>
 
                       {/* 타임라인 축 */}
@@ -559,23 +691,20 @@ const DayDetailView: React.FC<DayDetailViewProps> = ({
               </div>
             )}
 
-            {mapSelectedPlace && (
-              <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "#fff", borderTop: "2px solid #000", padding: "12px 20px", display: "flex", alignItems: "center", gap: "12px" }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "3px" }}>
-                    <span style={{ fontSize: "13px", fontWeight: "bold", color: CATEGORY_COLOR[mapSelectedPlace.category] || "#333" }}>
-                      {getCategoryIcon(mapSelectedPlace.category)} {mapSelectedPlace.category}
-                    </span>
-                    <span style={{ fontWeight: "bold", fontSize: "14px" }}>{mapSelectedPlace.name}</span>
+            {/* 카테고리 색상 범례 — 오늘 등장하는 카테고리만 표시 */}
+            {mapLoaded && presentCategories.length > 0 && (
+              <div style={{
+                position: "absolute", left: "12px", bottom: "12px",
+                background: "#fff", border: "1px solid #ddd", borderRadius: "8px",
+                padding: "8px 12px", boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
+                display: "flex", flexDirection: "column", gap: "5px",
+              }}>
+                {presentCategories.map((cat) => (
+                  <div key={cat} style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "11px", color: "#555" }}>
+                    <span style={{ width: "9px", height: "9px", borderRadius: "50%", background: CATEGORY_COLOR[cat], flexShrink: 0 }} />
+                    {cat}
                   </div>
-                  <p style={{ fontSize: "12px", color: "#888", margin: 0 }}>📍 {mapSelectedPlace.address}</p>
-                </div>
-                <button
-                  onClick={() => setMapSelectedPlace(null)}
-                  style={{ padding: "6px 14px", background: "#fff", color: "#000", border: "2px solid #000", borderRadius: "5px", fontWeight: "bold", fontSize: "12px", cursor: "pointer", flexShrink: 0 }}
-                >
-                  닫기
-                </button>
+                ))}
               </div>
             )}
           </div>
@@ -590,17 +719,60 @@ const DayDetailView: React.FC<DayDetailViewProps> = ({
           onViewOnMap={() => {
             const matched = mapPlaces.find((p) => p.name === selectedPlace.name);
             if (matched) {
-              setMapSelectedPlace(matched);
               if (mapInstanceRef.current && matched.lat != null && matched.lng != null) {
                 mapInstanceRef.current.setCenter(
                   new window.naver.maps.LatLng(matched.lat, matched.lng)
                 );
                 mapInstanceRef.current.setZoom(16);
               }
+              const marker = markerByIdxRef.current[matched._idx];
+              if (marker) openPlaceInfo(matched, marker);
             }
             setSelectedPlace(null);
           }}
         />
+      )}
+
+      {/* 이동시간 요금/환승 팝오버 — 스크롤 컨테이너의 overflow 클리핑을 피하려고 body에 포탈로 렌더 */}
+      {travelPopover && nodes[travelPopover.idx] && createPortal(
+        <>
+          <div
+            onClick={() => setTravelPopover(null)}
+            style={{ position: "fixed", inset: 0, zIndex: 9998 }}
+          />
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              position: "fixed",
+              top: travelPopover.top,
+              left: travelPopover.left,
+              background: "#fff",
+              border: "1.5px solid #333",
+              borderRadius: "6px",
+              padding: "8px 12px",
+              fontSize: "12px",
+              whiteSpace: "nowrap",
+              textAlign: "left",
+              zIndex: 9999,
+              boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+            }}
+          >
+            {nodes[travelPopover.idx].travelPayment != null && (
+              <div style={{
+                display: "flex", alignItems: "center", gap: "6px", color: "#555",
+                marginBottom: nodes[travelPopover.idx].travelTransfer != null ? "4px" : 0,
+              }}>
+                💰 {nodes[travelPopover.idx].travelPayment!.toLocaleString()}원
+              </div>
+            )}
+            {nodes[travelPopover.idx].travelTransfer != null && (
+              <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "#555" }}>
+                🔁 환승 {nodes[travelPopover.idx].travelTransfer}회
+              </div>
+            )}
+          </div>
+        </>,
+        document.body
       )}
 
       {/* 노드 추가용 장소 검색 모달 */}
@@ -617,7 +789,6 @@ const DayDetailView: React.FC<DayDetailViewProps> = ({
               lat: place.lat,
               lng: place.lng,
               description: place.description,
-              memo: place.memo,
               rating: place.rating,
             });
             // 2. DAY ALL 장소 목록에도 추가 (중복 체크는 AddPlaceModal에서)
@@ -629,8 +800,6 @@ const DayDetailView: React.FC<DayDetailViewProps> = ({
                 name: place.name,
                 category: place.category,
                 address: place.address,
-                // description: place.description,
-                // memo: place.memo ?? "",
                 lat: place.lat,
                 lng: place.lng,
               });

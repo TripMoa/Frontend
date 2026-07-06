@@ -8,13 +8,13 @@ import {
   reorderScheduleItems,
   moveScheduleItem,
 } from "../../../api/schedule.api";
+import { CATEGORY_FROM_BACKEND } from "./schedule.constants";
 
 interface PlaceInfo {
   name: string;
   address?: string;
   category?: string;
   description?: string;
-  memo?: string;
   imageUrl?: string;
   rating?: number;
   lat?: number;
@@ -27,6 +27,9 @@ export interface TimelineNode {
   time: string;
   title: string;
   desc: string;
+  travelMinutes?: number;   // 다음 장소까지 이동시간 (분)
+  travelPayment?: number;   // 다음 장소까지 대중교통 요금 (원)
+  travelTransfer?: number;  // 다음 장소까지 환승 횟수
   placeInfo?: PlaceInfo;
 }
 
@@ -39,6 +42,9 @@ interface ScheduleItemResponse {
   orderIndex: number;
   lat?: number;
   lng?: number;
+  travelMinutes?: number;
+  travelPayment?: number;
+  travelTransfer?: number;
 }
 
 interface ScheduleResponse {
@@ -54,10 +60,13 @@ function toTimelineNodes(scheduleId: number, items: ScheduleItemResponse[]): Tim
     time: item.time,
     title: item.title,
     desc: item.description,
+    travelMinutes: item.travelMinutes,
+    travelPayment: item.travelPayment,
+    travelTransfer: item.travelTransfer,
     placeInfo: {
       name: item.title,
       address: item.description,
-      category: item.category,
+      category: item.category ? (CATEGORY_FROM_BACKEND[item.category] ?? item.category) : item.category,
       lat: item.lat,
       lng: item.lng,
     },
@@ -154,7 +163,6 @@ export const useTimeline = (currentDay: string, tripId: number | null) => {
     lat?: number;
     lng?: number;
     description?: string;
-    memo?: string;
     rating?: number;
   }) => {
     const scheduleId = scheduleIdMap[currentDay];
@@ -179,7 +187,6 @@ export const useTimeline = (currentDay: string, tripId: number | null) => {
           lat: place.lat,
           lng: place.lng,
           description: place.description,
-          memo: place.memo,
           rating: place.rating,
         },
       };
@@ -188,8 +195,9 @@ export const useTimeline = (currentDay: string, tripId: number | null) => {
         setAllDays((d) => ({ ...d, [currentDay]: next }));
         return next;
       });
-    } catch {
+    } catch (e) {
       setError("노드 추가에 실패했습니다.");
+      throw e; // 호출자(AddPlaceModal 등)가 성공/실패를 구분해서 피드백을 줄 수 있게 재전파
     }
   }, [currentDay, scheduleIdMap]);
 

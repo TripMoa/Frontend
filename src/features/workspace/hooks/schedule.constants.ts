@@ -2,11 +2,11 @@
 
 export const CATEGORY_COLOR: Record<string, string> = {
   관광: "#1976d2",
-  맛집: "#e53935",
-  카페: "#6d4c41",
+  맛집: "#e64a19",
+  카페: "#f9a825",
   쇼핑: "#7b1fa2",
-  숙소: "#2e7d32",
-  교통: "#546e7a",
+  숙소: "#00897b",
+  교통: "#37474f",
 };
 
 export const CATEGORY_LIST = ["관광", "맛집", "카페", "쇼핑", "숙소", "교통"] as const;
@@ -19,7 +19,7 @@ export const getCategoryIcon = (cat: string): string =>
     관광: "🏛️",
     쇼핑: "🛍️",
     숙소: "🏨",
-    교통: "✈️",
+    교통: "🚇",
   } as Record<string, string>)[cat] ?? "📍");
 
 export const CATEGORY_TO_BACKEND: Record<string, string> = {

@@ -70,7 +70,8 @@ const WorkspaceCenter: React.FC<Props> = ({ noticeStore }) => {
   const isOwner = ownerUserId === currentUserId;
 
   // usePlaces: 장소 목록 (localStorage 대체)
-  const { places: savedPlaces, addPlace } = usePlaces(tripId);
+  // DayAllView/DayDetailView가 동일한 인스턴스를 공유해야 탭 전환 시에도 최신 상태가 유지됨
+  const { places: savedPlaces, addPlace, updatePlace, deletePlace } = usePlaces(tripId);
 
   // useTimeline: tripId 전달
   const {
@@ -209,6 +210,10 @@ const WorkspaceCenter: React.FC<Props> = ({ noticeStore }) => {
                 startDate={trip.startDate}
                 endDate={trip.endDate}
                 onScheduleGenerated={loadFromExternal}
+                savedPlaces={savedPlaces}
+                addPlace={addPlace}
+                updatePlace={updatePlace}
+                deletePlace={deletePlace}
               />
             ) : (
               <DayDetailView

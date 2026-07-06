@@ -8,7 +8,6 @@ export interface Place {
   category: string;
   address: string;
   description?: string;
-  memo?: string;
   imageUrl?: string;
   rating?: number;
   lat?: number;
@@ -32,7 +31,6 @@ export const usePlaces = (tripId: number | null) => {
         category: p.category,
         address: p.address ?? "",
         description: p.description ?? "",
-        memo: p.memo ?? "",
         lat: p.lat,
         lng: p.lng,
       })));
@@ -55,20 +53,20 @@ export const usePlaces = (tripId: number | null) => {
         category: data.category,
         address: data.address ?? "",
         description: data.description ?? "",
-        memo: data.memo ?? "",
         lat: data.lat,
         lng: data.lng,
       }]);
     } catch (e: any) {
       setError(e.message);
+      throw e; // 호출자(AddPlaceModal 등)가 성공/실패를 구분해서 피드백을 줄 수 있게 재전파
     }
   }, [tripId]);
 
-  const updatePlaceItem = useCallback(async (placeId: string, patch: { category?: string; memo?: string }) => {
+  const updatePlaceItem = useCallback(async (placeId: string, patch: { category?: string }) => {
     try {
       const { data } = await updatePlace(placeId, patch);
       setPlaces((prev) => prev.map((p) =>
-        p.id === placeId ? { ...p, category: data.category, memo: data.memo } : p
+        p.id === placeId ? { ...p, category: data.category } : p
       ));
     } catch (e: any) {
       setError(e.message);
