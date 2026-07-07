@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import "../../../styles/modals.css";
 import { useNaverMap } from "../../../hooks/useNaverMap";
 import { searchPlaces } from "../../../../../api/place.api";
-import { CATEGORY_COLOR, getCategoryIcon } from "../../../hooks/schedule.constants";
+import { CATEGORY_COLOR, CATEGORY_LIST, getCategoryIcon } from "../../../hooks/schedule.constants";
 
 interface Place {
   id: string;
@@ -15,12 +15,11 @@ interface Place {
   description?: string;
   lat?: number;
   lng?: number;
-  memo?: string;
 }
 
 interface AddPlaceModalProps {
   onClose: () => void;
-  onAddPlace: (place: Place) => void;
+  onAddPlace: (place: Place) => void | Promise<void>;
   existingPlaces: Place[];
 }
 
@@ -44,26 +43,27 @@ const AddPlaceModal: React.FC<AddPlaceModalProps> = ({
   const [isSearching, setIsSearching] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
-  const [pendingPlace, setPendingPlace] = useState<Place | null>(null); // 카테고리 확인 대기 중인 장소
+  const [addingId, setAddingId] = useState<string | null>(null); // 추가 요청 진행 중인 장소
+  const [hasClickedMap, setHasClickedMap] = useState(false);
+  const [categoryPickerFor, setCategoryPickerFor] = useState<string | null>(null); // 카테고리 드롭다운 열린 장소 id
 
   const { mapLoaded, mapKey } = useNaverMap();
 
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
+  const markerByPlaceIdRef = useRef<Record<string, any>>({});
   const infoWindowRef = useRef<any>(null);
+  const searchSeqRef = useRef(0); // 오래된 검색 응답이 최신 결과를 덮어쓰지 않도록
 
   // ── geocoder 서브모듈 추가 로드 (역지오코딩용, 이 모달에서만 필요) ──
-  const [geocoderLoaded, setGeocoderLoaded] = useState(false);
-
   useEffect(() => {
     if (!mapLoaded) return;
-    if (window.naver?.maps?.Service) { setGeocoderLoaded(true); return; }
+    if (window.naver?.maps?.Service) return;
 
     const script = document.createElement("script");
     script.src = `https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${mapKey}&submodules=geocoder`;
     script.async = true;
-    script.onload = () => setGeocoderLoaded(true);
     document.head.appendChild(script);
   }, [mapLoaded, mapKey]);
 
@@ -104,6 +104,7 @@ const AddPlaceModal: React.FC<AddPlaceModalProps> = ({
   const clearMarkers = () => {
     markersRef.current.forEach((m) => m.setMap(null));
     markersRef.current = [];
+    markerByPlaceIdRef.current = {};
     infoWindowRef.current?.close();
   };
 
@@ -126,16 +127,28 @@ const AddPlaceModal: React.FC<AddPlaceModalProps> = ({
         map: mapInstanceRef.current,
         icon: {
           content: `
-            <div style="
-              background:${color};color:#fff;
-              border:2px solid #fff;border-radius:50% 50% 50% 0;
-              transform:rotate(-45deg);width:28px;height:28px;
-              display:flex;align-items:center;justify-content:center;
-              box-shadow:0 2px 6px rgba(0,0,0,0.35);cursor:pointer;
-              font-size:11px;font-weight:bold;">
-              <span style="transform:rotate(45deg)">${idx + 1}</span>
+            <div style="position:relative;width:30px;height:30px;">
+              <div style="
+                position:absolute;top:0;left:0;
+                background:${color};color:#fff;
+                border:1.5px solid #fff;border-radius:50% 50% 50% 0;
+                transform:rotate(-45deg);width:30px;height:30px;
+                display:flex;align-items:center;justify-content:center;
+                box-shadow:0 3px 8px rgba(0,0,0,0.25);cursor:pointer;
+                font-size:14px;">
+                <span style="transform:rotate(45deg)">${getCategoryIcon(place.category)}</span>
+              </div>
+              <div style="
+                position:absolute;top:-4px;right:-4px;
+                width:15px;height:15px;border-radius:50%;
+                background:#fff;border:1.5px solid ${color};
+                display:flex;align-items:center;justify-content:center;
+                font-size:9px;font-weight:bold;color:${color};
+                box-shadow:0 1px 3px rgba(0,0,0,0.25);">
+                ${idx + 1}
+              </div>
             </div>`,
-          anchor: new window.naver.maps.Point(14, 28),
+          anchor: new window.naver.maps.Point(15, 30),
         },
         zIndex: 100,
       });
@@ -145,7 +158,7 @@ const AddPlaceModal: React.FC<AddPlaceModalProps> = ({
           <div style="padding:10px 14px;min-width:160px;font-family:inherit">
             <div style="font-weight:bold;font-size:13px;margin-bottom:4px">${place.name}</div>
             <div style="font-size:11px;color:#666;margin-bottom:6px">${place.address || ""}</div>
-            <span style="background:${color};color:#fff;padding:2px 7px;border-radius:3px;font-size:11px;font-weight:bold">${place.category}</span>
+            <span style="background:${color};color:#fff;padding:2px 7px;border-radius:3px;font-size:11px;font-weight:bold">${getCategoryIcon(place.category)} ${place.category}</span>
           </div>
         `);
         infoWindowRef.current.open(mapInstanceRef.current, marker);
@@ -154,6 +167,7 @@ const AddPlaceModal: React.FC<AddPlaceModalProps> = ({
 
       bounds.extend(pos);
       markersRef.current.push(marker);
+      markerByPlaceIdRef.current[place.id] = marker;
     });
 
     if (markersRef.current.length === 1) {
@@ -164,18 +178,20 @@ const AddPlaceModal: React.FC<AddPlaceModalProps> = ({
     }
   }, []);
 
-  // ── 검색 실행 (공통) ────────────────────────────────────────
+  // ── 검색 실행 ───────────────────────────────────────────────
   const doSearch = useCallback(async (query: string) => {
     if (!query.trim()) return;
+    const seq = ++searchSeqRef.current; // 이 호출 이후 더 최신 검색이 시작되면 결과를 무시하기 위한 순번
     setIsSearching(true);
     setErrorMsg(null);
-    setSearchResults([]);
     setSelectedPlace(null);
 
     try {
       const { data } = await searchPlaces(query.trim(), 12);
+      if (seq !== searchSeqRef.current) return; // 이미 다음 검색이 시작됨 — 이 응답은 폐기
 
       if (!data.success || !data.places?.length) {
+        setSearchResults([]);
         setErrorMsg(`'${query}' 검색 결과가 없습니다.`);
         clearMarkers();
         return;
@@ -189,7 +205,6 @@ const AddPlaceModal: React.FC<AddPlaceModalProps> = ({
         description: p.description || "",
         lat: p.lat,
         lng: p.lng,
-        memo: "",
       }));
 
       setSearchResults(mapped);
@@ -199,9 +214,10 @@ const AddPlaceModal: React.FC<AddPlaceModalProps> = ({
         drawMarkers(mapped, (p) => setSelectedPlace(p));
       }, 0);
     } catch (e: any) {
-      setErrorMsg(e.message || "검색 중 오류가 발생했습니다.");
+      if (seq !== searchSeqRef.current) return;
+      setErrorMsg(e.response?.data?.message || e.message || "검색 중 오류가 발생했습니다.");
     } finally {
-      setIsSearching(false);
+      if (seq === searchSeqRef.current) setIsSearching(false);
     }
   }, [drawMarkers]);
 
@@ -213,6 +229,7 @@ const AddPlaceModal: React.FC<AddPlaceModalProps> = ({
   // ── 지도 클릭 → 임시 핀 + 네이버 SDK reverseGeocode 후 검색 ──
   const handleMapClick = (lat: number, lng: number, map: any) => {
     if (!window.naver) return;
+    setHasClickedMap(true);
 
     // 임시 핀
     const tempMarker = new window.naver.maps.Marker({
@@ -264,34 +281,47 @@ const AddPlaceModal: React.FC<AddPlaceModalProps> = ({
   };
 
   // ── 리스트 아이템 클릭 → 지도 포커스 ───────────────────────
-  const handleListClick = (place: Place, idx: number) => {
+  const handleListClick = (place: Place) => {
     setSelectedPlace(place);
     if (!mapInstanceRef.current || !window.naver || place.lat == null) return;
 
     mapInstanceRef.current.setCenter(new window.naver.maps.LatLng(place.lat, place.lng));
     mapInstanceRef.current.setZoom(16);
 
-    if (markersRef.current[idx]) {
-      window.naver.maps.Event.trigger(markersRef.current[idx], "click");
+    const marker = markerByPlaceIdRef.current[place.id];
+    if (marker) {
+      window.naver.maps.Event.trigger(marker, "click");
     }
   };
 
-  // ── 장소 추가 (카테고리 확인 스텝) ─────────────────────────
-  const handleAdd = (place: Place) => {
-    setPendingPlace({ ...place });
-  };
-
+  // ── 장소 추가 ────────────────────────────────────────────────
+  // 검색 시 자동 추정된 카테고리로 바로 추가하되, 자동 분류가 틀렸을 때를 대비해
+  // 카드의 카테고리 배지를 눌러 추가 전에 바로 고칠 수 있게 한다.
   const [addedName, setAddedName] = useState<string | null>(null);
 
-  const handleConfirmAdd = () => {
-    if (!pendingPlace) return;
-    onAddPlace(pendingPlace);
-    setAddedName(pendingPlace.name);
-    setPendingPlace(null);
-    setTimeout(() => setAddedName(null), 2500);
+  const isAdded = (place: Place) =>
+    existingPlaces.some((p) => p.name === place.name && p.lat === place.lat);
+
+  const updateResultCategory = (placeId: string, newCategory: string) => {
+    setSearchResults((prev) => prev.map((p) => (p.id === placeId ? { ...p, category: newCategory } : p)));
+    setSelectedPlace((prev) => (prev && prev.id === placeId ? { ...prev, category: newCategory } : prev));
+    setCategoryPickerFor(null);
   };
 
-  const isAdded = (place: Place) => existingPlaces.some((p) => p.id === place.id);
+  const handleAdd = async (place: Place) => {
+    if (isAdded(place) || addingId) return;
+    setAddingId(place.id);
+    setErrorMsg(null);
+    try {
+      await onAddPlace(place);
+      setAddedName(place.name);
+      setTimeout(() => setAddedName(null), 2500);
+    } catch (e: any) {
+      setErrorMsg(e?.response?.data?.message || e?.message || `'${place.name}' 추가에 실패했습니다.`);
+    } finally {
+      setAddingId(null);
+    }
+  };
 
   return (
     <div
@@ -307,93 +337,6 @@ const AddPlaceModal: React.FC<AddPlaceModalProps> = ({
         onClick={(e) => e.stopPropagation()}
       >
 
-        {/* ── 카테고리 확인 미니 팝업 ── */}
-        {pendingPlace && (
-          <div
-            style={{
-              position: "absolute", inset: 0, zIndex: 100,
-              background: "rgba(0,0,0,0.45)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              borderRadius: "inherit",
-            }}
-            onClick={() => setPendingPlace(null)}
-          >
-            <div
-              style={{
-                background: "#fff",
-                border: "2px solid #000",
-                borderRadius: "10px",
-                padding: "28px 28px 24px",
-                width: "340px",
-                boxShadow: "6px 6px 0px #000",
-              }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* 장소명 */}
-              <p style={{ margin: "0 0 4px", fontSize: "12px", color: "#999", fontFamily: "var(--font-mono)" }}>
-                카테고리 확인
-              </p>
-              <p style={{ margin: "0 0 20px", fontWeight: "bold", fontSize: "16px", color: "#000" }}>
-                📍 {pendingPlace.name}
-              </p>
-
-              {/* 카테고리 선택 */}
-              <p style={{ margin: "0 0 10px", fontSize: "13px", color: "#555" }}>
-                이 장소의 카테고리를 선택해주세요.
-              </p>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "24px" }}>
-                {Object.entries(CATEGORY_COLOR).map(([cat, color]) => {
-                  const isSelected = pendingPlace.category === cat;
-                  return (
-                    <button
-                      key={cat}
-                      onClick={() => setPendingPlace({ ...pendingPlace, category: cat })}
-                      style={{
-                        padding: "7px 16px",
-                        borderRadius: "20px",
-                        border: `2px solid ${color}`,
-                        background: isSelected ? color : "#fff",
-                        color: isSelected ? "#fff" : color,
-                        fontWeight: "bold",
-                        fontSize: "13px",
-                        cursor: "pointer",
-                        transition: "all 0.15s",
-                      }}
-                    >
-                      {getCategoryIcon(cat)} {cat}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* 버튼 */}
-              <div style={{ display: "flex", gap: "10px" }}>
-                <button
-                  onClick={() => setPendingPlace(null)}
-                  style={{
-                    flex: 1, padding: "11px",
-                    background: "#fff", color: "#000",
-                    border: "2px solid #000", borderRadius: "6px",
-                    fontWeight: "bold", fontSize: "14px", cursor: "pointer",
-                  }}
-                >
-                  취소
-                </button>
-                <button
-                  onClick={handleConfirmAdd}
-                  style={{
-                    flex: 2, padding: "11px",
-                    background: "#000", color: "#fff",
-                    border: "2px solid #000", borderRadius: "6px",
-                    fontWeight: "bold", fontSize: "14px", cursor: "pointer",
-                  }}
-                >
-                  + 추가하기
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
         {/* ── 헤더 ── */}
         <div className="modal-header">
           <span className="mh-title">&gt;&gt; ADD NEW PLACE</span>
@@ -445,16 +388,16 @@ const AddPlaceModal: React.FC<AddPlaceModalProps> = ({
             {/* 스티키 헤더 */}
             <div style={{
               padding: "10px 16px",
-              fontFamily: "var(--font-mono)", fontWeight: "bold",
-              fontSize: "12px", color: "#666",
               borderBottom: "1px solid #eee", background: "#fff",
               position: "sticky", top: 0, zIndex: 1,
             }}>
-              검색결과 {searchResults.length}개
+              <div style={{ fontFamily: "var(--font-mono)", fontWeight: "bold", fontSize: "12px", color: "#666" }}>
+                검색결과 {searchResults.length}개
+              </div>
               {searchResults.length > 0 && (
-                <span style={{ fontWeight: "normal", fontSize: "11px", color: "#aaa", marginLeft: "6px" }}>
-                  · 클릭하면 지도 이동
-                </span>
+                <div style={{ fontSize: "11px", color: "#aaa", marginTop: "2px" }}>
+                  카테고리를 클릭하면 수정할 수 있어요
+                </div>
               )}
             </div>
 
@@ -484,7 +427,7 @@ const AddPlaceModal: React.FC<AddPlaceModalProps> = ({
               return (
                 <div
                   key={place.id}
-                  onClick={() => handleListClick(place, idx)}
+                  onClick={() => handleListClick(place)}
                   style={{
                     padding: "14px 16px",
                     borderBottom: "1px solid #eee",
@@ -512,14 +455,56 @@ const AddPlaceModal: React.FC<AddPlaceModalProps> = ({
                     </div>
 
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "4px", flexWrap: "wrap", minWidth: 0 }}>
-                        <span style={{
-                          background: color, color: "#fff",
-                          padding: "1px 6px", fontSize: "10px", fontWeight: "bold",
-                          borderRadius: "3px",
-                        }}>
-                          {place.category}
+                      <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "4px", flexWrap: "wrap", minWidth: 0, position: "relative" }}>
+                        <span
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setCategoryPickerFor((prev) => (prev === `list:${place.id}` ? null : `list:${place.id}`));
+                          }}
+                          style={{
+                            background: color, color: "#fff",
+                            padding: "1px 6px", fontSize: "10px", fontWeight: "bold",
+                            borderRadius: "3px", cursor: "pointer",
+                            display: "inline-flex", alignItems: "center", gap: "2px",
+                          }}
+                        >
+                          {place.category} <span style={{ fontSize: "8px" }}>▾</span>
                         </span>
+
+                        {categoryPickerFor === `list:${place.id}` && (
+                          <>
+                            <div
+                              onClick={(e) => { e.stopPropagation(); setCategoryPickerFor(null); }}
+                              style={{ position: "fixed", inset: 0, zIndex: 299 }}
+                            />
+                            <div
+                              onClick={(e) => e.stopPropagation()}
+                              style={{
+                                position: "absolute", top: "calc(100% + 4px)", left: 0,
+                                background: "#fff", border: "1px solid #ddd", borderRadius: "6px",
+                                boxShadow: "0 4px 12px rgba(0,0,0,0.15)", overflow: "hidden",
+                                zIndex: 300, minWidth: "90px",
+                              }}
+                            >
+                              {CATEGORY_LIST.map((cat) => (
+                                <div
+                                  key={cat}
+                                  onClick={() => updateResultCategory(place.id, cat)}
+                                  style={{
+                                    padding: "6px 12px", fontSize: "12px", cursor: "pointer",
+                                    color: cat === place.category ? CATEGORY_COLOR[cat] : "#555",
+                                    fontWeight: cat === place.category ? "bold" : "normal",
+                                    background: cat === place.category ? `${CATEGORY_COLOR[cat]}15` : "#fff",
+                                  }}
+                                  onMouseEnter={(e) => { if (cat !== place.category) e.currentTarget.style.background = "#f5f5f5"; }}
+                                  onMouseLeave={(e) => { if (cat !== place.category) e.currentTarget.style.background = "#fff"; }}
+                                >
+                                  {cat}{cat === place.category ? " ✓" : ""}
+                                </div>
+                              ))}
+                            </div>
+                          </>
+                        )}
                         <span style={{
                           fontSize: "14px", fontWeight: "bold",
                           flex: 1,
@@ -539,7 +524,7 @@ const AddPlaceModal: React.FC<AddPlaceModalProps> = ({
                       )}
                       {place.description && (
                         <p style={{
-                          fontSize: "11px", color: "#aaa", margin: "0 0 8px",
+                          fontSize: "11px", color: "#aaa", margin: 0,
                           lineHeight: 1.4,
                           overflow: "hidden", textOverflow: "ellipsis",
                           display: "-webkit-box", WebkitLineClamp: 2,
@@ -548,21 +533,26 @@ const AddPlaceModal: React.FC<AddPlaceModalProps> = ({
                           {place.description}
                         </p>
                       )}
-
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleAdd(place); }}
-                        disabled={added}
-                        style={{
-                          width: "100%", padding: "7px 0",
-                          background: added ? "#4caf50" : "#000",
-                          color: "#fff", border: "none", borderRadius: "5px",
-                          fontWeight: "bold", fontSize: "12px",
-                          cursor: added ? "not-allowed" : "pointer",
-                        }}
-                      >
-                        {added ? "✓ 추가됨" : "+ 추가하기"}
-                      </button>
                     </div>
+
+                    {/* 빠른 추가 버튼 — 지도 확인 없이 바로 추가하고 싶을 때 */}
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleAdd(place); }}
+                      disabled={added || addingId === place.id}
+                      title={added ? "추가됨" : "바로 추가"}
+                      style={{
+                        width: "28px", height: "28px", borderRadius: "50%",
+                        flexShrink: 0, alignSelf: "center",
+                        background: added ? "#4caf50" : "#000",
+                        color: "#fff", border: "none",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        fontSize: "15px", fontWeight: "bold", lineHeight: 1, padding: 0,
+                        cursor: added || addingId === place.id ? "not-allowed" : "pointer",
+                        opacity: addingId === place.id ? 0.5 : 1,
+                      }}
+                    >
+                      {added ? "✓" : "+"}
+                    </button>
                   </div>
                 </div>
               );
@@ -588,8 +578,8 @@ const AddPlaceModal: React.FC<AddPlaceModalProps> = ({
               </div>
             )}
 
-            {/* 지도 클릭 힌트 — 항상 표시 */}
-            {mapLoaded && (
+            {/* 지도 클릭 힌트 — 한 번 써보면 사라짐 */}
+            {mapLoaded && !hasClickedMap && (
               <div style={{
                 position: "absolute", top: "12px", left: "50%",
                 transform: "translateX(-50%)",
@@ -601,46 +591,6 @@ const AddPlaceModal: React.FC<AddPlaceModalProps> = ({
               </div>
             )}
 
-            {/* 선택 장소 하단 패널 */}
-            {selectedPlace && (
-              <div style={{
-                position: "absolute", bottom: 0, left: 0, right: 0,
-                background: "#fff", borderTop: "2px solid #000",
-                padding: "12px 20px",
-                display: "flex", alignItems: "center", gap: "14px",
-              }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
-                    <span style={{
-                      background: CATEGORY_COLOR[selectedPlace.category] || "#333",
-                      color: "#fff", padding: "2px 8px",
-                      fontSize: "11px", fontWeight: "bold", borderRadius: "3px",
-                    }}>
-                      {selectedPlace.category}
-                    </span>
-                    <span style={{ fontWeight: "bold", fontSize: "15px" }}>
-                      {selectedPlace.name}
-                    </span>
-                  </div>
-                  <p style={{ fontSize: "12px", color: "#666", margin: 0 }}>
-                    📍 {selectedPlace.address}
-                  </p>
-                </div>
-                <button
-                  onClick={() => handleAdd(selectedPlace)}
-                  disabled={isAdded(selectedPlace)}
-                  style={{
-                    padding: "10px 22px", flexShrink: 0,
-                    background: isAdded(selectedPlace) ? "#4caf50" : "#000",
-                    color: "#fff", border: "2px solid #000",
-                    borderRadius: "6px", fontWeight: "bold",
-                    fontSize: "14px", cursor: isAdded(selectedPlace) ? "not-allowed" : "pointer",
-                  }}
-                >
-                  {isAdded(selectedPlace) ? "✓ 추가됨" : "+ 추가하기"}
-                </button>
-              </div>
-            )}
           </div>
         </div>
       </div>
