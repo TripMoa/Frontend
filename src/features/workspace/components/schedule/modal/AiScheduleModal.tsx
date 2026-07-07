@@ -1,11 +1,12 @@
 // src/features/workspace/components/schedule/modal/AiScheduleModal.tsx
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { generateSchedule } from "../../../../../api/schedule.api";
 import { searchPlaces } from "../../../../../api/place.api";
 import "../../../styles/modals.css";
 import {
   CATEGORY_TO_BACKEND,
+  CATEGORY_FROM_BACKEND,
   TRANSPORT_TO_BACKEND,
   PACE_TO_BACKEND,
 } from "../../../hooks/schedule.constants";
@@ -20,7 +21,6 @@ interface Place {
   description?: string;
   lat?: number;
   lng?: number;
-  memo?: string;
 }
 
 interface HotelSetting {
@@ -62,12 +62,12 @@ export interface TimelineNode {
   time: string;
   title: string;
   desc: string;
+  travelMinutes?: number;   // 다음 장소까지 이동시간 (분), 대중교통 실측값 또는 추정치
   placeInfo?: {
     name: string;
     address?: string;
     category?: string;
     description?: string;
-    memo?: string;
     imageUrl?: string;
     rating?: number;
     lat?: number;
@@ -87,7 +87,7 @@ interface AiScheduleModalProps {
   endDate: string;
   tripId: number;
   /** 모달 안에서 바로 장소를 추가할 수 있도록 부모의 핸들러를 받음 */
-  onAddPlace: (place: Place) => void;
+  onAddPlace: (place: Place) => void | Promise<void>;
 }
 
 
@@ -137,6 +137,16 @@ const AiScheduleModal: React.FC<AiScheduleModalProps> = ({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   // pin 시간 충돌 경고 (생성 후 표시)
   const [pinWarnings, setPinWarnings] = useState<string[]>([]);
+  // 용량 초과/시간대 제약으로 제외된 장소 (생성 후 표시)
+  const [excludedPlaces, setExcludedPlaces] = useState<
+    { name: string; category: string; reason: string; day: number }[]
+  >([]);
+  // 생성 완료 후 자동 전환 대기 중 사용자가 바로 넘어갈 수 있게 하기 위한 참조
+  const pendingResultRef = useRef<{
+    generatedSchedule: Record<string, TimelineNode[]>;
+    dayKeys: string[];
+  } | null>(null);
+  const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ─── 실시간 유효성 검사 ──────────────────────────────────
   const nDays = calcNDays(startDate, endDate);
@@ -163,6 +173,27 @@ const AiScheduleModal: React.FC<AiScheduleModalProps> = ({
   );
 
   // 버튼 활성화 조건
+  // 수동 설정한 숙소끼리 체크인/체크아웃 기간이 겹치는지 검사
+  // (겹치면 백엔드가 리스트 순서상 먼저 오는 숙소를 임의로 채택해버림)
+  const overlappingHotelIndices = useMemo(() => {
+    const bad = new Set<number>();
+    const validRows = settings.hotels
+      .map((h, idx) => ({ h, idx }))
+      .filter(({ h }) => h.name.trim() && h.checkOutDay > h.checkInDay);
+
+    for (let a = 0; a < validRows.length; a++) {
+      for (let b = a + 1; b < validRows.length; b++) {
+        const { h: ha, idx: ia } = validRows[a];
+        const { h: hb, idx: ib } = validRows[b];
+        if (ha.checkInDay < hb.checkOutDay && hb.checkInDay < ha.checkOutDay) {
+          bad.add(ia);
+          bad.add(ib);
+        }
+      }
+    }
+    return bad;
+  }, [settings.hotels]);
+
   const readinessIssues = useMemo(() => {
     const issues: string[] = [];
     if (validPlaces.length === 0)
@@ -175,10 +206,35 @@ const AiScheduleModal: React.FC<AiScheduleModalProps> = ({
       );
     if (settings.startTime >= settings.endTime)
       issues.push("종료 시간은 시작 시간보다 늦어야 합니다.");
+    if (overlappingHotelIndices.size > 0)
+      issues.push("숙박 기간이 겹치는 숙소가 있습니다. 날짜를 조정해주세요.");
     return issues;
-  }, [validPlaces, visitPlaces, nDays, settings.startTime, settings.endTime]);
+  }, [
+    validPlaces,
+    visitPlaces,
+    nDays,
+    settings.startTime,
+    settings.endTime,
+    overlappingHotelIndices,
+  ]);
 
   const canGenerate = readinessIssues.length === 0;
+
+  // 저장한 맛집 개수가 이 일정에서 실제로 배치될 수 있는 식사 슬롯(점심/저녁 × 일수)보다
+  // 많으면 비침해성으로 안내만 함 — 생성은 그대로 가능하고, 초과분은 백엔드가 알아서 제외함.
+  const mealCapacityWarning = useMemo(() => {
+    const mealSlotsPerDay = !settings.includeMeals
+      ? 0
+      : (settings.startTime <= "12:00" && "12:00" <= settings.endTime ? 1 : 0) +
+        (settings.startTime <= "18:00" && "18:00" <= settings.endTime ? 1 : 0);
+    if (mealSlotsPerDay === 0) return null;
+
+    const totalSlots = mealSlotsPerDay * nDays;
+    const savedMealCount = visitPlaces.filter((p) => p.category === "맛집").length;
+    if (savedMealCount <= totalSlots) return null;
+
+    return `저장한 맛집이 ${savedMealCount}개인데, 이 일정에서는 최대 ${totalSlots}번만 식사로 들어갈 수 있어요(하루 ${mealSlotsPerDay}번 × ${nDays}일). 나머지는 자동으로 제외될 수 있어요.`;
+  }, [settings.includeMeals, settings.startTime, settings.endTime, nDays, visitPlaces]);
 
   // ─── 로딩 애니메이션 ─────────────────────────────────────
   useEffect(() => {
@@ -226,7 +282,8 @@ const AiScheduleModal: React.FC<AiScheduleModalProps> = ({
       return;
     }
 
-    // 숙소 자동 주입 로직
+    // 숙소 자동 주입 로직 — 수동 설정 안 한 나머지 저장 숙소도 전체 기간으로 자동 포함
+    // (일부만 수동 설정했다고 나머지가 조용히 빠지지 않도록)
     const manualHotels = settings.hotels.filter(
       (h) =>
         h.name.trim() &&
@@ -234,19 +291,23 @@ const AiScheduleModal: React.FC<AiScheduleModalProps> = ({
         h.lng != null &&
         h.checkOutDay > h.checkInDay
     );
-    const autoHotels: typeof manualHotels =
-      manualHotels.length > 0
-        ? []
-        : savedPlaces
-            .filter((p) => p.category === "숙소" && p.lat != null && p.lng != null)
-            .map((p) => ({
-              name: p.name,
-              lat: p.lat!,
-              lng: p.lng!,
-              address: p.address || "",
-              checkInDay: 1,
-              checkOutDay: nDays,
-            }));
+    const manualHotelNames = new Set(manualHotels.map((h) => h.name.trim()));
+    const autoHotels: typeof manualHotels = savedPlaces
+      .filter(
+        (p) =>
+          p.category === "숙소" &&
+          p.lat != null &&
+          p.lng != null &&
+          !manualHotelNames.has(p.name)
+      )
+      .map((p) => ({
+        name: p.name,
+        lat: p.lat!,
+        lng: p.lng!,
+        address: p.address || "",
+        checkInDay: 1,
+        checkOutDay: nDays,
+      }));
 
     const resolvedHotels = [...manualHotels, ...autoHotels];
 
@@ -307,6 +368,7 @@ const AiScheduleModal: React.FC<AiScheduleModalProps> = ({
     setIsLoading(true);
     setErrorMsg(null);
     setPinWarnings([]);
+    setExcludedPlaces([]);
 
     try {
       const { data } = await generateSchedule(body);
@@ -337,12 +399,12 @@ const AiScheduleModal: React.FC<AiScheduleModalProps> = ({
             time: item.time || "00:00",
             title: item.title || "",
             desc: item.description || "",
+            travelMinutes: item.travelMinutes ?? undefined,
             placeInfo: {
               name: item.title || "",
               address: item.description || "",
-              category: matched?.category || "",
+              category: matched?.category || (item.category ? (CATEGORY_FROM_BACKEND[item.category] ?? item.category) : ""),
               description: matched?.description || "",
-              memo: matched?.memo || "",
               imageUrl: matched?.imageUrl,
               rating: matched?.rating,
               lat: matched?.lat,
@@ -352,17 +414,43 @@ const AiScheduleModal: React.FC<AiScheduleModalProps> = ({
         });
       });
 
+      // pin 시간 경고 / 제외된 장소 — 화면에 보여주기 위해 day별로 모아둠
+      const allPinWarnings = (data as any[]).flatMap((s: any) => s.pinWarnings || []);
+      const allExcluded = (data as any[]).flatMap((s: any) =>
+        (s.excludedPlaces || []).map((e: any) => ({ ...e, day: s.day }))
+      );
+      setPinWarnings(allPinWarnings);
+      setExcludedPlaces(allExcluded);
+
       setLoadingProgress(100);
 
-      setTimeout(() => {
-        onGenerate(settings, generatedSchedule, dayKeys);
-        onClose();
-      }, 400);
+      pendingResultRef.current = { generatedSchedule, dayKeys };
+      const hasNotices = allPinWarnings.length > 0 || allExcluded.length > 0;
+      closeTimeoutRef.current = setTimeout(finishGeneration, hasNotices ? 4000 : 400);
     } catch (e: any) {
-      setErrorMsg(e.message || "일정 생성 중 오류가 발생했습니다.");
+      setErrorMsg(e.response?.data?.message || e.message || "일정 생성 중 오류가 발생했습니다.");
       setIsLoading(false);
     }
   };
+
+  // 생성 완료 후 자동 전환을 기다리지 않고 바로 넘어감 (경고/제외 안내 확인 버튼용)
+  const finishGeneration = () => {
+    if (closeTimeoutRef.current) {
+      clearTimeout(closeTimeoutRef.current);
+      closeTimeoutRef.current = null;
+    }
+    const pending = pendingResultRef.current;
+    if (pending) {
+      onGenerate(settings, pending.generatedSchedule, pending.dayKeys);
+      onClose();
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current);
+    };
+  }, []);
 
   // ─── 경과 시간 표시 ──────────────────────────────────────
   const [elapsed, setElapsed] = useState(0);
@@ -408,7 +496,6 @@ const AiScheduleModal: React.FC<AiScheduleModalProps> = ({
         description: p.description || "",
         lat: p.lat,
         lng: p.lng,
-        memo: "",
       }));
       setHotelSearchResults(mapped);
     } catch (e: any) {
@@ -425,7 +512,7 @@ const AiScheduleModal: React.FC<AiScheduleModalProps> = ({
       setTimeout(() => setHotelAddedName(null), 2000);
       return;
     }
-    onAddPlace(place);
+    Promise.resolve(onAddPlace(place)).catch(() => {});
     setHotelAddedName(place.name);
     setHotelSearchResults([]);
     setHotelSearchQuery("");
@@ -462,7 +549,6 @@ const AiScheduleModal: React.FC<AiScheduleModalProps> = ({
         description: p.description || "",
         lat: p.lat,
         lng: p.lng,
-        memo: "",
       }));
       setDeptSearchResults(mapped);
     } catch (e: any) {
@@ -478,7 +564,7 @@ const AiScheduleModal: React.FC<AiScheduleModalProps> = ({
       setTimeout(() => setDeptAddedName(null), 2000);
       return;
     }
-    onAddPlace(place);
+    Promise.resolve(onAddPlace(place)).catch(() => {});
     setDeptAddedName(place.name);
     setDeptSearchResults([]);
     setDeptSearchQuery("");
@@ -606,10 +692,55 @@ const AiScheduleModal: React.FC<AiScheduleModalProps> = ({
                     ⚠️ {w}
                   </p>
                 ))}
+              </div>
+            )}
+
+            {/* 제외된 장소 표시 (로딩 완료 후) */}
+            {excludedPlaces.length > 0 && (
+              <div
+                style={{
+                  maxWidth: "380px",
+                  padding: "12px 16px",
+                  background: "#f5f5f5",
+                  border: "2px solid #ccc",
+                  borderRadius: "8px",
+                  fontSize: "13px",
+                  color: "#555",
+                }}
+              >
+                <p style={{ fontWeight: "bold", margin: "0 0 8px" }}>
+                  📍 시간 부족으로 제외된 장소
+                </p>
+                {excludedPlaces.map((e, i) => (
+                  <p key={i} style={{ margin: "0 0 4px", lineHeight: 1.5 }}>
+                    · DAY {e.day} — {e.name} (
+                    {e.reason === "morning_cafe"
+                      ? "오전 시간대 제외"
+                      : e.reason === "meal_slot_limit"
+                      ? "식사 슬롯 초과"
+                      : e.reason === "cafe_limit"
+                      ? "카페 개수 초과"
+                      : "일정 시간 부족"})
+                  </p>
+                ))}
                 <p style={{ fontSize: "11px", color: "#bbb", margin: "8px 0 0" }}>
-                  4초 후 자동으로 일정 탭으로 이동합니다
+                  나중에 직접 추가하실 수 있어요
                 </p>
               </div>
+            )}
+
+            {/* 경고/안내가 있을 때만 — 4초 기다리지 않고 바로 넘어가는 버튼 */}
+            {(pinWarnings.length > 0 || excludedPlaces.length > 0) && (
+              <button
+                onClick={finishGeneration}
+                style={{
+                  padding: "10px 24px", background: "#000", color: "#fff",
+                  border: "2px solid #000", borderRadius: "6px",
+                  fontWeight: "bold", fontSize: "13px", cursor: "pointer",
+                }}
+              >
+                확인하고 계속하기
+              </button>
             )}
           </div>
         )}
@@ -618,6 +749,7 @@ const AiScheduleModal: React.FC<AiScheduleModalProps> = ({
         <div
           className="modal-body"
           style={{
+            background: "#fff",
             padding: "30px",
             overflowY: "auto",
             maxHeight: "calc(90vh - 140px)",
@@ -759,6 +891,15 @@ const AiScheduleModal: React.FC<AiScheduleModalProps> = ({
                 />
                 <span style={{ fontWeight: "bold", fontSize: "14px", color: "#333" }}>🍽️ 식사 시간 포함</span>
               </label>
+              {mealCapacityWarning && (
+                <p style={{
+                  fontSize: "12px", color: "#795548", background: "#fff8e1",
+                  border: "1px solid #ffd54f", borderRadius: "6px",
+                  padding: "8px 10px", margin: "8px 0 0", lineHeight: 1.5,
+                }}>
+                  ⚠️ {mealCapacityWarning}
+                </p>
+              )}
             </div>
 
             {/* ── 일정 스타일 ── */}
@@ -925,7 +1066,9 @@ const AiScheduleModal: React.FC<AiScheduleModalProps> = ({
                   key={i}
                   style={{
                     padding: "12px", background: "#f5f5f5",
-                    borderRadius: "6px", border: "1px solid #ddd", marginBottom: "8px",
+                    borderRadius: "6px",
+                    border: `1px solid ${overlappingHotelIndices.has(i) ? "#e53935" : "#ddd"}`,
+                    marginBottom: "8px",
                   }}
                 >
                   <div style={{ marginBottom: "8px" }}>
@@ -1013,6 +1156,11 @@ const AiScheduleModal: React.FC<AiScheduleModalProps> = ({
                     {hotel.checkOutDay <= hotel.checkInDay && (
                       <span style={{ fontSize: "11px", color: "#e53935", width: "100%" }}>
                         ⚠️ 체크아웃은 체크인보다 늦어야 합니다
+                      </span>
+                    )}
+                    {hotel.checkOutDay > hotel.checkInDay && overlappingHotelIndices.has(i) && (
+                      <span style={{ fontSize: "11px", color: "#e53935", width: "100%" }}>
+                        ⚠️ 다른 숙소와 숙박 기간이 겹쳐요
                       </span>
                     )}
                     <button
@@ -1364,7 +1512,12 @@ const AiScheduleModal: React.FC<AiScheduleModalProps> = ({
                               updateSetting("pinnedPlaces", next);
                             }}
                             style={{
-                              padding: "4px 8px", border: "1px solid #ccc",
+                              padding: "4px 8px",
+                              border: `1px solid ${
+                                pin.time && (pin.time < settings.startTime || pin.time > settings.endTime)
+                                  ? "#e53935"
+                                  : "#ccc"
+                              }`,
                               borderRadius: "4px", fontSize: "13px", width: "110px",
                             }}
                           />
@@ -1385,6 +1538,11 @@ const AiScheduleModal: React.FC<AiScheduleModalProps> = ({
                         >
                           제거
                         </button>
+                        {pin.time && (pin.time < settings.startTime || pin.time > settings.endTime) && (
+                          <span style={{ fontSize: "11px", color: "#e53935", width: "100%" }}>
+                            ⚠️ 여행 시간대({settings.startTime}~{settings.endTime}) 밖이에요
+                          </span>
+                        )}
                       </div>
                     );
                   })}

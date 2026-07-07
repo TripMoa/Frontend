@@ -12,7 +12,6 @@ interface PlaceInfo {
   rating?: number;
   category?: string;
   description?: string;
-  memo?: string;
 }
 
 interface PlaceDetailModalProps {
@@ -77,6 +76,7 @@ const PlaceDetailModal: React.FC<PlaceDetailModalProps> = ({ placeInfo, onClose,
         <div
           className="modal-body"
           style={{
+            background: "#fff",
             padding: "24px 28px",
             overflowY: "auto",
             maxHeight: "calc(88vh - 200px)",
@@ -155,22 +155,6 @@ const PlaceDetailModal: React.FC<PlaceDetailModalProps> = ({ placeInfo, onClose,
             </div>
           )}
 
-          {/* 메모 */}
-          {placeInfo.memo && (
-            <div style={{
-              padding: "12px 16px",
-              background: "#fffbea",
-              border: "2px solid #ffd700",
-              borderRadius: "0",
-            }}>
-              <p style={{ fontSize: "11px", fontWeight: "bold", color: "#999", margin: "0 0 6px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                💭 메모
-              </p>
-              <p style={{ fontSize: "13px", color: "#555", margin: 0, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>
-                {placeInfo.memo}
-              </p>
-            </div>
-          )}
         </div>
 
         {/* 푸터 */}
