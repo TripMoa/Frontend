@@ -25,8 +25,9 @@ export interface Story {
   isFollowed: boolean;
   createdAt: string;
   updatedAt: string;
-
   type: 'FREE' | 'REVIEW';
+  isPublic: boolean;
+  tripId?: number | null;
 
   expenses?: {
     transportation: number;
@@ -59,6 +60,8 @@ export interface CreateStoryData {
   duration: string;
   budget: string;
   tags: string[];
+  isPublic?: boolean;
+  tripId?: number | null;
 
   expenses?: {
     transportation: number;
@@ -143,4 +146,9 @@ export const getSavedItineraries = () => {
 // 특정 스토리 조회수 증가
 export const incrementStoryViews = (id: number) => {
   return api.post(`/stories/${id}/view`);
+};
+
+// 특정 여행의 리뷰 작성 여부 확인
+export const checkReviewExists = (tripId: number) => {
+  return api.get(`/stories/review-check?tripId=${tripId}`);
 };

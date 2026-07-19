@@ -117,6 +117,14 @@ return (
   <div className="story-type-badge">
     {typeLabelMap[story.type] || 'OTHER'}
   </div>
+
+  {/* PRIVATE 배지 추가 */}
+  {isMyStory && story.isPublic === false && (
+    <div className="story-private-badge">
+      PRIVATE
+    </div>
+  )}
+  
   <div className="story-card-views">
     {story.views || 0}
   </div>

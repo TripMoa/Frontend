@@ -1,7 +1,7 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import Layout from "./shared/components/Layout";
 import "./features/travelStory/styles/travelStory.css";
-
+import TravelStoryEdit from "./features/travelStory/pages/TravelStoryEdit";
 import Home from "./features/home/pages/Home";
 import MyTrips from "./features/myTrips/pages/MyTrips";
 import Mate from "./features/mate/pages/Mate";
@@ -39,6 +39,10 @@ export default function App() {
           <Route path="/mate" element={<Mate />} />
           <Route path="/mate/:postId" element={<MateDetail />} />
           <Route path="/travelstory" element={<TravelStory />} />
+          <Route path="/travelstory/write" element={<TravelStory />} />
+          <Route path="/travelstory/edit/:storyId" element={<TravelStoryEdit />} />
+          <Route path="/travelstory/detail/:id" element={<TravelStory />} />
+          <Route path="/travelstory/mystories" element={<TravelStory />} />
 
           {/* 보호된 라우트: 설정 페이지 */}
           <Route element={<ProtectedRoute />}>

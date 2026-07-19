@@ -5,6 +5,10 @@ import { submitReport } from '../../../api/report.api';
 import ReportModal from "../components/modals/ReportModal";
 import "../styles/travelStory.css";
 import "../styles/DetailPage.css";
+import { createTrip } from "../../../api/trip.api";
+import { getPlaces, createPlace } from "../../../api/place.api";
+import { useNavigate } from "react-router-dom";
+import { TripCreateModal } from "../../myTrips/components/TripCreateModal";
 
 import { useAuth } from "../../user/pages/AuthContext";
 import { useAccessGuard } from "../../../shared/hooks/useAccessGuard";
@@ -63,6 +67,16 @@ function DetailPage({
   const itineraryMenuRef = useRef<HTMLDivElement>(null);
   const [showReportMenu, setShowReportMenu] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
+  const navigate = useNavigate();  
+  const [isCreatingTrip, setIsCreatingTrip] = useState(false);
+  const [showTripModal, setShowTripModal] = useState(false);
+  const [tripFormData, setTripFormData] = useState({
+    title: "",
+    tripStartDate: "",
+    tripEndDate: "",
+    selectedMembers: [],
+  });
+  const [isSubmittingTrip, setIsSubmittingTrip] = useState(false);
 
   // nickname 우선, 없으면 name으로 표시
   const rawAuthor = story?.author || {};
@@ -170,6 +184,12 @@ function DetailPage({
     }
   };
 
+  const handleUseItinerary = () => {
+  if (!requireLogin()) return;
+  setShowItineraryMenu(false);
+  setShowTripModal(true);
+};
+
   // description 렌더링 후 이미지 슬라이더 초기화 (상대경로 URL 변환 및 prev/next 버튼 이벤트 등록)
   useEffect(() => {
     setTimeout(() => {
@@ -241,6 +261,46 @@ function DetailPage({
       });
     }, 100);
   }, [story.id]);
+
+  const handleTripSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  try {
+    setIsSubmittingTrip(true);
+    const tripRes = await createTrip({
+      title: tripFormData.title,
+      tripStartDate: tripFormData.tripStartDate,
+      tripEndDate: tripFormData.tripEndDate,
+      memberUserIds: tripFormData.selectedMembers.map((m: any) => m.userId),
+    });
+    const newTripId = tripRes.data.tripId;
+
+    // 장소 복사 실패해도 워크스페이스로 이동
+    if (story.tripId) {
+      try {
+        const placesRes = await getPlaces(story.tripId);
+        for (const place of placesRes.data) {
+          await createPlace({
+            tripId: newTripId,
+            name: place.name,
+            address: place.address,
+            category: place.category,
+            lat: place.lat,
+            lng: place.lng,
+          });
+        }
+      } catch (placeError) {
+        console.error("장소 복사 실패:", placeError);
+      }
+    }
+
+    navigate(`/workspace/${newTripId}`);
+  } catch (e) {
+    alert("여행 계획 생성에 실패했습니다.");
+  } finally {
+    setIsSubmittingTrip(false);
+    setShowTripModal(false);
+  }
+};
 
   return (
   <div className="detail-page-container">
@@ -376,8 +436,9 @@ function DetailPage({
                   {isFollowed ? "목록에서 제거" : "SAVED ITINERARIES에 저장"}
                 </button>
                 <button className="itinerary-menu-item"
-                  onClick={() => { alert("준비 중입니다."); setShowItineraryMenu(false); }}>
-                  USE THIS ITINERARY
+                  onClick={handleUseItinerary}
+                  disabled={isCreatingTrip}>
+                  {isCreatingTrip ? "생성 중..." : "USE THIS ITINERARY"}
                 </button>
               </div>
             )}
@@ -389,7 +450,7 @@ function DetailPage({
           <div className="detail-created-date">{displayDate}</div>
         </div>
       </div>
-    </div> {/* detail-page-content 닫기 */}
+    </div> 
 
     <CommentSection
       storyId={story.id}
@@ -414,6 +475,16 @@ function DetailPage({
       }}
     />
 
+    <TripCreateModal
+      isOpen={showTripModal}
+      onClose={() => setShowTripModal(false)}
+      formData={tripFormData}
+      setFormData={setTripFormData as any}
+      onSubmit={handleTripSubmit}
+      isSubmitting={isSubmittingTrip}
+      currentUser={null}
+    />
+
     <ActionPromptModal
       open={showLoginModal}
       title="로그인이 필요합니다"
@@ -424,7 +495,7 @@ function DetailPage({
       onClose={closeLoginModal}
       onConfirm={moveToLogin}
     />
-  </div> // detail-page-container 닫기
+  </div> 
 );
 }
 
