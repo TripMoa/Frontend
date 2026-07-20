@@ -64,14 +64,6 @@ function MyStoriesPage({
           </svg>
         </button>
 
-        <button
-          onClick={() => {
-            setWriteType("REVIEW");
-            navigateToPage("write");    // 페이지 이동
-          }}
-        >
-          후기 작성 테스트
-        </button>
 
         {/* 통계 카드 - 작성한 여행기 수, 총 조회수, 받은 좋아요 수, 저장한 일정 수 */}
         <div className="mystories-stats-grid">

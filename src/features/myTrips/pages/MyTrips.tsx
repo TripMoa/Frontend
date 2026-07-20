@@ -9,6 +9,7 @@ import { TripCreateModal } from "./../components/TripCreateModal";
 import type { TripFilter } from "./../hooks/useMyTrips";
 import { joinTripByInviteCode } from "../../../api/trip.api";
 import { ActionPromptModal } from "../../../shared/components/ActionPromptModal";
+import { checkReviewExists } from "../../../api/stories.api";
 import type { MyTripSummaryResponse } from "../../../types";
 
 export default function MyTrips() {
@@ -233,6 +234,40 @@ export default function MyTrips() {
                 status={getTripStatus(trip.tripStartDate, trip.tripEndDate)}
                 onDelete={requestDeleteTrip}
                 isInvited={filter === "invited"}
+                onWriteReview={async () => {
+                  // 이미 작성된 리뷰 있는지 확인
+                  const res = await checkReviewExists(trip.tripId);
+                  if (res.data === true) {
+                    alert("이미 해당 여행의 후기를 작성했습니다.");
+                    return;
+                  }
+                  
+                  localStorage.setItem("reviewFrom", "mytrips");
+                  
+                  const start = new Date(trip.tripStartDate);
+                  const end = new Date(trip.tripEndDate);
+                  const diffDays = Math.floor((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+                  
+                  const duration = diffDays === 0 ? "당일치기"
+                    : diffDays === 1 ? "1박 2일"
+                    : diffDays === 2 ? "2박 3일"
+                    : diffDays === 3 ? "3박 4일"
+                    : diffDays === 4 ? "4박 5일"
+                    : diffDays === 5 ? "5박 6일"
+                    : "1주일 이상";
+
+                  navigate("/travelstory", { 
+                    state: { 
+                      goToWrite: true, 
+                      writeType: "REVIEW",
+                      tripData: {
+                        departureDate: trip.tripStartDate,
+                        duration,
+                        tripId: trip.tripId,  // ← tripId 추가
+                      }
+                    } 
+                  });
+                }}
               />
             ))}
         </div>

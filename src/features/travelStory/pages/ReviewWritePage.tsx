@@ -20,9 +20,9 @@ interface WritePageProps {
 
 // 기간 선택용 커스텀 드롭다운
 function CustomSelect({
-  value, options, onChange,
+  value, options, onChange, disabled,
 }: {
-  value: string; options: string[]; onChange: (val: string) => void;
+  value: string; options: string[]; onChange: (val: string) => void; disabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -40,9 +40,9 @@ function CustomSelect({
       <button
         type="button"
         className={`custom-select-trigger ${open ? "open" : ""}`}
-        onClick={() => setOpen(!open)}
-        style={{ width: "100%" }}
+        onClick={() => { if (disabled) { alert("여행 기간은 여행 일정에서 수정할 수 있습니다."); return; } setOpen(!open); }} style={{ width: "100%" }} 
       >
+      
         <span>{value}</span>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
           style={{ transform: open ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s" }}
@@ -68,7 +68,7 @@ function CustomSelect({
 }
 
 // 커스텀 날짜 선택 달력
-function CustomDatePicker({ value, onChange }: { value: string; onChange: (val: string) => void }) {
+function CustomDatePicker({ value, onChange, disabled }: { value: string; onChange: (val: string) => void ; disabled?: boolean }) {
   const [open, setOpen] = useState(false);
   const [viewYear, setViewYear] = useState(() => value ? parseInt(value.split("-")[0]) : new Date().getFullYear());
   const [viewMonth, setViewMonth] = useState(() => value ? parseInt(value.split("-")[1]) - 1 : new Date().getMonth());
@@ -110,7 +110,7 @@ function CustomDatePicker({ value, onChange }: { value: string; onChange: (val: 
 
   return (
     <div ref={ref} style={{ position: "relative" }}>
-      <button type="button" className="form-input custom-date-trigger" onClick={() => setOpen(!open)}>
+      <button type="button" className="form-input custom-date-trigger" onClick={() => { if (disabled) { alert("출발 날짜는 여행 일정에서 수정할 수 있습니다."); return; } setOpen(!open); }} >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <rect x="3" y="4" width="18" height="18" rx="2" />
           <line x1="16" y1="2" x2="16" y2="6" />
@@ -164,11 +164,18 @@ function ReviewWritePage({
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [travelStyles, setTravelStyles] = useState<TravelStyleOption[]>([]);
   const [selectedTags, setSelectedTags] = useState<number[]>([]);
-  const [duration, setDuration] = useState(editingStory?.duration || currentDraft?.duration || "선택하세요");
-  const [departureDate, setDepartureDate] = useState(editingStory?.departureDate || currentDraft?.departureDate || "");
+  const [duration, setDuration] = useState(editingStory?.duration || currentDraft?.duration || (window as any).tripDataForReview?.duration || "선택하세요");
+ const [departureDate, setDepartureDate] = useState(() => {
+  const val = editingStory?.departureDate || 
+    currentDraft?.departureDate || 
+    (window as any).tripDataForReview?.departureDate || 
+    "";
+  return val;
+});
   const [expenses, setExpenses] = useState({
     transportation: "", accommodation: "", food: "", attraction: "", shopping: "",
   });
+  const [isPublic, setIsPublic] = useState(true);
 
   const editorRef = useRef<EditorHandle>(null);
 
@@ -298,6 +305,8 @@ function ReviewWritePage({
       departureDate,
       tags: tagNames,
       expenses: expensesJson,
+      isPublic,
+      tripId: (window as any).tripDataForReview?.tripId,
     };
 
     if (typeof onPublish === "function") {
@@ -369,12 +378,16 @@ function ReviewWritePage({
               <CustomSelect
                 value={duration}
                 options={["선택하세요","당일치기","1박 2일","2박 3일","3박 4일","4박 5일","5박 6일","1주일 이상"]}
-                onChange={(val) => setDuration(val)}
+                onChange={(val) => setDuration(val)} disabled={true}
               />
             </div>
             <div>
               <label className="write-label">DEPARTURE DATE</label>
-              <CustomDatePicker value={departureDate} onChange={(val) => setDepartureDate(val)} />
+              <CustomDatePicker 
+                value={departureDate} 
+                onChange={(val) => setDepartureDate(val)}
+                disabled={true}  // ← 이렇게 막으면 클릭해도 달력 안 뜸
+              />
             </div>
           </div>
 
@@ -407,6 +420,27 @@ function ReviewWritePage({
                 <span>총 합계</span>
                 <span>{totalExpenses.toLocaleString()}원</span>
               </div>
+            </div>
+          </div>
+
+          {/* 공개 설정 */}
+          <div className="write-tags-section">
+            <label className="write-label">공개 설정</label>
+            <div style={{ display: "flex", gap: "10px" }}>
+              <button
+                type="button"
+                className={`style-tag ${isPublic ? "selected" : ""}`}
+                onClick={() => setIsPublic(true)}
+              >
+                공개
+              </button>
+              <button
+                type="button"
+                className={`style-tag ${!isPublic ? "selected" : ""}`}
+                onClick={() => setIsPublic(false)}
+              >
+                비공개
+              </button>
             </div>
           </div>
 

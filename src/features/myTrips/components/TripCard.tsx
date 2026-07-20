@@ -9,6 +9,7 @@ interface TripCardProps {
   status: TripStatusInfo;
   onDelete: (trip: MyTripSummaryResponse) => void;
   isInvited: boolean;
+  onWriteReview?: () => void;
 }
 
 const MAX_VISIBLE_MEMBERS = 6;
@@ -18,6 +19,7 @@ export const TripCard = ({
   status,
   onDelete,
   isInvited,
+  onWriteReview,
 }: TripCardProps) => {
   const navigate = useNavigate();
   const members = trip.members ?? [];
@@ -30,6 +32,15 @@ export const TripCard = ({
 
   const startDate = trip.tripStartDate ?? "";
   const endDate = trip.tripEndDate ?? "";
+
+    // 후기 작성 가능 여부 (종료 후 30일 이내) ← 여기
+  const canWriteReview = (() => {
+    if (!status.isEnd) return false;
+    const end = new Date(endDate);
+    const today = new Date();
+    const diffDays = Math.floor((today.getTime() - end.getTime()) / (1000 * 60 * 60 * 24));
+    return diffDays <= 60;
+  })();
 
   return (
     <div
@@ -138,6 +149,30 @@ export const TripCard = ({
             )}
           </div>
         </div>
+
+        {/* 후기 작성 버튼 - 오른쪽 아래 */}
+        {canWriteReview && (
+          <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "10px" }}>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onWriteReview) onWriteReview();
+              }}
+              style={{
+                padding: "6px 12px",
+                background: "#000",
+                color: "#fff",
+                border: "none",
+                cursor: "pointer",
+                fontFamily: "Share Tech Mono, monospace",
+                fontSize: "12px",
+                fontWeight: "700",
+              }}
+            >
+              REVIEW
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

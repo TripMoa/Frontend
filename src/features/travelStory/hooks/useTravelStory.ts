@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import * as storyAPI from "../../../api/stories.api";
+import { useNavigate } from "react-router-dom";
 import * as draftAPI from "../../../api/drafts.api";
 import { getMyInfo } from "../../../api/auth.api";
 import { useAuth } from "../../user/pages/AuthContext";
@@ -20,15 +21,20 @@ interface Draft {
 }
 
 function useTravelStory() {
+
+  const navigate = useNavigate();
+
   const { isAuthenticated } = useAuth();
 
-  // 현재 페이지 상태 - URL 해시 또는 localStorage에서 복원
+  // 현재 페이지 상태 - URL 경로에서 복원
   const [currentPage, setCurrentPageState] = useState(() => {
-    const hash = window.location.hash.slice(1);
-    if (hash) return hash;
-    const saved = localStorage.getItem("currentPage");
-    return saved || "main";
+    const path = window.location.pathname;
+    if (path.includes("/write") || path.includes("/edit")) return "write";
+    if (path.includes("/detail")) return "detail";
+    if (path.includes("/mystories")) return "myStories";
+    return "main";
   });
+
   const [previousPage, setPreviousPage] = useState("main");
 
   // 선택된 스토리 ID - localStorage에서 복원 (새로고침 대응)
@@ -69,6 +75,7 @@ function useTravelStory() {
   const [tags, setTags] = useState<TravelStyleOption[]>([]);
   const [stories, setStories] = useState<Story[]>([]);
   const [pageState, setPageState] = useState<any>(null);
+  const [alertCallback, setAlertCallback] = useState<(() => void) | null>(null);
 
 
   // 앱 최초 진입 시 전체 스토리 로드 (비로그인도 가능)
@@ -200,53 +207,38 @@ useEffect(() => {
     }
   };
 
-  // 브라우저 뒤로가기/앞으로가기 처리 (popstate 이벤트)
-  useEffect(() => {
-    if (!window.history.state?.page) {
-      window.history.replaceState({ page: currentPage }, "", `#${currentPage}`);
-    }
-
-    const handlePopState = (event: PopStateEvent) => {
-      const page = event.state?.page;
-
-      if (!page) return;
-
-      setCurrentPageState(page);
-      localStorage.setItem("currentPage", page);
-
-      if (page !== "write") {
-        setCurrentDraftId(null);
-        setCurrentDraft(null);
-        setEditingStory(null);
-      }
-
-      if (page !== "detail") {
-        setSelectedStory(null);
-      }
-    };
-
-    window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
-  }, []);
 
   // 커스텀 알럿 표시
-  const showCustomAlert = (message: string) => {
-    setAlertMessage(message);
-    setShowAlert(true);
-  };
+  const showCustomAlert = (message: string, onConfirm?: () => void) => {
+  setAlertMessage(message);
+  setShowAlert(true);
+  if (onConfirm) {
+    // 알럿 닫힐 때 콜백 실행
+    setAlertCallback(() => onConfirm);
+  }
+};
 
   // 커스텀 알럿 닫기
   const closeAlert = () => {
-    setShowAlert(false);
-    setAlertMessage("");
-  };
+  setShowAlert(false);
+  setAlertMessage("");
+  if (alertCallback) {
+    alertCallback();
+    setAlertCallback(null);
+  }
+};
 
   // 페이지 이동 및 URL 해시, localStorage 동기화
   const setCurrentPage = (page: string) => {
-    setCurrentPageState(page);
-    localStorage.setItem("currentPage", page);
-    window.history.pushState({ page }, "", `#${page}`);
+  setCurrentPageState(page);
+  const pathMap: Record<string, string> = {
+    main: "/travelstory",
+    write: "/travelstory/write",
+    detail: "/travelstory/detail",
+    myStories: "/travelstory/mystories",
   };
+  navigate(pathMap[page] || "/travelstory");
+};
 
   // 페이지 이동 시 write 페이지를 벗어나면 편집 상태 초기화
   const navigateToPage = (newPage: string, state?: any) => {
@@ -260,23 +252,40 @@ useEffect(() => {
     }
     setCurrentPageState(newPage);
     setPageState(state);
-    localStorage.setItem("currentPage", newPage);
-    window.history.pushState({ page: newPage }, "", `#${newPage}`);
+    
+    const pathMap: Record<string, string> = {
+      main: "/travelstory",
+      write: "/travelstory/write",
+      myStories: "/travelstory/mystories",
+    };
+    
+    // detail은 URL 변경 없이 상태로만 관리
+    if (newPage !== "detail") {
+      navigate(pathMap[newPage] || "/travelstory");
+    }
   };
 
   // 이전 페이지로 이동 및 편집/선택 상태 초기화
   const goBack = () => {
-    const targetPage = previousPage || "main";
-    setCurrentPage(targetPage);
-    setCurrentDraftId(null);
-    setCurrentDraft(null);
-    setEditingStory(null);
-    setSelectedStory(null);
-    setPreviousPage("main");
-    if (currentPage === "write" && isAuthenticated) {
-      loadDrafts();
-    }
-  };
+  const reviewFrom = localStorage.getItem("reviewFrom");
+  if (reviewFrom === "mytrips") {
+    localStorage.removeItem("reviewFrom");
+    localStorage.removeItem("currentPage");
+    window.location.href = "/mytrips";
+    return;
+  }
+
+  const targetPage = previousPage || "main";
+  setCurrentPage(targetPage);
+  setCurrentDraftId(null);
+  setCurrentDraft(null);
+  setEditingStory(null);
+  setSelectedStory(null);
+  setPreviousPage("main");
+  if (currentPage === "write" && isAuthenticated) {
+    loadDrafts();
+  }
+};
 
   // 필터 조건에 맞는 스토리 목록 반환
   const getFilteredStories = () => {
@@ -356,7 +365,8 @@ useEffect(() => {
   // 스토리 클릭 시 상세 페이지로 이동
   const handleStoryClick = (story: any) => {
     setSelectedStory(story);
-    navigateToPage("detail");
+     setCurrentPageState("detail");
+    navigate(`/travelstory/detail/${story.id}`);
   };
 
   // 스토리 수정 - 최신 데이터를 API에서 직접 조회 후 편집 페이지로 이동
@@ -366,7 +376,8 @@ useEffect(() => {
       const response = await storyAPI.getStory(story.id);
       setEditingStory(response.data);
       setWriteType(response.data.type === "FREE" ? "FREE" : "REVIEW");
-      navigateToPage("write");
+      setPreviousPage("myStories");
+      navigate(`/travelstory/edit/${story.id}`);
     } catch (err: any) {
       showCustomAlert("여행기를 불러오는데 실패했습니다.");
     } finally {
@@ -426,6 +437,7 @@ useEffect(() => {
 
     const publishData = (window as any).publishData;
 
+
     // 금칙어 필터링
     const editorText = editor?.innerText || "";
     if (
@@ -450,10 +462,12 @@ useEffect(() => {
       images: finalImages,
       destination: destinationInput?.value || "미정",
       duration: publishData?.duration || "선택하세요",
-      departureDate: departureDateInput?.value || null,
+      departureDate: publishData?.departureDate || null,
       budget: publishData?.budget || "0",
       tags: tags,
       type: publishData?.type || "FREE",
+      isPublic: publishData?.isPublic ?? true,
+      tripId: publishData?.tripId || null,
 
       // 경비 항목 개별 필드로 전달
       transportation: publishData?.expenses
@@ -483,24 +497,25 @@ useEffect(() => {
             story.id === editingStory.id ? response.data : story,
           ),
         );
-        setAllStories(
-          allStories.map((story) =>
-            story.id === editingStory.id ? response.data : story,
-          ),
-        );
-        showCustomAlert("여행기가 수정되었습니다.");
+        showCustomAlert("여행기가 수정되었습니다.", () => {  
+          setEditingStory(null);
+          setCurrentDraftId(null);
+          navigateToPage(previousPage === "myStories" ? "myStories" : "main");
+          setPreviousPage("main");
+        });
       } else {
         // 신규 발행
         const response = await storyAPI.createStory(storyData);
         setMyStories([...myStories, response.data]);
         setAllStories([...allStories, response.data]);
         setStories(prev => [response.data, ...prev]);
-        showCustomAlert("여행기가 발행되었습니다.");
+        showCustomAlert("여행기가 발행되었습니다.", () => {
+          setEditingStory(null);
+          setCurrentDraftId(null);
+          navigateToPage(previousPage === "myStories" ? "myStories" : "main");
+          setPreviousPage("main");
+        });
       }
-      setEditingStory(null);
-      setCurrentDraftId(null);
-      navigateToPage(previousPage === "myStories" ? "myStories" : "main");
-      setPreviousPage("main");
     } catch (err: any) {
       showCustomAlert(err.response?.data?.message || "발행에 실패했습니다.");
     } finally {
@@ -532,13 +547,6 @@ useEffect(() => {
     const duration = durationSelect?.value || "";
     const departureDate = departureDateInput?.value || "";
 
-    console.log("임시저장 시도:", {
-      title,
-      contentLength: content.length,
-      contentPreview: content.substring(0, 100),
-      destination,
-      duration,
-    });
 
     if (!title && !content) {
       showCustomAlert("제목과 본문을 작성해주세요.");
@@ -561,13 +569,12 @@ useEffect(() => {
       departureDate,
       budget,
       tags,
-      images: uploadedImages.join(","),
+      images: uploadedImages.length > 0 ? uploadedImages.join(",") : null,
       imageUrl: coverImage,
       expenses: expensesJson,
       type: selectedType === "ALL" ? "FREE" : selectedType
     };
 
-    console.log("전송 데이터:", draftData);
 
     try {
       setLoading(true);
@@ -720,6 +727,7 @@ useEffect(() => {
     setDrafts,
     setEditingStory,
     setShowDeleteModal,
+    setCurrentPageState,
     setCurrentDraft,
     setCurrentDraftId,
     setMyStories,
@@ -746,7 +754,8 @@ useEffect(() => {
     writeType,
     setWriteType,
     selectedType,
-    setSelectedType
+    setSelectedType,
+    setPreviousPage,
   };
 }
 

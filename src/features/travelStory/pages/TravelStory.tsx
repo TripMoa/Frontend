@@ -13,6 +13,7 @@ import type { Story } from '../../../api/stories.api';
 import CustomAlert from '../components/modals/CustomAlert';
 import { User } from 'lucide-react';
 import DeleteModal from '../components/modals/DeleteModal';
+import { useLocation, useParams } from "react-router-dom";
 import { useTravelStory } from '../hooks';
 import '../styles/travelStory.css';
 
@@ -32,6 +33,40 @@ function EmptyState() {
 // 여행 스토리 기능 전체를 관리하는 루트 컴포넌트 (페이지 라우팅, 정렬, 페이지네이션 포함)
 function TravelStory() {
   const hook = useTravelStory();
+
+  const { storyId } = useParams();
+
+  const location = useLocation();
+
+  useEffect(() => {
+  const path = window.location.pathname;
+  
+  // 마이플랜에서 리뷰 작성으로 온 경우
+  if (location.state?.goToWrite) {
+    hook.setWriteType(location.state.writeType || "REVIEW");
+    hook.setPreviousPage("myPlan");
+    if (location.state?.tripData) {
+      (window as any).tripDataForReview = location.state.tripData;
+    }
+    setTimeout(() => {
+      hook.setPreviousPage("myPlan");
+      hook.navigateToPage("write");
+    }, 0);
+    return;
+  }
+
+  // URL 경로에 따라 페이지 설정
+  if (path.includes("/write") && !storyId) {
+    hook.navigateToPage("write");
+  } else if (path.includes("/edit")) {
+    hook.setCurrentPageState("write");
+  } else if (path.includes("/mystories")) {
+    hook.navigateToPage("myStories");
+  } else if (path.includes("/detail")) {
+    hook.navigateToPage("detail");
+  }
+}, []);
+
 
   const filteredStories = (hook.stories || []).filter((story) => {
   // 타입 필터
@@ -184,7 +219,7 @@ function TravelStory() {
     );
   }
 
-  return (
+ return (
    <> 
     <div className="travel-story-app">
       {/* ================= MAIN PAGE ================= */}

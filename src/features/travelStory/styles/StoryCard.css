@@ -270,3 +270,16 @@
   object-position: center top;
 }
 
+.story-private-badge {
+  position: absolute;
+  top: 36px;
+  left: 8px;
+  background: #fff;
+  color: #000;
+  font-size: 11px;
+  padding: 4px 8px;
+  font-weight: 600;
+  font-family: 'Share Tech Mono', monospace;
+  border: 2px solid #000;
+}
+
