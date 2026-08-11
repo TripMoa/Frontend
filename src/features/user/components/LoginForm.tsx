@@ -32,7 +32,7 @@ export const LoginForm: React.FC = () => {
             <button
               type="button"
               onClick={() => {
-                window.location.href = `${API_BASE_URL}/oauth2/authorization/google`;
+                window.location.href = `${import.meta.env.VITE_API_BASE_URL}/oauth2/authorization/google`;
               }}
               className={styles.socialButton}
             >
@@ -68,7 +68,7 @@ export const LoginForm: React.FC = () => {
             <button
               type="button"
               onClick={() => {
-                window.location.href = `${API_BASE_URL}/oauth2/authorization/kakao`;
+                window.location.href = `${import.meta.env.VITE_API_BASE_URL}/oauth2/authorization/google`;
               }}
               className={`${styles.socialButton} ${styles.kakao}`}
             >
@@ -89,7 +89,7 @@ export const LoginForm: React.FC = () => {
             <button
               type="button"
               onClick={() => {
-                window.location.href = `${API_BASE_URL}/oauth2/authorization/naver`;
+                window.location.href = `${import.meta.env.VITE_API_BASE_URL}/oauth2/authorization/google`;
               }}
               className={`${styles.socialButton} ${styles.naver}`}
             >
