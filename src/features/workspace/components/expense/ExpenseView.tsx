@@ -25,6 +25,7 @@ import ExpenseSummary from "./sections/ExpenseSummary";
 import MemberStatusPanel from "./sections/MemberStatusPanel";
 import CategoryStatsPanel from "./sections/CategoryStatsPanel";
 import ExpenseList from "./sections/ExpenseList";
+import { API_BASE_URL } from "../../../../shared/config/env";
 
 interface Props {
   store: UseExpensesStore;
@@ -130,7 +131,7 @@ const ExpenseView: React.FC<Props> = ({ store, onOpenSettleDetail }) => {
       return receipt;
     }
 
-    return `${import.meta.env.VITE_API_BASE_URL}${receipt}`;
+    return `${API_BASE_URL}${receipt}`;
   };
 
   const viewReceipt = (receiptUrl: string) => {

@@ -14,6 +14,7 @@ import type {
   VoucherUpdateRequest,
 } from "../../../types/voucher.types";
 import { useTripContext } from "./useTripContext";
+import { API_BASE_URL } from "../../../shared/config/env";
 
 const buildFileUrl = (fileUrl: string) => {
   if (!fileUrl) return "";
@@ -22,7 +23,7 @@ const buildFileUrl = (fileUrl: string) => {
     return fileUrl;
   }
 
-  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "";
+  const apiBaseUrl = API_BASE_URL ?? "";
   return `${apiBaseUrl}${fileUrl}`;
 };
 
