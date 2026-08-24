@@ -5,8 +5,9 @@ import { Client, type IMessage } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
 import type { ChatMessage, StompConnectionStatus, StompSendMessage } from "./chat.types";
 import { getAccessToken } from "../../../api/api";
+import { API_BASE_URL } from "../../../shared/config/env";
 
-const WS_URL = "http://localhost:8080/ws"; 
+const WS_URL = `${API_BASE_URL}/ws`;
 
 interface UseStompClientOptions {
   roomIds: string[];

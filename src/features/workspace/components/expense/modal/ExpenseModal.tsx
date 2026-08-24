@@ -14,6 +14,7 @@ import type {
   SplitMap,
   SplitMode,
 } from "../../../hooks/expense.ui.types";
+import { API_BASE_URL } from "../../../../../shared/config/env";
 
 interface Props {
   store: UseExpensesStore;
@@ -462,7 +463,7 @@ const ExpenseModal: React.FC<Props> = ({ store }) => {
       return receipt;
     }
 
-    return `${import.meta.env.VITE_API_BASE_URL}${receipt}`;
+    return `${API_BASE_URL}${receipt}`;
   };
 
   const requestOcrAutofill = async () => {
