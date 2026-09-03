@@ -1,0 +1,47 @@
+/* styles/mate/layout.css */
+
+.mate-container {
+  min-height: 100vh;
+  background-color: #f4f4f4;
+}
+
+.mate-content {
+  max-width: 80rem;
+  margin: 0 auto;
+  padding: 3rem 1rem;
+}
+
+/* Sort Section */
+.mate-sort-section {
+  margin-bottom: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.mate-sort-dropdown {
+  border: 3px solid #000;
+  box-shadow: 4px 4px 0px rgba(0, 0, 0, 1);
+}
+
+/* Empty State */
+.mate-empty-state {
+  border: 3px solid #000;
+  box-shadow: 8px 8px 0px rgba(0, 0, 0, 1);
+}
+
+/* Posts List */
+.mate-posts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+@media (max-width: 768px) {
+  .mate-posts-list > *:not(:first-child) {
+    display: none;
+  }
+}

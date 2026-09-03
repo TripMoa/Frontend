@@ -1,0 +1,247 @@
+/* =========================================================
+   NoticeItemModal
+========================================================= */
+
+/* ===== Body ===== */
+.nm-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow-y: auto;
+}
+
+/* ===== Field ===== */
+.nm-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.nm-field label {
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 12px;
+  color: #111;
+}
+
+.nm-field input,
+.nm-field textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  color: #111;
+  font-size: 14px;
+  font-weight: 700;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.nm-field input {
+  height: 46px;
+}
+
+.nm-field textarea {
+  min-height: 160px;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.nm-field input::placeholder,
+.nm-field textarea::placeholder {
+  color: #9ca3af;
+  font-weight: 700;
+}
+
+.nm-field input:focus,
+.nm-field textarea:focus {
+  border-color: #000;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.12);
+}
+
+/* ===== Color Picker ===== */
+.nm-color-picker {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.nm-color-radio {
+  display: inline-flex;
+  padding: 4px;
+  cursor: pointer;
+}
+
+.nm-color-radio input {
+  display: none;
+}
+
+.nm-color-box {
+  display: block;
+  width: 30px;
+  height: 30px;
+  border: 2px solid #000;
+  box-sizing: border-box;
+  transition: box-shadow 0.2s;
+}
+
+.nm-color-radio input:checked + .nm-color-box {
+  box-shadow: 0 0 0 3px var(--accent);
+}
+
+.nm-color-box.white {
+  background: #ffffff;
+}
+
+.nm-color-box.yellow {
+  background: #fff9c4;
+}
+
+.nm-color-box.blue {
+  background: #e3f2fd;
+}
+
+.nm-color-box.green {
+  background: #e8f5e9;
+}
+
+/* ===== Tag Combo ===== */
+.nm-tag-field {
+  position: relative;
+}
+
+.nm-input-combo {
+  position: relative;
+}
+
+.nm-input-combo.is-open input {
+  border-color: #000;
+}
+
+.nm-tag-list {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 20;
+
+  background: #fff;
+  border: 1px solid #d1d5db;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.nm-tag-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+
+  padding: 10px 12px;
+  border-bottom: 1px solid #f1f5f9;
+  cursor: pointer;
+  background: #fff;
+}
+
+.nm-tag-item:last-child {
+  border-bottom: none;
+}
+
+.nm-tag-item:hover {
+  background: #f8fafc;
+}
+
+.nm-tag-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: #111;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.nm-tag-left span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nm-tag-del {
+  width: 28px;
+  height: 28px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  color: #9ca3af;
+  font-size: 12px;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+
+.nm-tag-del:hover {
+  background: #000;
+  color: #fff;
+  border-color: #000;
+}
+
+/* ===== Save Button ===== */
+.nm-save {
+  width: 100%;
+  height: 50px;
+  margin-top: 6px;
+
+  border: 2px solid #000;
+  background: #000;
+  color: #fff;
+
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.nm-save:hover {
+  filter: brightness(1.05);
+}
+
+.nm-save:active {
+  transform: translateY(1px);
+}
+
+.nm-field input.is-error,
+.nm-field textarea.is-error {
+  border-color: #ef4444 !important;
+  background: #fff5f5 !important;
+}
+
+.nm-field input.is-error::placeholder,
+.nm-field textarea.is-error::placeholder {
+  color: #ef4444;
+  font-weight: 700;
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 640px) {
+  .nm-modal {
+    width: min(100%, 96vw);
+  }
+
+  .nm-head {
+    padding: 10px 12px;
+  }
+
+  .nm-body {
+    padding: 16px;
+  }
+
+  .nm-title {
+    font-size: 14px;
+  }
+
+  .nm-close {
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+}

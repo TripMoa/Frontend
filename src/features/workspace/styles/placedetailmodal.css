@@ -1,0 +1,210 @@
+/* =========================================================
+   PlaceDetailModal Styles
+========================================================= */
+
+.place-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.place-modal-window {
+  background: var(--color-background-primary);
+  border: 0.5px solid var(--color-border-tertiary);
+  border-radius: 12px;
+  width: 90%;
+  max-width: 520px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* 헤더 */
+.place-modal-header {
+  padding: 14px 18px;
+  border-bottom: 0.5px solid var(--color-border-tertiary);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.place-modal-header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.place-modal-category-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.place-modal-badge {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 20px;
+}
+
+.place-modal-time {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  font-family: var(--font-mono);
+}
+
+.place-modal-name {
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  margin: 0;
+  line-height: 1.3;
+}
+
+.place-modal-close {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 0.5px solid var(--color-border-secondary);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.15s, color 0.15s;
+}
+
+.place-modal-close:hover {
+  background: var(--color-background-secondary);
+  color: var(--color-text-primary);
+}
+
+/* 이미지 */
+.place-modal-img {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+}
+
+.place-modal-img-placeholder {
+  width: 100%;
+  height: 160px;
+  background: var(--color-background-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 바디 */
+.place-modal-body {
+  padding: 18px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.place-modal-rating {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.place-modal-stars {
+  color: #F0A500;
+  font-size: 15px;
+  letter-spacing: 1px;
+}
+
+.place-modal-rating-num {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+/* 정보 블록 */
+.place-modal-info-block {
+  background: var(--color-background-secondary);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+
+.place-modal-info-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-text-tertiary);
+  margin-bottom: 4px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.place-modal-info-value {
+  font-size: 13px;
+  color: var(--color-text-primary);
+  line-height: 1.55;
+}
+
+/* 푸터 */
+.place-modal-footer {
+  padding: 12px 18px;
+  border-top: 0.5px solid var(--color-border-tertiary);
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.place-modal-btn-primary {
+  padding: 8px 18px;
+  background: var(--color-text-primary);
+  color: var(--color-background-primary);
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.place-modal-btn-primary:hover {
+  opacity: 0.85;
+}
+
+.place-modal-btn-secondary {
+  padding: 8px 18px;
+  background: transparent;
+  color: var(--color-text-secondary);
+  border: 0.5px solid var(--color-border-secondary);
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.place-modal-btn-secondary:hover {
+  background: var(--color-background-secondary);
+}
+
+/* 스크롤바 */
+.place-modal-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.place-modal-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.place-modal-body::-webkit-scrollbar-thumb {
+  background: var(--color-border-secondary);
+  border-radius: 4px;
+}

@@ -1,0 +1,657 @@
+.travel-story-app {
+  /* CSS 변수 - travel-story-app 안에서만 적용 */
+  --primary-color: #000;
+  --secondary-color: #fff;
+  --border-color: #000;
+  --font-mono: 'Share Tech Mono', monospace;
+  --shadow-default: 4px 4px 0px rgba(0, 0, 0, 1);
+  --shadow-large: 8px 8px 0px rgba(0, 0, 0, 1);
+  --shadow-small: 2px 2px 0px rgba(0, 0, 0, 1);
+  --bg-light: #f9f9f9;
+  --text-gray: #999;
+  
+  padding-top: 60px;
+}
+
+/* VERIFIED DATA 상단 헤더 컨테이너 */
+.travel-story-app .ts-header {
+  background: var(--secondary-color);
+  padding: 18px 40px;
+  margin-bottom: 40px;
+  border: 3px solid var(--border-color);
+  box-shadow: var(--shadow-large);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+/* 헤더 타이틀 (VERIFIED DATA) */
+.travel-story-app .ts-title h1 {
+  font-family: var(--font-mono);
+  font-size: 32px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin: 0 0 8px 0;
+}
+
+/* 헤더 서브텍스트 */
+.travel-story-app .ts-title p {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-gray);
+  margin: 0;
+}
+
+/* 헤더 우측 버튼 영역 */
+.travel-story-app .ts-actions {
+  display: flex;
+  gap: 12px;
+}
+
+/* 헤더 버튼 공통 스타일 */
+.travel-story-app .ts-btn {
+  padding: 22px 32px;
+  border: 2px solid var(--border-color);
+  font-weight: 700;
+  font-size: 14px;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: 5px 5px 0px rgba(0, 0, 0, 1);
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 15px;
+}
+
+/* 헤더 버튼 아이콘 크기 */
+.travel-story-app .ts-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* 외곽선 버튼 (MY STORIES) */
+.travel-story-app .ts-btn.outline {
+  background: var(--secondary-color);
+  color: var(--primary-color);
+}
+
+/* 외곽선 버튼 hover */
+.travel-story-app .ts-btn.outline:hover {
+  background: var(--primary-color);
+  color: var(--secondary-color);
+  transform: translate(-1px, -1px);
+}
+
+/* 채워진 버튼 (WRITE) */
+.travel-story-app .ts-btn.solid {
+  background: var(--primary-color);
+  color: var(--secondary-color);
+}
+
+/* 채워진 버튼 hover */
+.travel-story-app .ts-btn.solid:hover {
+  background: var(--secondary-color);
+  color: var(--primary-color);
+  border: 2px solid var(--border-color);
+}
+
+/* 채워진 버튼 hover 시 아이콘 색상 */
+.travel-story-app .ts-btn.solid:hover svg {
+  stroke: var(--primary-color);
+}
+
+/* 스토리 없을 때 기본 empty 박스 */
+.ts-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 40px;
+  background: #fff;
+  border: 2px solid rgba(0,0,0,0.1);
+  margin: 0 auto;
+}
+
+/* 로딩 상태 화면 */
+.travel-story-app .ts-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+}
+
+/* 에러 메시지 화면 */
+.travel-story-app .ts-error {
+  text-align: center;
+  padding: 40px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: #d00000;
+}
+
+/* 페이지 컨텐츠 최대 너비 및 좌우 여백 */
+.travel-story-app .container {
+  max-width: 1150px;
+  margin: 0 auto;
+  padding: 0 40px;
+}
+
+/* 기본 primary 버튼 */
+.travel-story-app .btn-primary {
+  padding: 12px 24px;
+  border: 3px solid var(--border-color);
+  background: var(--primary-color);
+  color: var(--secondary-color);
+  font-weight: 700;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: var(--shadow-default);
+  transition: all 0.2s;
+}
+
+/* primary 버튼 hover */
+.travel-story-app .btn-primary:hover {
+  background: var(--secondary-color);
+  color: var(--primary-color);
+}
+
+/* secondary 버튼 */
+.travel-story-app .btn-secondary {
+  padding: 12px 24px;
+  border: 3px solid var(--border-color);
+  background: var(--secondary-color);
+  color: var(--primary-color);
+  font-weight: 700;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: var(--shadow-default);
+  transition: all 0.2s;
+}
+
+/* secondary 버튼 hover */
+.travel-story-app .btn-secondary:hover {
+  background: var(--primary-color);
+  color: var(--secondary-color);
+}
+
+/* 공통 카드 UI */
+.travel-story-app .card {
+  background: var(--secondary-color);
+  border: 3px solid var(--border-color);
+  box-shadow: var(--shadow-default);
+  padding: 20px;
+}
+
+/* 이미지 슬라이더 전체 wrapper */
+.travel-story-app .image-slider-wrapper {
+  position: relative;
+  width: 693px;
+  max-width: 100%;
+  margin: 20px auto;
+  background: #f5f5f5;
+  border: 3px solid var(--border-color);
+  box-shadow: var(--shadow-default);
+}
+
+/* 슬라이더 이미지 영역 */
+.travel-story-app .slider-images-container {
+  position: relative;
+  width: 100%;
+  height: 619px;
+  overflow: hidden;
+}
+
+/* 슬라이더 이전/다음 버튼 */
+.travel-story-app .slider-prev-btn,
+.travel-story-app .slider-next-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 40px;
+  height: 40px;
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  border: 2px solid #fff;
+  font-size: 28px;
+  font-weight: 700;
+  cursor: pointer;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+/* 이전 버튼 위치 */
+.travel-story-app .slider-prev-btn {
+  left: 12px;
+}
+
+/* 다음 버튼 위치 */
+.travel-story-app .slider-next-btn {
+  right: 12px;
+}
+
+/* 슬라이더 버튼 hover */
+.travel-story-app .slider-prev-btn:hover,
+.travel-story-app .slider-next-btn:hover {
+  background: rgba(0, 0, 0, 0.8);
+}
+
+/* 슬라이더 이미지 인덱스 표시 */
+.travel-story-app .slider-indicator {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  z-index: 10;
+}
+
+/* 스토리 카드 그리드 레이아웃 */
+.travel-story-app .posts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 24px;
+  margin-top: 32px;
+}
+
+/* 모달 배경 오버레이 */
+.travel-story-app .modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100000;
+}
+
+/* 모달 컨테이너 */
+.travel-story-app .modal-container {
+  background: var(--secondary-color);
+  border: 3px solid var(--border-color);
+  box-shadow: 15px 15px 0px #000;
+  min-width: 360px;
+  max-width: 90vw;
+}
+
+/* 모달 헤더 */
+.travel-story-app .modal-header {
+  background: var(--primary-color);
+  color: var(--secondary-color);
+  padding: 12px 20px;
+}
+
+/* 모달 제목 */
+.travel-story-app .modal-title {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: 900;
+  letter-spacing: 1px;
+  margin: 0;
+}
+
+/* 모달 본문 */
+.travel-story-app .modal-body {
+  padding: 24px;
+}
+
+/* 모달 메시지 텍스트 */
+.travel-story-app .modal-message {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  line-height: 1.6;
+  margin-bottom: 24px;
+}
+
+/* 모달 버튼 영역 */
+.travel-story-app .modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+/* 모달 버튼 공통 */
+.travel-story-app .modal-btn {
+  border: 2px solid var(--border-color);
+  background: var(--secondary-color);
+  padding: 8px 16px;
+  font-weight: 900;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+/* 모달 버튼 hover */
+.travel-story-app .modal-btn:hover {
+  background: var(--primary-color);
+  color: var(--secondary-color);
+}
+
+/* 위험 버튼 (삭제 등) */
+.travel-story-app .modal-btn.danger {
+  border-color: #d00000;
+  color: #d00000;
+}
+
+/* 위험 버튼 hover */
+.travel-story-app .modal-btn.danger:hover {
+  background: #d00000;
+  color: var(--secondary-color);
+}
+
+/* 공통 입력 필드 스타일 */
+.travel-story-app input[type="text"],
+.travel-story-app input[type="date"],
+.travel-story-app input[type="number"],
+.travel-story-app select,
+.travel-story-app textarea {
+  font-family: var(--font-mono);
+  border: 2px solid var(--border-color);
+  outline: none;
+  background: var(--secondary-color);
+}
+
+/* 태그 스타일 */
+.travel-story-app .tag {
+  padding: 6px 12px;
+  border: 2px solid var(--border-color);
+  background: var(--secondary-color);
+  color: var(--primary-color);
+  font-size: 11px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  display: inline-block;
+}
+
+/* 검색 결과 없음 전체 화면 */
+.travel-story-app .no-results-fullpage {
+  text-align: center;
+  padding: 80px 20px;
+  background: var(--secondary-color);
+  border: 3px dashed var(--border-color);
+  margin-top: 40px;
+}
+
+/* 검색 결과 없음 텍스트 */
+.travel-story-app .no-results-text {
+  font-size: 18px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  margin-bottom: 8px;
+}
+
+/* 검색 결과 없음 보조 텍스트 */
+.travel-story-app .no-results-subtext {
+  font-size: 14px;
+  color: var(--text-gray);
+  font-family: var(--font-mono);
+}
+
+/* 정렬바 (SORT BY + posts count) */
+.travel-story-app .ts-sort-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+/* 정렬 왼쪽 영역 (아이콘 + SORT BY + 드롭다운) */
+.travel-story-app .ts-sort-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  position: relative;
+}
+
+/* SORT BY 라벨 */
+.travel-story-app .ts-sort-label {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 400;
+  color: rgba(0, 0, 0, 0.6);
+}
+
+/* 정렬 드롭다운 wrapper */
+.travel-story-app .ts-sort-wrapper {
+  position: relative;
+}
+
+/* 정렬 선택 버튼 */
+.travel-story-app .ts-sort-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 4px;
+  border: none;
+  background: transparent;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  min-width: 180px;
+  justify-content: space-between;
+  transition: color 0.15s;
+  color: #000;
+}
+
+/* 정렬 버튼 hover */
+.travel-story-app .ts-sort-trigger:hover {
+  background: transparent;
+}
+
+/* 정렬 버튼 open 상태 */
+.travel-story-app .ts-sort-trigger.open {
+  background: transparent;
+  color: #000;
+}
+
+/* 정렬 버튼 open 아이콘 */
+.travel-story-app .ts-sort-trigger.open svg path {
+  stroke: #000;
+}
+
+/* 정렬 드롭다운 */
+.travel-story-app .ts-sort-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 200px;
+  border: 3px solid #000;
+  background: #fff;
+  z-index: 100;
+  box-shadow: 4px 4px 0px rgba(0, 0, 0, 1);
+}
+
+/* 드롭다운 상단 라벨 */
+.travel-story-app .ts-sort-dropdown-label {
+  padding: 8px 16px;
+  background: #f4f4f4;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: rgba(0, 0, 0, 0.5);
+  text-transform: uppercase;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.2);
+  letter-spacing: 0.5px;
+}
+
+/* 정렬 옵션 */
+.travel-story-app .ts-sort-option {
+  padding: 10px 16px;
+  font-size: 13px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  transition: background 0.1s;
+  color: #000;
+  background: #fff;
+}
+
+/* 마지막 옵션 */
+.travel-story-app .ts-sort-option:last-child {
+  border-bottom: none;
+}
+
+/* 선택된 옵션 */
+.travel-story-app .ts-sort-option.selected {
+  background: #000;
+  color: #fff;
+}
+
+/* 옵션 hover */
+.travel-story-app .ts-sort-option:not(.selected):hover {
+  background: #eee;
+}
+
+/* posts count 텍스트 */
+.travel-story-app .ts-post-count {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 400;
+  color: rgba(0, 0, 0, 0.7);
+}
+
+/* 스토리 없음 UI */
+.travel-story-app .ts-empty {
+  text-align: center;
+  padding: 60px 40px;
+  font-family: var(--font-mono);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: #fff;
+  border: 2px solid rgba(0,0,0,0.1);
+  margin-top: 16px;
+}
+
+/* 스토리 없음 메인 텍스트 */
+.travel-story-app .ts-empty-text {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: 700;
+  color: #000;
+  margin: 12px 0 6px;
+}
+
+/* 스토리 없음 서브 텍스트 */
+.travel-story-app .ts-empty-subtext {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.4);
+}
+
+/* WRITE 버튼 아이콘 색상 */
+.travel-story-app .ts-btn.solid svg {
+  fill: none;
+  stroke: var(--secondary-color);
+}
+
+/* 페이지네이션 전체 영역 */
+.travel-story-app .ts-pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin-top: 80px;
+  margin-bottom: 20px;
+}
+
+/* 페이지 버튼 */
+.ts-page-btn {
+  width: auto;
+  min-width: 36px;
+  height: 36px;
+  padding: 0 12px;
+  border: 2px solid #000;
+  background: #fff;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: #000;
+  box-shadow: 3px 3px 0px rgba(0,0,0,1);
+}
+
+.ts-page-btn:hover:not(:disabled) {
+  background: #000;
+  color: #fff;
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0px rgba(0,0,0,1);
+}
+
+.ts-page-btn.active {
+  background: #000;
+  color: #fff;
+  border-color: #000;
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0px rgba(0,0,0,1);
+}
+
+.ts-page-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.type-filter {
+  display: flex;
+  gap: 12px;
+  margin: 24px 0 32px;
+}
+
+.type-filter button {
+  border: none;
+  background: none;
+  font-weight: 900;
+  font-size: 16px;
+  letter-spacing: 1px;
+  cursor: pointer;
+  padding-bottom: 4px;
+  position: relative;
+}
+
+.type-filter button::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 0%;
+  height: 3px;
+  background: black;
+  transition: 0.2s;
+}
+
+.type-filter button.active::after {
+  width: 100%;
+}
+
+.type-filter button:hover::after {
+  width: 100%;
+}
+

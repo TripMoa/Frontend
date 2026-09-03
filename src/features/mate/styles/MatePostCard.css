@@ -1,0 +1,64 @@
+/* MatePostCard.css */
+
+.mate-card {
+  background: #fff;
+  border: 3px solid #000;
+  box-shadow: 8px 8px 0px #000;
+  transition: all 0.2s;
+  font-family: 'Share Tech Mono', monospace;
+}
+
+.mate-card:hover {
+  box-shadow: 12px 12px 0px #000;
+  transform: translate(-4px, -4px);
+}
+
+.mate-circle {
+  border: 3px solid #000;
+}
+
+.mate-action-button {
+  border: 3px solid #000;
+  box-shadow: 3px 3px 0px #000;
+  font-family: 'Share Tech Mono', monospace;
+  transition: all 0.2s;
+}
+
+/* 기본 검정 */
+.mate-bg-black {
+  background-color: #000 !important;
+  color: #fff !important;
+}
+
+/* 검정 → hover 시 흰색 */
+.mate-bg-black-hoverable {
+  background-color: #000 !important;
+  color: #fff !important;
+}
+
+.mate-bg-black-hoverable:hover {
+  background-color: #fff !important;
+  color: #000 !important;
+}
+
+/* 흰색 → hover 시 검정 */
+.mate-bg-white-hoverable:hover {
+  background-color: #000 !important;
+  color: #fff !important;
+}
+
+/* 빨간색 */
+.mate-bg-red {
+  background-color: #ef4444 !important;
+  color: #fff !important;
+}
+
+.mate-bg-red:hover {
+  background-color: #dc2626 !important;
+}
+
+/* 태그/배지 */
+.mate-badge {
+  background-color: #000 !important;
+  color: #fff !important;
+}

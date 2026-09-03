@@ -1,0 +1,91 @@
+/* Globals.css */
+
+/* === [기본 설정 및 변수] === */
+/* 모든 페이지 공통 변수 및 리셋 */
+
+/* Mate tailwind css */
+@import "tailwindcss";
+
+:root {
+  --bg-color: #f8f9fa;
+  --surface: #ffffff;
+  --text-main: #111111;
+  --text-sub: #444444;
+  --border-width: 2px;
+  --border-color: #000000;
+  --primary: #000000;
+  --accent: #2563eb;
+  --shadow-hard: 4px 4px 0px #000000;
+  --shadow-hover: 2px 2px 0px #000000;
+  --font-body: "Pretendard", "Noto Sans KR", sans-serif;
+  --font-mono: "Share Tech Mono", monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background-color: var(--bg-color);
+  color: var(--text-main);
+  font-family: var(--font-body);
+  line-height: 1.6;
+  overflow-x: hidden;
+  /* 배경 패턴 */
+  background-image:
+    linear-gradient(#e5e7eb 1px, transparent 1px),
+    linear-gradient(90deg, #e5e7eb 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  background: none;
+  font-family: inherit;
+  transition: 0.2s;
+}
+
+ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* ===== 스크롤바: 전역 기본 설정 ===== */
+
+/* 얇은 스크롤바 (히트박스는 있음) */
+::-webkit-scrollbar {
+  width: 4px;
+}
+
+/* 기본 상태: 완전 투명 → 안 보이는 것처럼 */
+::-webkit-scrollbar-thumb {
+  background: transparent !important;
+  border-radius: 10px; /* 직각 유지 */
+}
+
+/* 트랙도 안 보이게 */
+::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+/* 진짜 오직 "스크롤바 위에 마우스 올렸을 때"만 보임 */
+::-webkit-scrollbar-thumb:hover {
+  background: #cecece !important; /* 연한 회색 */
+}
+
+/* 워크스페이스일 때만 HTML 스크롤바 숨김 */
+html.ws-hide-scrollbar::-webkit-scrollbar {
+  display: none; /* Chrome / Edge / Safari */
+}
+
+html.ws-hide-scrollbar {
+  scrollbar-width: none; /* Firefox */
+}

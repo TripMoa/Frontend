@@ -1,0 +1,34 @@
+/* MateHeader.css */
+
+.header {
+  margin-top: 20px;
+  position: relative;
+  background: #fff;
+  border: 3px solid #000;
+  padding: 40px 30px 30px 30px;
+  box-shadow: 10px 10px 0px #000;
+  font-family: 'Share Tech Mono', monospace;
+}
+
+.button {
+  border: 2px solid #000;
+  font-family: 'Share Tech Mono', monospace;
+  transition: all 0.2s;
+}
+
+/* hover 시 효과 */
+.button:hover {
+  background-color: #000 !important;
+  color: #fff !important;
+}
+
+/* 기본이 검은색인 버튼 (RECEIVED) */
+.buttonDark {
+  background-color: #000 !important;
+  color: #fff !important;
+}
+
+.buttonDark:hover {
+  background-color: #fff !important;
+  color: #000 !important;
+}

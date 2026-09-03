@@ -1,0 +1,270 @@
+/* 여행 수정 전용 */
+.trip-window {
+  width: min(600px, 92vw);
+}
+
+.edit-trip-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.edit-trip-modal-body input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #000;
+  padding: 9px 10px;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.edit-trip-modal-body input:focus {
+  outline: 2px solid #000;
+  outline-offset: 2px;
+}
+
+.inp-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.inp-row label {
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.inp-row-group {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.modal-footer {
+  margin-top: 16px;
+  display: flex;
+}
+
+.btn-save {
+  width: 100%;
+  border: 1px solid #000;
+  background: #000;
+  color: #fff;
+  padding: 12px 0;
+  font-weight: 800;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.modal-error {
+  font-size: 12px;
+  color: #d32f2f;
+  font-weight: 700;
+  margin-top: 4px;
+}
+
+/* 멤버 관리 전용 */
+.member-window {
+  width: min(720px, 92vw);
+}
+
+.member-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.member-guide {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #555;
+}
+
+.member-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.member-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+
+  border: 1px solid #000;
+  padding: 14px;
+  background: #fff;
+}
+
+.member-item.inactive {
+  background: #f7f7f7;
+  color: #777;
+}
+
+.ws-dd-item.danger {
+  color: #d32f2f;
+  font-weight: 700;
+}
+
+.ws-dd-item.danger:hover {
+  background: #000;
+  color: #fff;
+}
+
+.member-info {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.member-name-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.member-name {
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.member-sub {
+  font-size: 12px;
+  color: #777;
+  font-weight: 700;
+}
+
+.owner-badge,
+.me-badge,
+.inactive-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 7px;
+  font-size: 11px;
+  font-weight: 900;
+  background: #fff;
+}
+
+.me-badge {
+  background: #000;
+  color: #fff;
+}
+
+.inactive-badge {
+  border-color: #999;
+  color: #777;
+}
+
+.member-actions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.member-action-btn,
+.member-leave-btn {
+  border: 1px solid #000;
+  background: #fff;
+  color: #000;
+  padding: 8px 10px;
+  font-weight: 800;
+  cursor: pointer;
+  min-width: 100px;
+}
+
+.member-action-btn:hover,
+.member-leave-btn:hover {
+  background: #000;
+  color: #fff;
+}
+
+.member-action-btn.danger {
+  background: #000;
+  color: #fff;
+}
+
+.member-action-btn.danger:hover {
+  background: #fff;
+  color: #000;
+}
+
+.member-leave-btn {
+  width: 100%;
+  margin-top: 6px;
+  padding: 12px 0;
+}
+
+.member-item.editing {
+  align-items: stretch;
+  padding: 18px 20px;
+}
+
+.member-item.editing .member-info {
+  width: 100%;
+}
+
+.member-edit-box {
+  margin-top: 14px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+}
+
+.member-nickname-input {
+  flex: 1;
+  height: 42px;
+  padding: 0 14px;
+  border: 2px solid #111;
+  background: #fff;
+  font-size: 0.9rem;
+  font-weight: 800;
+  outline: none;
+}
+
+.member-edit-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.member-edit-actions .member-action-btn {
+  min-width: 68px;
+  height: 42px;
+}
+
+@media (max-width: 700px) {
+  .member-item {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .member-actions {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .member-action-btn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 600px) {
+  .inp-row-group {
+    grid-template-columns: 1fr;
+  }
+
+  .modal-footer {
+    justify-content: stretch;
+  }
+
+  .btn-save {
+    width: 100%;
+  }
+}

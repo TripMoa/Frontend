@@ -1,0 +1,428 @@
+/* =========================================================
+   PoolDepositModal
+========================================================= */
+
+/* ===== Modal Frame ===== */
+.pdm-modal {
+  max-width: 100%;
+  max-height: 90vh;
+}
+
+.pdm-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* 승인/거절 버튼 */
+.pdm-approve,
+.pdm-reject {
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.pdm-approve:hover {
+  background: #111;
+  color: #fff;
+  border-color: #111;
+}
+
+.pdm-reject:hover {
+  background: #111;
+  color: #fff;
+  border-color: #111;
+}
+
+/* ===== Summary Bar ===== */
+.pdm-summary {
+  padding: 15px 15px;
+  border: 1px dashed #d1d5db;
+  border-radius: 12px;
+  background: #fff;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+
+  color: #111;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.pdm-summary-main {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pdm-summary-gap {
+  flex: 0 0 auto;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+}
+
+.pdm-neg {
+  color: #c2410c;
+}
+.pdm-pos {
+  color: #166534;
+}
+
+/* ===== Body Layout ===== */
+.pdm-body {
+  position: relative;
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  gap: 16px;
+  padding: 12px 14px 14px;
+}
+
+/* 좌측 패널 */
+.pdm-form {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 18px;
+}
+
+/* 우측 패널 */
+.pdm-logs {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 14px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+/* ===== Cards (공통) ===== */
+.pdm-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #fff;
+  padding: 14px;
+  min-width: 0;
+}
+
+.pdm-card-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+
+  padding-bottom: 10px;
+  margin-bottom: 12px;
+
+  border-bottom: 1px dashed rgba(0, 0, 0, 0.18);
+
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #111;
+}
+
+.pdm-card-meta {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  color: #6b7280;
+}
+
+/* ===== Left: Form ===== */
+.pdm-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.pdm-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pdm-panel-title {
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #111;
+  margin-bottom: 10px;
+}
+
+.pdm-field label {
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 12px;
+  color: #111;
+}
+
+.pdm-field input,
+.pdm-field textarea,
+.pdm-field select {
+  height: 46px;
+  padding: 10px 12px;
+
+  border: 1px solid #e5e7eb;
+
+  font-size: 14px;
+  font-weight: 700;
+  color: #111;
+
+  outline: none;
+  background: #fff;
+  box-sizing: border-box;
+}
+
+.pdm-field input::placeholder,
+.pdm-field textarea::placeholder {
+  color: #9ca3af;
+  font-weight: 700;
+}
+
+.pdm-field input:focus,
+.pdm-field textarea:focus,
+.pdm-field select:focus {
+  border-color: #000;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.12);
+}
+
+.pdm-field textarea {
+  height: 80px;
+  resize: vertical;
+}
+
+/* CTA 버튼 */
+.pdm-add {
+  height: 50px;
+  margin-top: 10px;
+
+  border: 2px solid #000;
+  background: #000;
+  color: #fff;
+
+  border-radius: 10px;
+
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+
+  cursor: pointer;
+  user-select: none;
+}
+
+.pdm-add:hover {
+  filter: brightness(1.05);
+}
+
+.pdm-add:active {
+  transform: translateY(1px);
+}
+
+/* ===== Right: Logs ===== */
+
+/* 내역 없을 때 */
+.pdm-empty {
+  border: 0;
+  background: transparent;
+  padding: 28px 12px;
+  margin: 40px auto 0;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+
+  color: #6b7280;
+  font-weight: 750;
+}
+
+.pdm-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.pdm-list-head {
+  display: flex;
+  align-items: baseline;
+  padding: 12px 4px 8px 4px;
+  margin-top: 10px;
+
+  border-bottom: 2px solid #d1d5db;
+
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  color: #000;
+}
+
+.pdm-count {
+  font-size: 13px;
+  color: #6b7280;
+  margin-left: 8px;
+  font-weight: 700;
+}
+
+.pdm-item {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 12px;
+  border: none;
+  border-bottom: 1px solid #e5e7eb;
+  background: #fff;
+  border-radius: 0;
+  margin-bottom: 0;
+  transition: background 0.2s;
+}
+
+.pdm-item:hover {
+  background: #f9fafb;
+}
+
+.pdm-item-left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pdm-date {
+  font-size: 11px;
+  color: #9ca3af;
+  font-weight: 600;
+}
+
+.pdm-memo-txt {
+  font-size: 14px;
+  color: #111;
+  font-weight: 700;
+}
+
+.pdm-amt {
+  font-size: 15px;
+  font-weight: 900;
+  color: #000;
+}
+
+/* 삭제 버튼 */
+.pdm-del {
+  width: 28px;
+  height: 28px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  color: #9ca3af;
+  border-radius: 0;
+  font-size: 12px;
+  transition: all 0.2s;
+}
+
+.pdm-del:hover {
+  background: #000;
+  color: #fff;
+  border-color: #000;
+}
+
+.pdm-status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 74px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.pdm-status-badge.is-pending {
+  background: #fff7ed;
+  color: #c2410c;
+  border-color: #fdba74;
+}
+
+.pdm-status-badge.is-confirmed {
+  background: #ecfdf5;
+  color: #166534;
+  border-color: #86efac;
+}
+
+.pdm-status-badge.is-rejected {
+  background: #fef2f2;
+  color: #b91c1c;
+  border-color: #fca5a5;
+}
+
+.pdm-field input.is-error {
+  border-color: #ef4444 !important;
+  background: #fff5f5 !important;
+}
+
+.pdm-field input.is-error::placeholder {
+  color: #ef4444;
+  font-weight: 700;
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 880px) {
+  .pdm-body {
+    grid-template-columns: 1fr;
+  }
+
+  .pdm-summary {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 420px) {
+  .pdm-head {
+    padding: 10px 12px;
+  }
+
+  .pdm-summary {
+    padding: 10px 12px;
+  }
+
+  .pdm-body {
+    padding: 12px;
+    gap: 12px;
+  }
+
+  .pdm-card {
+    padding: 12px;
+  }
+
+  .pdm-item {
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "left del"
+      "amt  del";
+    align-items: start;
+  }
+
+  .pdm-item-left {
+    grid-area: left;
+  }
+
+  .pdm-amount {
+    grid-area: amt;
+  }
+
+  .pdm-del {
+    grid-area: del;
+  }
+}

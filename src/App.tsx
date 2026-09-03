@@ -1,35 +1,59 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { Navigate, Route, Routes } from "react-router-dom";
+import Layout from "./shared/components/Layout";
+import "./features/travelStory/styles/travelStory.css";
+import TravelStoryEdit from "./features/travelStory/pages/TravelStoryEdit";
+import Home from "./features/home/pages/Home";
+import MyTrips from "./features/myTrips/pages/MyTrips";
+import Mate from "./features/mate/pages/Mate";
+import MateDetail from "./features/mate/pages/MateDetail";
+import { Workspace } from "./features/workspace/pages";
+import TravelStory from "./features/travelStory/pages/TravelStory";
+import Login from "./features/user/pages/Login";
+import UserSettings from "./features/user/pages/UserSetting";
+import OAuthSuccess from "./features/user/pages/OAuthSuccess";
+import ProtectedRoute from "./features/user/pages/ProtectedRoute";
+import { AuthProvider } from "./features/user/pages/AuthContext";
+import NoticePage from "./features/user/pages/NoticePage";
+import FaqPage from "./features/user/pages/FaqPage";
 
-function App() {
-  const [count, setCount] = useState(0)
+export default function App() {
 
+  
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
-}
+    <AuthProvider>
+      <Routes>
+        {/* 레이아웃 없는 페이지 */}
+        <Route path="/login" element={<Login />} />
+        <Route path="/oauth2/redirect" element={<OAuthSuccess />} />
 
-export default App
+        {/* 보호된 라우트: 설정 페이지 */}
+        <Route element={<ProtectedRoute />}>
+          <Route path="/setting" element={<UserSettings />} />
+          <Route path="/notice" element={<NoticePage />} />
+          <Route path="/faq" element={<FaqPage />} />
+        </Route>
+
+        {/* 레이아웃 있는 페이지 */}
+        <Route element={<Layout />}>
+          <Route path="/" element={<Home />} />
+          <Route path="/mate" element={<Mate />} />
+          <Route path="/mate/:postId" element={<MateDetail />} />
+          <Route path="/travelstory" element={<TravelStory />} />
+          <Route path="/travelstory/write" element={<TravelStory />} />
+          <Route path="/travelstory/edit/:storyId" element={<TravelStoryEdit />} />
+          <Route path="/travelstory/detail/:id" element={<TravelStory />} />
+          <Route path="/travelstory/mystories" element={<TravelStory />} />
+
+          {/* 보호된 라우트: 설정 페이지 */}
+          <Route element={<ProtectedRoute />}>
+            <Route path="/mytrips" element={<MyTrips />} />
+            <Route path="/workspace" element={<Workspace />} />
+            <Route path="/workspace/:tripId" element={<Workspace />} />
+          </Route>
+
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Route>
+      </Routes>
+    </AuthProvider>
+  );
+}

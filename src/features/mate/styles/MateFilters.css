@@ -1,0 +1,47 @@
+/* MateFilters.css */
+
+.filters {
+  background: #fff;
+  padding: 24px;
+  margin-bottom: 32px;
+  border: 3px solid #000;
+  box-shadow: 4px 4px 0px rgba(0, 0, 0, 1);
+  font-family: 'Share Tech Mono', monospace;
+}
+
+.filters-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(0, 0, 0, 0.5);
+  text-transform: uppercase;
+  font-family: 'Share Tech Mono', monospace;
+  letter-spacing: 1px;
+}
+
+.dropdown {
+  border: 3px solid #000;
+  box-shadow: 4px 4px 0px rgba(0, 0, 0, 1);
+  font-family: 'Share Tech Mono', monospace;
+}
+
+.tagActive {
+  box-shadow: 2px 2px 0px rgba(0, 0, 0, 1);
+  transform: translate(-1px, -1px);
+}
+
+/* 태그 버튼 border 강제 적용 */
+.filters button {
+  border: 2px solid #000 !important;
+  transition: all 0.2s;
+}
+
+.filters button:hover:not(.bgActive) {
+  transform: translate(-2px, -2px);
+  box-shadow: 2px 2px 0px rgba(0, 0, 0, 1);
+}
+
+/* bg-black 강제 적용 */
+.bgActive {
+  background-color: #000 !important;
+  color: #fff !important;
+}

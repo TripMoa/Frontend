@@ -1,0 +1,155 @@
+/* 내 스토리 페이지 헤더 - 통계 카드 포함 */
+.mystories-header {
+  position: relative;
+  margin-bottom: 30px;
+  padding: 20px;
+  background: var(--secondary-color);
+  border: 3px solid var(--border-color);
+  box-shadow: 8px 8px 0px rgba(0, 0, 0, 1);
+  z-index: 1;
+}
+
+/* 닫기 버튼 */
+.mystories-close-btn {
+  position: absolute;
+  top: -15px;
+  right: -15px;
+  width: 40px;
+  height: 40px;
+  border: 2px solid var(--border-color);
+  background: var(--secondary-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 50%;
+  box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+  z-index: 99999;
+  transition: all 0.2s;
+}
+
+/* 호버 시 검은 배경 */
+.mystories-close-btn:hover {
+  background: var(--primary-color);
+}
+
+.mystories-close-btn svg {
+  transition: fill 0.2s;
+}
+
+.mystories-close-btn:hover svg {
+  fill: var(--secondary-color);
+}
+
+/* 통계 카드 그리드 */
+.mystories-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  padding: 0 20px;
+}
+
+/* 통계 카드 단일 항목 */
+.mystories-stat-card {
+  padding: 12px 15px;
+  border: 2px solid var(--border-color);
+  background: var(--secondary-color);
+  text-align: center;
+  transition: all 0.2s;
+}
+
+/* 클릭 가능한 통계 카드 */
+.mystories-stat-card.clickable {
+  cursor: pointer;
+}
+
+.mystories-stat-card.clickable:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-default);
+}
+
+/* 통계 아이콘 */
+.mystories-stat-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 4px;
+}
+
+.mystories-stat-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* 통계 수치 */
+.mystories-stat-value {
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 4px;
+  font-family: var(--font-mono);
+}
+
+/* 통계 라벨 */
+.mystories-stat-label {
+  font-size: 10px;
+  color: #666;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* 내 스토리 카드 목록 */
+.mystories-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 24px;
+}
+
+/* 스토리 없을 때 빈 상태 안내 */
+.mystories-empty {
+  text-align: center;
+  padding: 80px 20px;
+  background: var(--secondary-color);
+  border: 3px dashed var(--border-color);
+}
+
+.mystories-empty-text {
+  font-size: 18px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  margin-bottom: 8px;
+}
+
+.mystories-empty-subtext {
+  font-size: 14px;
+  color: var(--text-gray);
+  font-family: var(--font-mono);
+}
+
+/* 내 스토리 빈 상태 */
+.my-stories-empty {
+  text-align: center;
+  padding: 60px 40px;
+  font-family: var(--font-mono);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: #fff;
+  border: 2px solid rgba(0,0,0,0.1);
+  margin-top: 16px;
+}
+
+.my-stories-empty-text {
+  font-family: var(--font-mono);
+  font-size: 18px;
+  font-weight: 700;
+  color: #000;
+  margin: 12px 0 6px;
+}
+
+.my-stories-empty-sub {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  color: rgba(0, 0, 0, 0.4);
+  margin-top: 6px;
+}
