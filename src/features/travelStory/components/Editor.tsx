@@ -33,7 +33,7 @@ const Editor = forwardRef<EditorHandle, EditorProps>(({
   const normalizeImageUrl = (url: string) => {
     if (!url) return "";
     if (url.startsWith("http")) return url;
-    return `http://localhost:8080${url.startsWith("/") ? "" : "/"}${url}`;
+    return `${import.meta.env.VITE_API_BASE_URL}${url.startsWith("/") ? "" : "/"}${url}`;
   };
 
   // 수정/임시저장 모드 진입 시 에디터 내용 초기화

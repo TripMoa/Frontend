@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from 'react';
 import FilterSection from '../components/FilterSection';
 import StoryCard from '../components/StoryCard';
@@ -12,8 +11,11 @@ import { ActionPromptModal } from "../../../shared/components/ActionPromptModal"
 import type { Story } from '../../../api/stories.api';
 import CustomAlert from '../components/modals/CustomAlert';
 import { User } from 'lucide-react';
+import { TripCreateModal } from "../../myTrips/components/TripCreateModal";
+import { createTrip } from "../../../api/trip.api";
+import { getPlaces, createPlace } from "../../../api/place.api";
+import { useLocation, useParams, useNavigate } from "react-router-dom";
 import DeleteModal from '../components/modals/DeleteModal';
-import { useLocation, useParams } from "react-router-dom";
 import { useTravelStory } from '../hooks';
 import '../styles/travelStory.css';
 
@@ -35,8 +37,8 @@ function TravelStory() {
   const hook = useTravelStory();
 
   const { storyId } = useParams();
-
   const location = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
   const path = window.location.pathname;
@@ -138,6 +140,21 @@ function TravelStory() {
   
   const [sortBy, setSortBy] = useState('기본 순서');
   const [sortOpen, setSortOpen] = useState(false);
+  const [showTripModal, setShowTripModal] = useState(false);
+  const [selectedItineraryStory, setSelectedItineraryStory] = useState<any>(null);
+  const [tripFormData, setTripFormData] = useState({
+
+title: "",
+
+tripStartDate: "",
+
+tripEndDate: "",
+
+selectedMembers: [],
+
+});
+
+  const [isSubmittingTrip, setIsSubmittingTrip] = useState(false);
   const [currentPageNum, setCurrentPageNum] = useState(1);
   const ITEMS_PER_PAGE = 6;
 
@@ -163,6 +180,49 @@ function TravelStory() {
   const getLikedStoriesList = () => {
     return hook.allStories.filter(story => hook.followedStories.includes(story.id));
   };
+
+  const handleTripSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+
+  try {
+    setIsSubmittingTrip(true);
+
+    const tripRes = await createTrip({
+      title: tripFormData.title,
+      tripStartDate: tripFormData.tripStartDate,
+      tripEndDate: tripFormData.tripEndDate,
+      memberUserIds: tripFormData.selectedMembers.map((m: any) => m.userId),
+    });
+
+    const newTripId = tripRes.data.tripId;
+
+    if (selectedItineraryStory?.tripId) {
+      try {
+        const placesRes = await getPlaces(selectedItineraryStory.tripId);
+
+        for (const place of placesRes.data) {
+          await createPlace({
+            tripId: newTripId,
+            name: place.name,
+            address: place.address,
+            category: place.category,
+            lat: place.lat,
+            lng: place.lng,
+          });
+        }
+      } catch (placeError) {
+        console.error("장소 복사 실패:", placeError);
+      }
+    }
+
+    navigate(`/workspace/${newTripId}`);
+  } catch (e) {
+    alert("여행 계획 생성에 실패했습니다.");
+  } finally {
+    setIsSubmittingTrip(false);
+    setShowTripModal(false);
+  }
+};
 
   // 필터링된 스토리를 선택한 정렬 기준에 따라 정렬
   const getSortedStories = (data: Story[]) => {
@@ -488,6 +548,16 @@ function TravelStory() {
         onConfirm={hook.confirmDelete}
       />
     </div>
+
+    <TripCreateModal
+      isOpen={showTripModal}
+      onClose={() => setShowTripModal(false)}
+      formData={tripFormData}
+      setFormData={setTripFormData as any}
+      onSubmit={handleTripSubmit}
+      isSubmitting={isSubmittingTrip}
+      currentUser={null}
+    />
 
        <ActionPromptModal
       open={showLoginModal}

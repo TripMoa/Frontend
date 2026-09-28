@@ -81,9 +81,9 @@ function StoryCard({
 
   // 상대경로 URL을 절대경로로 변환
   const normalizeImageUrl = (url: string) => {
-    if (!url) return '';
-    if (url.startsWith('http')) return url;
-    return `http://localhost:8080${url.startsWith('/') ? '' : '/'}${url}`;
+    if (!url) return "";
+    if (url.startsWith("http")) return url;
+    return `${import.meta.env.VITE_API_BASE_URL}${url.startsWith("/") ? "" : "/"}${url}`;
   };
 
   // FREE 타입이고 이미지 없으면 그레이, 아니면 기존 unsplash 이미지

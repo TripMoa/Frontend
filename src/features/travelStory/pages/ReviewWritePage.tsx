@@ -175,7 +175,7 @@ function ReviewWritePage({
   const [expenses, setExpenses] = useState({
     transportation: "", accommodation: "", food: "", attraction: "", shopping: "",
   });
-  const [isPublic, setIsPublic] = useState(true);
+  const [isPublic, setIsPublic] = useState(editingStory?.isPublic ?? true);
 
   const editorRef = useRef<EditorHandle>(null);
 

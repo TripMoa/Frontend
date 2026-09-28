@@ -88,7 +88,7 @@ function DetailPage({
   const normalizeImageUrl = (url: string) => {
     if (!url) return "";
     if (url.startsWith("http")) return url;
-    return `http://localhost:8080${url.startsWith("/") ? "" : "/"}${url}`;
+    return `${import.meta.env.VITE_API_BASE_URL}${url.startsWith("/") ? "" : "/"}${url}`;
   };
 
   // tags가 문자열이면 쉼표로 분리, 배열이면 그대로 사용

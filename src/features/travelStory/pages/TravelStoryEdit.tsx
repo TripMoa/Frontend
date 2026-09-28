@@ -17,7 +17,7 @@ function TravelStoryEdit() {
 
   return (
     <div className="travel-story-app">
-      {hook.currentPage === 'write' && (
+      {hook.editingStory && (
         <WritePage
           key={hook.editingStory?.id || 'new'}
           type={hook.writeType}

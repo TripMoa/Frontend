@@ -3,6 +3,7 @@ interface SavedItinerariesModalProps {
   onClose: () => void;
   stories: any[];
   onStoryClick: (story: any) => void;
+  onUseItinerary?: (story: any) => void;
 }
 
 function SavedItinerariesModal({ show, onClose, stories, onStoryClick }: SavedItinerariesModalProps) {
