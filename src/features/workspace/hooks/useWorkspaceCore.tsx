@@ -46,19 +46,16 @@ interface WorkspaceCoreState {
   selectNoticeGroup: (groupId: number) => void;
   reloadNoticeGroups: () => Promise<void>;
 
-  addDateLog: () => void;
-  renameDateLog: (index: number) => void;
-  deleteDateLog: (index: number) => void;
 
   // AI 일정 생성 후 dayKeys를 dateLogs에 동기화
-  syncDateLogs: (dayKeys: string[]) => void;
+  syncDateLogs: (dayKeys: string[], replace?: boolean) => void;
 
   addNoticeGroup: () => Promise<void>;
   renameNoticeGroup: (groupId: number) => Promise<void>;
   deleteNoticeGroup: (groupId: number) => Promise<void>;
 
-  renameItem: (type: "date" | "notice", index: number) => void;
-  deleteItem: (type: "date" | "notice", index: number) => void;
+  renameItem: (type: "notice", index: number) => void;
+  deleteItem: (type: "notice", index: number) => void;
 
   setHideRight: (v: boolean) => void;
   setActiveView: (v: WorkspaceViewType) => void;
@@ -213,38 +210,36 @@ const useWorkspaceCoreInternal = (): WorkspaceCoreState => {
   };
 
   // ── dateLogs 관련 ─────────────────────────────────────────
-  const addDateLog = () => {
-    const name = prompt(
-      "추가할 일정 이름을 입력하세요.",
-      `DAY ${dateLogs.length + 1}`,
-    );
-    if (!name?.trim()) return;
-    setDateLogs((prev) => [...prev, name.trim()]);
-  };
-
-  const renameDateLog = (index: number) => {
-    const current = dateLogs[index];
-    if (current == null) return;
-    const newName = prompt("이름을 변경하세요:", current);
-    if (!newName?.trim()) return;
-    setDateLogs((prev) =>
-      prev.map((d, i) => (i === index ? newName.trim() : d)),
-    );
-  };
-
-  const deleteDateLog = (index: number) => {
-    if (!confirm("정말 삭제하시겠습니까?")) return;
-    setDateLogs((prev) => prev.filter((_, i) => i !== index));
-  };
-
+  // 일차 탭은 직접 추가·이름 변경·삭제하지 않는다 — 여행 기간(DAY 1..N)과 저장된 일정에서만 만들어진다
   /**
    * AI 일정 생성 완료 또는 서버에서 일정 로드 후
    * allDays의 키를 dateLogs에 반영 — 사이드바 탭 동기화
    */
-  const syncDateLogs = (dayKeys: string[]) => {
+  // replace=true: 목록을 dayKeys로 통째로 교체 (AI 재생성처럼 일차 구성이 바뀔 때 사라진 일차 탭을 지우기 위함)
+  const syncDateLogs = (dayKeys: string[], replace = false) => {
+    if (replace) {
+      setDateLogs(dayKeys);
+      return;
+    }
     setDateLogs((prev) => {
-      const newKeys = dayKeys.filter((k) => !prev.includes(k));
-      return newKeys.length > 0 ? [...prev, ...newKeys] : prev;
+      const newKeys = dayKeys.filter((k, i) => !prev.includes(k) && dayKeys.indexOf(k) === i);
+      if (newKeys.length === 0) return prev;
+      // "DAY N"은 번호 순으로 정렬(중간 일차가 나중에 추가돼도 순서 유지), 그 외 이름은 뒤에 원래 순서대로
+      const dayNo = (k: string) => {
+        const m = /^DAY (\d+)$/.exec(k);
+        return m ? Number(m[1]) : null;
+      };
+      return [...prev, ...newKeys]
+        .map((k, i) => ({ k, i }))
+        .sort((a, b) => {
+          const na = dayNo(a.k);
+          const nb = dayNo(b.k);
+          if (na != null && nb != null) return na - nb;
+          if (na != null) return -1;
+          if (nb != null) return 1;
+          return a.i - b.i;
+        })
+        .map((x) => x.k);
     });
   };
 
@@ -320,20 +315,12 @@ const useWorkspaceCoreInternal = (): WorkspaceCoreState => {
     }
   };
 
-  const renameItem = (type: "date" | "notice", index: number) => {
-    if (type === "date") {
-      renameDateLog(index);
-      return;
-    }
+  const renameItem = (_type: "notice", index: number) => {
     const target = noticeGroups[index];
     if (target) void renameNoticeGroup(target.groupId);
   };
 
-  const deleteItem = (type: "date" | "notice", index: number) => {
-    if (type === "date") {
-      deleteDateLog(index);
-      return;
-    }
+  const deleteItem = (_type: "notice", index: number) => {
     const target = noticeGroups[index];
     if (target) void deleteNoticeGroup(target.groupId);
   };
@@ -354,9 +341,6 @@ const useWorkspaceCoreInternal = (): WorkspaceCoreState => {
     selectTab,
     selectNoticeGroup,
     reloadNoticeGroups,
-    addDateLog,
-    renameDateLog,
-    deleteDateLog,
     syncDateLogs,
     addNoticeGroup,
     renameNoticeGroup,
