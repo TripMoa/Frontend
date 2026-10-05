@@ -438,6 +438,7 @@ export const useExpenses = () => {
       autoIncludePayer: involved.includes(payload.payer),
       splitMode: normalizedPayload.splitMode,
       splits,
+      scheduleItemId: payload.scheduleItemId ?? null,
     };
   };
 
