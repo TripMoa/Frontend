@@ -26,13 +26,19 @@ import MemberStatusPanel from "./sections/MemberStatusPanel";
 import CategoryStatsPanel from "./sections/CategoryStatsPanel";
 import ExpenseList from "./sections/ExpenseList";
 import { API_BASE_URL } from "../../../../shared/config/env";
+import type { ScheduleItemOption } from "../../../../types/scheduleItemOption.types";
 
 interface Props {
   store: UseExpensesStore;
   onOpenSettleDetail: (m: ExpenseMember) => void;
+  scheduleItemOptions?: ScheduleItemOption[];
 }
 
-const ExpenseView: React.FC<Props> = ({ store, onOpenSettleDetail }) => {
+const ExpenseView: React.FC<Props> = ({
+  store,
+  onOpenSettleDetail,
+  scheduleItemOptions = [],
+}) => {
   const {
     expenses,
     filteredList,
@@ -632,6 +638,7 @@ const ExpenseView: React.FC<Props> = ({ store, onOpenSettleDetail }) => {
           viewReceipt={viewReceipt}
           openAddModal={openAddModal}
           detailsRef={detailsRef}
+          scheduleItemOptions={scheduleItemOptions}
         />
       </div>
 

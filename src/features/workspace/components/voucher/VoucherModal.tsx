@@ -9,6 +9,7 @@ import type {
   VoucherResponse,
   VoucherType,
 } from "../../../../types/voucher.types";
+import type { ScheduleItemOption } from "../../../../types/scheduleItemOption.types";
 
 interface Props {
   onClose: () => void;
@@ -18,6 +19,8 @@ interface Props {
   ) => Promise<VoucherResponse> | void;
   initialData?: VoucherResponse | null;
   isEditMode?: boolean;
+  scheduleItemOptions?: ScheduleItemOption[];
+  initialScheduleItemId?: number | null;
 }
 
 const VoucherModal: React.FC<Props> = ({
@@ -25,14 +28,27 @@ const VoucherModal: React.FC<Props> = ({
   onSave,
   initialData = null,
   isEditMode = false,
+  scheduleItemOptions = [],
+  initialScheduleItemId = null,
 }) => {
   const fileRef = useRef<HTMLInputElement | null>(null);
 
   const [type, setType] = useState<VoucherType>(initialData?.type ?? "AIR");
   const [title, setTitle] = useState(initialData?.title ?? "");
   const [desc, setDesc] = useState(initialData?.description ?? "");
+  const [scheduleItemId, setScheduleItemId] = useState<number | null>(
+    initialData?.scheduleItemId ?? initialScheduleItemId ?? null,
+  );
   const [file, setFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
+
+  const groupedByDay = scheduleItemOptions.reduce<Record<string, ScheduleItemOption[]>>(
+    (acc, opt) => {
+      (acc[opt.day] ??= []).push(opt);
+      return acc;
+    },
+    {},
+  );
 
   const [submitted, setSubmitted] = useState(false);
 
@@ -79,6 +95,7 @@ const VoucherModal: React.FC<Props> = ({
       type,
       title: title.trim(),
       description: desc.trim() || undefined,
+      scheduleItemId,
     };
 
     try {
@@ -152,6 +169,30 @@ const VoucherModal: React.FC<Props> = ({
               <option value="ETC">기타</option>
             </select>
           </div>
+
+          {/* 연결할 일정 (선택) */}
+          {scheduleItemOptions.length > 0 && (
+            <div className="vm-field">
+              <label>연결할 일정 (선택)</label>
+              <select
+                value={scheduleItemId ?? ""}
+                onChange={(e) =>
+                  setScheduleItemId(e.target.value ? Number(e.target.value) : null)
+                }
+              >
+                <option value="">연결 안 함</option>
+                {Object.entries(groupedByDay).map(([day, items]) => (
+                  <optgroup key={day} label={day}>
+                    {items.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.time} · {item.title}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* TITLE */}
           <div className="vm-field">
