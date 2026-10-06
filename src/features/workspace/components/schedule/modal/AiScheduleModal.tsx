@@ -1,8 +1,11 @@
 // src/features/workspace/components/schedule/modal/AiScheduleModal.tsx
 
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import { generateSchedule } from "../../../../../api/schedule.api";
+import { estimateSchedule, generateSchedule } from "../../../../../api/schedule.api";
+import type { ScheduleEstimate, GeneratedScheduleItem } from "../../../../../api/schedule.api";
 import { searchPlaces } from "../../../../../api/place.api";
+import type { PlaceSearchItem } from "../../../../../api/place.api";
+import { apiMessage } from "../../../hooks/apiError";
 import "../../../styles/modals.css";
 import {
   CATEGORY_TO_BACKEND,
@@ -47,11 +50,19 @@ interface PinnedPlaceSetting {
   time: string;
 }
 
-interface AiScheduleSettings {
+// 식사 희망 시각 선택지 — 엔진이 받아들이는 범위(점심 11:30~14:00, 저녁 17:30~20:00)와 같다
+const MEAL_TIME_OPTIONS = {
+  lunch: ["11:30", "12:00", "12:30", "13:00", "13:30", "14:00"],
+  dinner: ["17:30", "18:00", "18:30", "19:00", "19:30", "20:00"],
+};
+
+export interface AiScheduleSettings {
   startTime: string;
   endTime: string;
   transportMode: "walk" | "public" | "car";
   includeMeals: boolean;
+  lunchTime: string;   // 희망 점심 시각 — 이 시각의 30분 전~90분 후 안에 맛집이 배치된다
+  dinnerTime: string;  // 희망 저녁 시각
   priority: "efficiency" | "relaxed" | "balanced";
   pinnedPlaces: PinnedPlaceSetting[];
   hotels: HotelSetting[];
@@ -86,6 +97,8 @@ interface AiScheduleModalProps {
   startDate: string;
   endDate: string;
   tripId: number;
+  /** 이미 만들어 둔 일정이 있으면 true — 생성 전에 "바뀐다"는 확인을 한 번 받는다 */
+  hasExistingSchedule?: boolean;
   /** 모달 안에서 바로 장소를 추가할 수 있도록 부모의 핸들러를 받음 */
   onAddPlace: (place: Place) => void | Promise<void>;
 }
@@ -117,6 +130,7 @@ const AiScheduleModal: React.FC<AiScheduleModalProps> = ({
   startDate,
   endDate,
   tripId,
+  hasExistingSchedule = false,
   onAddPlace,
 }) => {
   const [settings, setSettings] = useState<AiScheduleSettings>({
@@ -124,11 +138,17 @@ const AiScheduleModal: React.FC<AiScheduleModalProps> = ({
     endTime: "20:00",
     transportMode: "public",
     includeMeals: true,
+    lunchTime: "12:00",
+    dinnerTime: "18:30",
     priority: "balanced",
     pinnedPlaces: [],
     hotels: [],
     departurePoints: [],
   });
+
+  // 숙소 배정 행은 사용자가 직접 만든 것만 쓴다(저장한 숙소를 대신 배정하지 않는다).
+  const [showHotelSearch, setShowHotelSearch] = useState(false);
+  const [showDeptSearch, setShowDeptSearch] = useState(false);
 
   const [isLoading, setIsLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState(0);
@@ -167,9 +187,15 @@ const AiScheduleModal: React.FC<AiScheduleModalProps> = ({
   const visitPlaces = useMemo(
     () =>
       validPlaces.filter(
-        (p) => p.category !== "숙소" && !departureNames.has(p.name)
+        (p) => p.category !== "숙소" && p.category !== "교통" && !departureNames.has(p.name)
       ),
     [validPlaces, departureNames]
+  );
+
+  // 저장한 교통 장소(공항·역) — 출발지로 체크한 것만 일정에 들어간다(방문지가 아니다)
+  const transitPlaces = useMemo(
+    () => validPlaces.filter((p) => p.category === "교통"),
+    [validPlaces]
   );
 
   // 버튼 활성화 조건
@@ -204,10 +230,27 @@ const AiScheduleModal: React.FC<AiScheduleModalProps> = ({
       issues.push(
         `${nDays}일 여행에는 방문 장소가 최소 ${nDays}개 필요합니다. (현재 ${visitPlaces.length}개)`
       );
-    if (settings.startTime >= settings.endTime)
+    if (!settings.startTime || !settings.endTime)
+      issues.push("시작 시간과 종료 시간을 모두 입력해주세요.");
+    else if (settings.startTime >= settings.endTime)
       issues.push("종료 시간은 시작 시간보다 늦어야 합니다.");
+    if (nDays > 1) {
+      if (settings.hotels.some((h) => !h.name.trim()))
+        issues.push("숙소를 선택하지 않은 배정이 있습니다. 숙소를 고르거나 제거해주세요.");
+      if (
+        settings.hotels.some(
+          (h) => h.name.trim() && (h.checkOutDay <= h.checkInDay || h.checkOutDay > nDays)
+        )
+      )
+        issues.push("숙소 체크인·체크아웃 일차가 올바르지 않은 배정이 있습니다.");
+    }
     if (overlappingHotelIndices.size > 0)
       issues.push("숙박 기간이 겹치는 숙소가 있습니다. 날짜를 조정해주세요.");
+    if (settings.departurePoints.some((dp) => !dp.name.trim()))
+      issues.push("출발지를 선택하지 않은 배정이 있습니다. 출발지를 고르거나 제거해주세요.");
+    const deptDays = settings.departurePoints.filter((dp) => dp.name.trim()).map((dp) => dp.day);
+    if (new Set(deptDays).size !== deptDays.length)
+      issues.push("같은 일차에 출발지가 둘 이상 배정돼 있습니다.");
     return issues;
   }, [
     validPlaces,
@@ -215,6 +258,8 @@ const AiScheduleModal: React.FC<AiScheduleModalProps> = ({
     nDays,
     settings.startTime,
     settings.endTime,
+    settings.hotels,
+    settings.departurePoints,
     overlappingHotelIndices,
   ]);
 
@@ -225,8 +270,8 @@ const AiScheduleModal: React.FC<AiScheduleModalProps> = ({
   const mealCapacityWarning = useMemo(() => {
     const mealSlotsPerDay = !settings.includeMeals
       ? 0
-      : (settings.startTime <= "12:00" && "12:00" <= settings.endTime ? 1 : 0) +
-        (settings.startTime <= "18:00" && "18:00" <= settings.endTime ? 1 : 0);
+      : (settings.startTime <= settings.lunchTime && settings.lunchTime <= settings.endTime ? 1 : 0) +
+        (settings.startTime <= settings.dinnerTime && settings.dinnerTime <= settings.endTime ? 1 : 0);
     if (mealSlotsPerDay === 0) return null;
 
     const totalSlots = mealSlotsPerDay * nDays;
@@ -234,7 +279,7 @@ const AiScheduleModal: React.FC<AiScheduleModalProps> = ({
     if (savedMealCount <= totalSlots) return null;
 
     return `저장한 맛집이 ${savedMealCount}개인데, 이 일정에서는 최대 ${totalSlots}번만 식사로 들어갈 수 있어요(하루 ${mealSlotsPerDay}번 × ${nDays}일). 나머지는 자동으로 제외될 수 있어요.`;
-  }, [settings.includeMeals, settings.startTime, settings.endTime, nDays, visitPlaces]);
+  }, [settings.includeMeals, settings.lunchTime, settings.dinnerTime, settings.startTime, settings.endTime, nDays, visitPlaces]);
 
   // ─── 로딩 애니메이션 ─────────────────────────────────────
   useEffect(() => {
@@ -275,43 +320,33 @@ const AiScheduleModal: React.FC<AiScheduleModalProps> = ({
     setErrorMsg(null);
   };
 
-  // ─── 제출 ────────────────────────────────────────────────
-  const handleSubmit = async () => {
-    if (!canGenerate) {
-      setErrorMsg(readinessIssues[0]);
-      return;
-    }
+  const updateHotels = (next: HotelSetting[]) => updateSetting("hotels", next);
 
-    // 숙소 자동 주입 로직 — 수동 설정 안 한 나머지 저장 숙소도 전체 기간으로 자동 포함
-    // (일부만 수동 설정했다고 나머지가 조용히 빠지지 않도록)
-    const manualHotels = settings.hotels.filter(
+  // 복귀 기준은 하나만 — 하나를 켜면 나머지는 끈다
+  const setReturnPoint = (index: number, checked: boolean) => {
+    updateSetting(
+      "departurePoints",
+      settings.departurePoints.map((d, idx) =>
+        idx === index ? { ...d, isReturnPoint: checked } : checked ? { ...d, isReturnPoint: false } : d
+      )
+    );
+  };
+
+  // ─── 요청 본문 ───────────────────────────────────────────
+  // 실제 생성과 "생성 전 예상"이 똑같은 입력을 쓰도록 한 곳에서 만든다.
+  const buildRequestBody = () => {
+    // 숙소는 화면의 배정 행 그대로 보낸다(저장 숙소를 몰래 전 기간에 넣지 않는다).
+    // 잘못된 행은 readinessIssues가 생성 전에 막는다.
+    const resolvedHotels = settings.hotels.filter(
       (h) =>
+        nDays > 1 &&
         h.name.trim() &&
         h.lat != null &&
         h.lng != null &&
         h.checkOutDay > h.checkInDay
     );
-    const manualHotelNames = new Set(manualHotels.map((h) => h.name.trim()));
-    const autoHotels: typeof manualHotels = savedPlaces
-      .filter(
-        (p) =>
-          p.category === "숙소" &&
-          p.lat != null &&
-          p.lng != null &&
-          !manualHotelNames.has(p.name)
-      )
-      .map((p) => ({
-        name: p.name,
-        lat: p.lat!,
-        lng: p.lng!,
-        address: p.address || "",
-        checkInDay: 1,
-        checkOutDay: nDays,
-      }));
 
-    const resolvedHotels = [...manualHotels, ...autoHotels];
-
-    const body = {
+    return {
       tripId,
       places: visitPlaces.map((p) => ({
         name: p.name,
@@ -329,8 +364,8 @@ const AiScheduleModal: React.FC<AiScheduleModalProps> = ({
       daily_end_time: settings.endTime,
       user_preferences: {
         pace: PACE_TO_BACKEND[settings.priority],
-        lunch_time: settings.includeMeals ? "12:00" : "23:59",
-        dinner_time: settings.includeMeals ? "18:00" : "23:59",
+        lunch_time: settings.includeMeals ? settings.lunchTime : "23:59",
+        dinner_time: settings.includeMeals ? settings.dinnerTime : "23:59",
       },
       pinned_places: settings.pinnedPlaces
         .map((pin) => {
@@ -364,6 +399,55 @@ const AiScheduleModal: React.FC<AiScheduleModalProps> = ({
           is_return_point: dp.isReturnPoint,
         })),
     };
+  };
+
+  // ─── 생성 전 예상 ────────────────────────────────────────
+  // 입력이 바뀌면(0.5초 디바운스) AI 서버에 "지금 설정으로 몇 곳이 들어갈지"를 물어본다.
+  // 계산은 엔진이 하므로(프론트에 규칙을 복제하지 않음) 엔진 규칙이 바뀌어도 안내가 어긋나지 않는다.
+  // 결과에 요청 키를 같이 저장해서, 입력이 바뀐 직후의 옛 결과는 화면에 쓰지 않는다.
+  const requestKey = JSON.stringify(buildRequestBody());
+  const [estimateResult, setEstimateResult] = useState<{ key: string; data: ScheduleEstimate } | null>(null);
+
+  useEffect(() => {
+    if (!canGenerate || isLoading) return;
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      try {
+        const { data } = await estimateSchedule(JSON.parse(requestKey));
+        if (!cancelled) setEstimateResult({ key: requestKey, data });
+      } catch {
+        // 예상은 부가 정보라 실패해도 조용히 넘어간다 (생성 자체는 막지 않음)
+      }
+    }, 500);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [requestKey, canGenerate, isLoading]);
+
+  const estimate =
+    !isLoading && canGenerate && estimateResult?.key === requestKey ? estimateResult.data : null;
+
+  // ─── 제출 ────────────────────────────────────────────────
+  const handleSubmit = async () => {
+    if (!canGenerate) {
+      setErrorMsg(readinessIssues[0]);
+      return;
+    }
+
+    if (
+      hasExistingSchedule &&
+      !window.confirm(
+        "이미 만들어 둔 일정이 있어요. 새로 만들면 지금 일정이 새 일정으로 바뀌어요.\n\n" +
+          "· 새 일정에도 있는 장소: 메모와 지출·바우처 연결이 그대로 남아요\n" +
+          "· 새 일정에서 빠지는 장소, 직접 넣은 장소: 메모와 연결이 사라져요\n" +
+          "· 시각·순서·머무는 시간은 새로 계산돼요\n\n계속할까요?",
+      )
+    ) {
+      return;
+    }
+
+    const body = buildRequestBody();
 
     setIsLoading(true);
     setErrorMsg(null);
@@ -381,11 +465,11 @@ const AiScheduleModal: React.FC<AiScheduleModalProps> = ({
       const generatedSchedule: Record<string, TimelineNode[]> = {};
       const dayKeys: string[] = [];
 
-      (data as any[]).forEach((schedule: any) => {
+      data.forEach((schedule) => {
         const label = `DAY ${schedule.day}`;
         dayKeys.push(label);
 
-        generatedSchedule[label] = (schedule.items || []).map((item: any) => {
+        generatedSchedule[label] = (schedule.items || []).map((item: GeneratedScheduleItem) => {
           // 완전 일치 먼저, 없으면 부분 일치로 폴백
           const matched = savedPlaces.find((sp) => sp.name === item.title)
             ?? savedPlaces.find((sp) =>
@@ -415,9 +499,9 @@ const AiScheduleModal: React.FC<AiScheduleModalProps> = ({
       });
 
       // pin 시간 경고 / 제외된 장소 — 화면에 보여주기 위해 day별로 모아둠
-      const allPinWarnings = (data as any[]).flatMap((s: any) => s.pinWarnings || []);
-      const allExcluded = (data as any[]).flatMap((s: any) =>
-        (s.excludedPlaces || []).map((e: any) => ({ ...e, day: s.day }))
+      const allPinWarnings = data.flatMap((s) => s.pinWarnings || []);
+      const allExcluded = data.flatMap((s) =>
+        (s.excludedPlaces || []).map((e) => ({ ...e, day: s.day }))
       );
       setPinWarnings(allPinWarnings);
       setExcludedPlaces(allExcluded);
@@ -427,8 +511,8 @@ const AiScheduleModal: React.FC<AiScheduleModalProps> = ({
       pendingResultRef.current = { generatedSchedule, dayKeys };
       const hasNotices = allPinWarnings.length > 0 || allExcluded.length > 0;
       closeTimeoutRef.current = setTimeout(finishGeneration, hasNotices ? 4000 : 400);
-    } catch (e: any) {
-      setErrorMsg(e.response?.data?.message || e.message || "일정 생성 중 오류가 발생했습니다.");
+    } catch (e) {
+      setErrorMsg(apiMessage(e, "일정 생성 중 오류가 발생했습니다."));
       setIsLoading(false);
     }
   };
@@ -466,6 +550,38 @@ const AiScheduleModal: React.FC<AiScheduleModalProps> = ({
     (p) => p.category === "숙소" && p.lat != null && p.lng != null
   );
 
+  // 체크리스트: 체크하면 그 숙소의 배정 행이 생기고(체크인 DAY 1 → 체크아웃 DAY N은 눈에 보이는 초기값, 사용자가 고친다),
+  // 체크를 풀면 행이 사라진다. 체크하지 않은 숙소는 일정에 들어가지 않는다.
+  const assignHotel = (place: Place) => {
+    updateHotels([
+      ...settings.hotels,
+      {
+        name: place.name, lat: place.lat, lng: place.lng, address: place.address || "",
+        checkInDay: 1, checkOutDay: nDays,
+      },
+    ]);
+  };
+  const unassignHotel = (name: string) => updateHotels(settings.hotels.filter((h) => h.name !== name));
+  const patchHotel = (name: string, patch: Partial<HotelSetting>) =>
+    updateHotels(settings.hotels.map((h) => (h.name === name ? { ...h, ...patch } : h)));
+
+  const assignDeparture = (place: Place) => {
+    updateSetting("departurePoints", [
+      ...settings.departurePoints,
+      {
+        name: place.name, lat: place.lat, lng: place.lng, address: place.address || "",
+        day: 1, isReturnPoint: settings.departurePoints.length === 0,
+      },
+    ]);
+  };
+  const unassignDeparture = (name: string) =>
+    updateSetting("departurePoints", settings.departurePoints.filter((d) => d.name !== name));
+  const patchDeparture = (name: string, patch: Partial<DeparturePointSetting>) =>
+    updateSetting(
+      "departurePoints",
+      settings.departurePoints.map((d) => (d.name === name ? { ...d, ...patch } : d))
+    );
+
   // ─── 인라인 숙소 검색 상태 ────────────────────────────────
   const [hotelSearchQuery, setHotelSearchQuery] = useState("");
   const [hotelSearchResults, setHotelSearchResults] = useState<Place[]>([]);
@@ -488,7 +604,7 @@ const AiScheduleModal: React.FC<AiScheduleModalProps> = ({
         return;
       }
 
-      const mapped: Place[] = searchData.places.map((p: any, idx: number) => ({
+      const mapped: Place[] = searchData.places.map((p: PlaceSearchItem, idx: number) => ({
         id: `hotel_search_${Date.now()}_${idx}`,
         name: p.name,
         category: "숙소",          // 숙소 검색이므로 카테고리 고정
@@ -498,8 +614,8 @@ const AiScheduleModal: React.FC<AiScheduleModalProps> = ({
         lng: p.lng,
       }));
       setHotelSearchResults(mapped);
-    } catch (e: any) {
-      setHotelSearchError(e.message || "검색 중 오류가 발생했습니다.");
+    } catch (e) {
+      setHotelSearchError(apiMessage(e, "검색 중 오류가 발생했습니다."));
     } finally {
       setIsHotelSearching(false);
     }
@@ -541,7 +657,7 @@ const AiScheduleModal: React.FC<AiScheduleModalProps> = ({
         return;
       }
 
-      const mapped: Place[] = deptData.places.map((p: any, idx: number) => ({
+      const mapped: Place[] = deptData.places.map((p: PlaceSearchItem, idx: number) => ({
         id: `dept_search_${Date.now()}_${idx}`,
         name: p.name,
         category: "교통",   // 출발지 검색 결과는 교통 카테고리로 저장
@@ -551,8 +667,8 @@ const AiScheduleModal: React.FC<AiScheduleModalProps> = ({
         lng: p.lng,
       }));
       setDeptSearchResults(mapped);
-    } catch (e: any) {
-      setDeptSearchError(e.message || "검색 중 오류가 발생했습니다.");
+    } catch (e) {
+      setDeptSearchError(apiMessage(e, "검색 중 오류가 발생했습니다."));
     } finally {
       setIsDeptSearching(false);
     }
@@ -709,22 +825,25 @@ const AiScheduleModal: React.FC<AiScheduleModalProps> = ({
                 }}
               >
                 <p style={{ fontWeight: "bold", margin: "0 0 8px" }}>
-                  📍 시간 부족으로 제외된 장소
+                  📍 이번 일정에 넣지 못한 장소
                 </p>
                 {excludedPlaces.map((e, i) => (
                   <p key={i} style={{ margin: "0 0 4px", lineHeight: 1.5 }}>
                     · DAY {e.day} — {e.name} (
-                    {e.reason === "morning_cafe"
-                      ? "오전 시간대 제외"
-                      : e.reason === "meal_slot_limit"
-                      ? "식사 슬롯 초과"
+                    {e.reason === "meal_slot_limit"
+                      ? "식사 시간대에 넣을 수 있는 맛집 수를 넘었어요"
                       : e.reason === "cafe_limit"
-                      ? "카페 개수 초과"
-                      : "일정 시간 부족"})
+                      ? "하루 카페 개수 제한을 넘었어요"
+                      : e.reason === "capacity"
+                      ? "하루 시간 안에 다 들어가지 않아요"
+                      : e.reason === "over_time"
+                      ? "설정한 종료 시간을 넘겨서 뺐어요"
+                      : "이번 일정에 넣지 못했어요"})
                   </p>
                 ))}
-                <p style={{ fontSize: "11px", color: "#bbb", margin: "8px 0 0" }}>
-                  나중에 직접 추가하실 수 있어요
+                <p style={{ fontSize: "11px", color: "#999", margin: "8px 0 0", lineHeight: 1.5 }}>
+                  장소 목록에 '일정 미포함'으로 남아 있어요. 직접 추가하거나,
+                  <br />일정 스타일·일수를 바꿔 다시 생성해보세요.
                 </p>
               </div>
             )}
@@ -863,7 +982,7 @@ const AiScheduleModal: React.FC<AiScheduleModalProps> = ({
                 ].map((mode) => (
                   <button
                     key={mode.value}
-                    onClick={() => updateSetting("transportMode", mode.value as any)}
+                    onClick={() => updateSetting("transportMode", mode.value as AiScheduleSettings["transportMode"])}
                     style={{
                       flex: 1, padding: "12px",
                       background: settings.transportMode === mode.value ? "#000" : "#fff",
@@ -891,6 +1010,30 @@ const AiScheduleModal: React.FC<AiScheduleModalProps> = ({
                 />
                 <span style={{ fontWeight: "bold", fontSize: "14px", color: "#333" }}>🍽️ 식사 시간 포함</span>
               </label>
+              {settings.includeMeals && (
+                <div style={{ display: "flex", gap: "10px", margin: "10px 0 0 28px", alignItems: "center", flexWrap: "wrap" }}>
+                  {[
+                    { key: "lunchTime" as const, label: "점심", options: MEAL_TIME_OPTIONS.lunch },
+                    { key: "dinnerTime" as const, label: "저녁", options: MEAL_TIME_OPTIONS.dinner },
+                  ].map(({ key, label, options }) => (
+                    <label key={key} style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "13px", color: "#555" }}>
+                      {label}
+                      <select
+                        value={settings[key]}
+                        onChange={(e) => updateSetting(key, e.target.value)}
+                        style={{ padding: "6px 8px", border: "1px solid #ddd", borderRadius: "6px", fontSize: "13px" }}
+                      >
+                        {options.map((t) => (
+                          <option key={t} value={t}>{t}</option>
+                        ))}
+                      </select>
+                    </label>
+                  ))}
+                  <span style={{ fontSize: "11px", color: "#999" }}>
+                    이 시각 전후로 맛집이 배치돼요 (30분 전 ~ 1시간 30분 후)
+                  </span>
+                </div>
+              )}
               {mealCapacityWarning && (
                 <p style={{
                   fontSize: "12px", color: "#795548", background: "#fff8e1",
@@ -915,7 +1058,7 @@ const AiScheduleModal: React.FC<AiScheduleModalProps> = ({
                 ].map((mode) => (
                   <button
                     key={mode.value}
-                    onClick={() => updateSetting("priority", mode.value as any)}
+                    onClick={() => updateSetting("priority", mode.value as AiScheduleSettings["priority"])}
                     style={{
                       flex: 1, padding: "12px",
                       background: settings.priority === mode.value ? "#000" : "#fff",
@@ -935,13 +1078,25 @@ const AiScheduleModal: React.FC<AiScheduleModalProps> = ({
             {/* ── 숙소 설정 ── */}
             <div>
               <label style={{ display: "block", fontWeight: "bold", fontSize: "14px", marginBottom: "6px", color: "#333" }}>
-                🏨 숙소 설정 (선택)
+                🏨 숙소 설정 (선택){" "}
+                <span
+                  title="체크인 DAY 1 → 체크아웃 DAY 3은 1·2일차 밤(2박)을 그 숙소에서 잔다는 뜻이에요. 체크아웃하는 날 아침엔 그 숙소에서 출발하고, 밤마다 그 숙소로 돌아가요. 체크한 숙소만 일정에 들어가요."
+                  style={{ cursor: "help", color: "#1976d2", fontWeight: "normal", fontSize: "12px" }}
+                >
+                  ?
+                </span>
               </label>
               <p style={{ fontSize: "12px", color: "#999", margin: "0 0 12px" }}>
-                숙소 위치를 기준으로 날짜별 장소를 클러스터링합니다.
+                이번 여행에서 묵는 숙소를 체크하세요. 체크한 숙소만 일정에 들어가요.
               </p>
-              {/* 숙소가 없으면 인라인 검색창 표시 — 모달 왕복 없이 바로 추가 가능 */}
-              {hotelPlaces.length === 0 && (
+              {nDays <= 1 && (
+                <p style={{ fontSize: "12px", color: "#795548", background: "#fff8e1", border: "1px solid #ffd54f", borderRadius: "6px", padding: "8px 10px", margin: 0, lineHeight: 1.5 }}>
+                  당일치기 여행에는 숙소 배정이 필요 없어요.
+                </p>
+              )}
+              {nDays > 1 && (
+              <>
+              {(hotelPlaces.length === 0 || showHotelSearch) && (
                 <div style={{
                   padding: "16px",
                   background: "#f8f9ff",
@@ -1061,159 +1216,102 @@ const AiScheduleModal: React.FC<AiScheduleModalProps> = ({
                 </div>
               )}
 
-              {settings.hotels.map((hotel, i) => (
-                <div
-                  key={i}
-                  style={{
-                    padding: "12px", background: "#f5f5f5",
-                    borderRadius: "6px",
-                    border: `1px solid ${overlappingHotelIndices.has(i) ? "#e53935" : "#ddd"}`,
-                    marginBottom: "8px",
-                  }}
-                >
-                  <div style={{ marginBottom: "8px" }}>
-                    <select
-                      value={hotel.name}
-                      onChange={(e) => {
-                        const selected = savedPlaces.find((p) => p.name === e.target.value);
-                        if (!selected) return;
-                        const next = [...settings.hotels];
-                        next[i] = {
-                          ...next[i],
-                          name: selected.name,
-                          address: selected.address || "",
-                          lat: selected.lat,
-                          lng: selected.lng,
-                        };
-                        updateSetting("hotels", next);
-                      }}
-                      style={{
-                        width: "100%", padding: "8px 10px",
-                        border: "1px solid #ccc", borderRadius: "6px",
-                        fontSize: "13px", background: "#fff",
-                      }}
-                    >
-                      <option value="">숙소를 선택하세요...</option>
-                      {hotelPlaces.map((p) => (
-                        <option key={p.id} value={p.name}>{p.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  {hotel.name && (
-                    <div
-                      style={{
-                        padding: "8px 10px", background: "#fff",
-                        borderRadius: "4px", border: "1px solid #e0e0e0",
-                        fontSize: "12px", color: "#555", marginBottom: "8px",
-                      }}
-                    >
-                      📍 {hotel.address || "주소 없음"}
-                      {hotel.lat != null && (
-                        <span style={{ marginLeft: "8px", color: "#999" }}>
-                          ({hotel.lat.toFixed(4)}, {hotel.lng?.toFixed(4)})
+              {hotelPlaces.map((place) => {
+                const idx = settings.hotels.findIndex((h) => h.name === place.name);
+                const row = idx >= 0 ? settings.hotels[idx] : null;
+                return (
+                  <div
+                    key={place.id}
+                    style={{
+                      padding: "10px 12px", background: row ? "#f5f5f5" : "#fff",
+                      borderRadius: "6px",
+                      border: `1px solid ${row && overlappingHotelIndices.has(idx) ? "#e53935" : "#ddd"}`,
+                      marginBottom: "8px",
+                    }}
+                  >
+                    <label style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer" }}>
+                      <input
+                        type="checkbox"
+                        checked={!!row}
+                        onChange={(e) => (e.target.checked ? assignHotel(place) : unassignHotel(place.name))}
+                        style={{ width: "16px", height: "16px", cursor: "pointer" }}
+                      />
+                      <span style={{ flex: 1, minWidth: 0, fontSize: "13px", fontWeight: "bold", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        🏨 {place.name}
+                      </span>
+                      {!row && <span style={{ fontSize: "11px", color: "#aaa", flexShrink: 0 }}>일정에 포함 안 됨</span>}
+                    </label>
+                    {row && (
+                      <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap", marginTop: "8px", paddingLeft: "26px" }}>
+                        <span style={{ fontSize: "12px", color: "#666" }}>체크인</span>
+                        <select
+                          value={row.checkInDay}
+                          onChange={(e) => {
+                            const newIn = Number(e.target.value);
+                            patchHotel(place.name, {
+                              checkInDay: newIn,
+                              checkOutDay: row.checkOutDay <= newIn ? newIn + 1 : row.checkOutDay,
+                            });
+                          }}
+                          style={{ padding: "4px 8px", border: "1px solid #ccc", borderRadius: "4px", fontSize: "13px" }}
+                        >
+                          {Array.from({ length: nDays - 1 }, (_, d) => (
+                            <option key={d + 1} value={d + 1}>DAY {d + 1}</option>
+                          ))}
+                        </select>
+                        <span style={{ fontSize: "12px", color: "#666" }}>체크아웃</span>
+                        <select
+                          value={row.checkOutDay}
+                          onChange={(e) => patchHotel(place.name, { checkOutDay: Number(e.target.value) })}
+                          style={{ padding: "4px 8px", border: "1px solid #ccc", borderRadius: "4px", fontSize: "13px" }}
+                        >
+                          {Array.from({ length: nDays }, (_, d) => d + 1)
+                            .filter((day) => day > row.checkInDay)
+                            .map((day) => (
+                              <option key={day} value={day}>DAY {day}</option>
+                            ))}
+                        </select>
+                        <span style={{ fontSize: "12px", color: "#555", fontWeight: "bold" }}>
+                          {row.checkOutDay - row.checkInDay}박
                         </span>
-                      )}
-                    </div>
-                  )}
-                  <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
-                    <span style={{ fontSize: "12px", color: "#666" }}>체크인</span>
-                    <select
-                      value={hotel.checkInDay}
-                      onChange={(e) => {
-                        const next = [...settings.hotels];
-                        const newIn = Number(e.target.value);
-                        next[i] = {
-                          ...next[i],
-                          checkInDay: newIn,
-                          checkOutDay: next[i].checkOutDay <= newIn ? newIn + 1 : next[i].checkOutDay,
-                        };
-                        updateSetting("hotels", next);
-                      }}
-                      style={{ padding: "4px 8px", border: "1px solid #ccc", borderRadius: "4px", fontSize: "13px" }}
-                    >
-                      {Array.from({ length: nDays }, (_, d) => (
-                        <option key={d + 1} value={d + 1}>DAY {d + 1}</option>
-                      ))}
-                    </select>
-                    <span style={{ fontSize: "12px", color: "#666" }}>체크아웃</span>
-                    <select
-                      value={hotel.checkOutDay}
-                      onChange={(e) => {
-                        const next = [...settings.hotels];
-                        next[i] = { ...next[i], checkOutDay: Number(e.target.value) };
-                        updateSetting("hotels", next);
-                      }}
-                      style={{
-                        padding: "4px 8px",
-                        border: `1px solid ${hotel.checkOutDay <= hotel.checkInDay ? "#e53935" : "#ccc"}`,
-                        borderRadius: "4px", fontSize: "13px",
-                      }}
-                    >
-                      {Array.from({ length: nDays }, (_, d) => (
-                        <option key={d + 1} value={d + 1}>DAY {d + 1}</option>
-                      ))}
-                    </select>
-                    {hotel.checkOutDay <= hotel.checkInDay && (
-                      <span style={{ fontSize: "11px", color: "#e53935", width: "100%" }}>
-                        ⚠️ 체크아웃은 체크인보다 늦어야 합니다
-                      </span>
+                        {overlappingHotelIndices.has(idx) && (
+                          <span style={{ fontSize: "11px", color: "#e53935", width: "100%" }}>
+                            ⚠️ 다른 숙소와 숙박 기간이 겹쳐요
+                          </span>
+                        )}
+                      </div>
                     )}
-                    {hotel.checkOutDay > hotel.checkInDay && overlappingHotelIndices.has(i) && (
-                      <span style={{ fontSize: "11px", color: "#e53935", width: "100%" }}>
-                        ⚠️ 다른 숙소와 숙박 기간이 겹쳐요
-                      </span>
-                    )}
-                    <button
-                      onClick={() => updateSetting("hotels", settings.hotels.filter((_, idx) => idx !== i))}
-                      style={{
-                        marginLeft: "auto", padding: "4px 10px",
-                        background: "#fff", color: "#e53935",
-                        border: "1px solid #e53935", borderRadius: "4px",
-                        fontSize: "12px", cursor: "pointer",
-                      }}
-                    >
-                      제거
-                    </button>
                   </div>
-                </div>
-              ))}
-              <button
-                onClick={() =>
-                  updateSetting("hotels", [
-                    ...settings.hotels,
-                    {
-                      name: "", lat: undefined, lng: undefined,
-                      address: "", checkInDay: 1, checkOutDay: nDays,
-                    },
-                  ])
-                }
-                disabled={hotelPlaces.length === 0}
-                style={{
-                  width: "100%", padding: "10px",
-                  border: "2px dashed #ccc", borderRadius: "6px",
-                  fontSize: "13px", color: hotelPlaces.length === 0 ? "#bbb" : "#555",
-                  background: "#fafafa",
-                  cursor: hotelPlaces.length === 0 ? "not-allowed" : "pointer",
-                  opacity: hotelPlaces.length === 0 ? 0.4 : 1,
-                }}
-              >
-                {hotelPlaces.length === 0
-                  ? "↑ 위에서 숙소를 먼저 추가해주세요"
-                  : "+ 일정에 숙소 배정 추가"}
-              </button>
+                );
+              })}
+              {hotelPlaces.length > 0 && (
+                <button
+                  onClick={() => setShowHotelSearch((v) => !v)}
+                  style={{ background: "none", border: "none", color: "#1976d2", fontSize: "12px", cursor: "pointer", padding: 0, textDecoration: "underline" }}
+                >
+                  {showHotelSearch ? "숙소 검색 닫기" : "＋ 다른 숙소 검색해서 저장"}
+                </button>
+              )}
+              </>
+              )}
             </div>
 
             {/* ── 출발지 설정 ── */}
             <div>
               <label style={{ display: "block", fontWeight: "bold", fontSize: "14px", marginBottom: "6px", color: "#333" }}>
-                ✈️ 출발지 설정 (선택)
+                ✈️ 출발지 설정 (선택){" "}
+                <span
+                  title="1일차 출발지는 도착 지점으로, 2일차 이후 출발지는 그날의 시작 지점으로 일정에 들어가요. '마지막 날 복귀 기준'은 하나만 고를 수 있고, 아무것도 고르지 않으면 1일차 출발지로 돌아가요. 체크한 교통 장소만 일정에 들어가요."
+                  style={{ cursor: "help", color: "#1976d2", fontWeight: "normal", fontSize: "12px" }}
+                >
+                  ?
+                </span>
               </label>
               <p style={{ fontSize: "12px", color: "#999", margin: "0 0 12px" }}>
-                공항, 기차역 등 출발/도착 기준점을 설정합니다.
+                공항, 기차역 등 출발·도착 기준점을 체크하세요. 체크한 곳만 일정에 들어가요.
               </p>
 
-              {/* 저장된 장소가 없거나, 출발지로 쓸 만한 장소를 새로 찾고 싶을 때 인라인 검색 */}
-              {validPlaces.length === 0 && (
+              {(transitPlaces.length === 0 || showDeptSearch) && (
                 <div style={{
                   padding: "16px",
                   background: "#f8f9ff",
@@ -1326,141 +1424,71 @@ const AiScheduleModal: React.FC<AiScheduleModalProps> = ({
                 </div>
               )}
 
-              {settings.departurePoints.map((dp, i) => (
-                <div
-                  key={i}
-                  style={{
-                    padding: "12px", background: "#f5f5f5",
-                    borderRadius: "6px", border: "1px solid #ddd", marginBottom: "8px",
-                  }}
-                >
-                  <div style={{ marginBottom: "8px" }}>
-                    <select
-                      value={dp.name}
-                      onChange={(e) => {
-                        const selected = savedPlaces.find((p) => p.name === e.target.value);
-                        if (!selected) return;
-                        const next = [...settings.departurePoints];
-                        next[i] = {
-                          ...next[i],
-                          name: selected.name,
-                          address: selected.address || "",
-                          lat: selected.lat,
-                          lng: selected.lng,
-                        };
-                        updateSetting("departurePoints", next);
-                      }}
-                      style={{
-                        width: "100%", padding: "8px 10px",
-                        border: "1px solid #ccc", borderRadius: "6px",
-                        fontSize: "13px", background: "#fff",
-                      }}
-                    >
-                      <option value="">출발지를 선택하세요...</option>
-                      {/* 교통 카테고리 장소를 상단에 우선 표시 */}
-                      {validPlaces.filter((p) => p.category === "교통").length > 0 && (
-                        <optgroup label="✈️ 교통 (공항/기차역 등)">
-                          {validPlaces
-                            .filter((p) => p.category === "교통")
-                            .map((p) => (
-                              <option key={p.id} value={p.name}>
-                                {p.name}
-                              </option>
-                            ))}
-                        </optgroup>
-                      )}
-                      {validPlaces.filter((p) => p.category !== "교통").length > 0 && (
-                        <optgroup label="기타 장소">
-                          {validPlaces
-                            .filter((p) => p.category !== "교통")
-                            .map((p) => (
-                              <option key={p.id} value={p.name}>
-                                {p.name} ({p.category})
-                              </option>
-                            ))}
-                        </optgroup>
-                      )}
-                    </select>
-                  </div>
-                  {dp.name && (
-                    <div
-                      style={{
-                        padding: "8px 10px", background: "#fff",
-                        borderRadius: "4px", border: "1px solid #e0e0e0",
-                        fontSize: "12px", color: "#555", marginBottom: "8px",
-                      }}
-                    >
-                      📍 {dp.address || "주소 없음"}
-                    </div>
-                  )}
-                  <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
-                    <span style={{ fontSize: "12px", color: "#666" }}>적용 일차</span>
-                    <select
-                      value={dp.day}
-                      onChange={(e) => {
-                        const next = [...settings.departurePoints];
-                        next[i] = { ...next[i], day: Number(e.target.value) };
-                        updateSetting("departurePoints", next);
-                      }}
-                      style={{ padding: "4px 8px", border: "1px solid #ccc", borderRadius: "4px", fontSize: "13px" }}
-                    >
-                      {Array.from({ length: nDays }, (_, d) => (
-                        <option key={d + 1} value={d + 1}>DAY {d + 1}</option>
-                      ))}
-                    </select>
-                    <label style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "12px", cursor: "pointer" }}>
+              {transitPlaces.map((place) => {
+                const idx = settings.departurePoints.findIndex((d) => d.name === place.name);
+                const row = idx >= 0 ? settings.departurePoints[idx] : null;
+                const sameDay =
+                  row != null &&
+                  settings.departurePoints.some((o, oi) => oi !== idx && o.day === row.day);
+                return (
+                  <div
+                    key={place.id}
+                    style={{
+                      padding: "10px 12px", background: row ? "#f5f5f5" : "#fff",
+                      borderRadius: "6px", border: `1px solid ${sameDay ? "#e53935" : "#ddd"}`,
+                      marginBottom: "8px",
+                    }}
+                  >
+                    <label style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer" }}>
                       <input
                         type="checkbox"
-                        checked={dp.isReturnPoint}
-                        onChange={(e) => {
-                          const next = [...settings.departurePoints];
-                          next[i] = { ...next[i], isReturnPoint: e.target.checked };
-                          updateSetting("departurePoints", next);
-                        }}
+                        checked={!!row}
+                        onChange={(e) => (e.target.checked ? assignDeparture(place) : unassignDeparture(place.name))}
+                        style={{ width: "16px", height: "16px", cursor: "pointer" }}
                       />
-                      마지막 날 복귀 기준
+                      <span style={{ flex: 1, minWidth: 0, fontSize: "13px", fontWeight: "bold", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        ✈️ {place.name}
+                      </span>
+                      {!row && <span style={{ fontSize: "11px", color: "#aaa", flexShrink: 0 }}>일정에 포함 안 됨</span>}
                     </label>
-                    <button
-                      onClick={() =>
-                        updateSetting(
-                          "departurePoints",
-                          settings.departurePoints.filter((_, idx) => idx !== i)
-                        )
-                      }
-                      style={{
-                        marginLeft: "auto", padding: "4px 10px",
-                        background: "#fff", color: "#e53935",
-                        border: "1px solid #e53935", borderRadius: "4px",
-                        fontSize: "12px", cursor: "pointer",
-                      }}
-                    >
-                      제거
-                    </button>
+                    {row && (
+                      <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap", marginTop: "8px", paddingLeft: "26px" }}>
+                        <span style={{ fontSize: "12px", color: "#666" }}>적용 일차</span>
+                        <select
+                          value={row.day}
+                          onChange={(e) => patchDeparture(place.name, { day: Number(e.target.value) })}
+                          style={{ padding: "4px 8px", border: "1px solid #ccc", borderRadius: "4px", fontSize: "13px" }}
+                        >
+                          {Array.from({ length: nDays }, (_, d) => (
+                            <option key={d + 1} value={d + 1}>DAY {d + 1}</option>
+                          ))}
+                        </select>
+                        <label style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "12px", cursor: "pointer" }}>
+                          <input
+                            type="checkbox"
+                            checked={row.isReturnPoint}
+                            onChange={(e) => setReturnPoint(idx, e.target.checked)}
+                          />
+                          마지막 날 복귀 기준
+                        </label>
+                        {sameDay && (
+                          <span style={{ fontSize: "11px", color: "#e53935", width: "100%" }}>
+                            ⚠️ 같은 일차에 다른 출발지가 이미 있어요
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
-              <button
-                onClick={() =>
-                  updateSetting("departurePoints", [
-                    ...settings.departurePoints,
-                    { name: "", lat: undefined, lng: undefined, address: "", day: 1, isReturnPoint: true },
-                  ])
-                }
-                disabled={validPlaces.length === 0}
-                style={{
-                  width: "100%", padding: "10px",
-                  border: "2px dashed #ccc", borderRadius: "6px",
-                  fontSize: "13px",
-                  color: validPlaces.length === 0 ? "#bbb" : "#555",
-                  background: "#fafafa",
-                  cursor: validPlaces.length === 0 ? "not-allowed" : "pointer",
-                  opacity: validPlaces.length === 0 ? 0.4 : 1,
-                }}
-              >
-                {validPlaces.length === 0
-                  ? "↑ 위에서 출발지를 먼저 추가해주세요"
-                  : "+ 출발지 배정 추가"}
-              </button>
+                );
+              })}
+              {transitPlaces.length > 0 && (
+                <button
+                  onClick={() => setShowDeptSearch((v) => !v)}
+                  style={{ background: "none", border: "none", color: "#1976d2", fontSize: "12px", cursor: "pointer", padding: 0, textDecoration: "underline" }}
+                >
+                  {showDeptSearch ? "출발지 검색 닫기" : "＋ 공항·기차역 검색해서 저장"}
+                </button>
+              )}
             </div>
 
             {/* ── 장소 고정 ── */}
@@ -1578,6 +1606,52 @@ const AiScheduleModal: React.FC<AiScheduleModalProps> = ({
             </div>
           </div>
         </div>
+
+        {/* 생성 전 예상 — 일부가 빠질 것 같으면 미리 알려서 생성 뒤에 놀라지 않게 */}
+        {estimate && estimate.excluded > 0 && (
+          <div
+            role="status"
+            style={{
+              padding: "12px 30px",
+              background: "#fff8e1",
+              borderTop: "3px solid #ffd54f",
+              color: "#795548",
+            }}
+          >
+            <p style={{ margin: 0, fontSize: "13px", fontWeight: 800 }}>
+              📊 {estimate.totalPlaces}곳 중 약 {estimate.included}곳이 일정에 들어가요
+            </p>
+            <p style={{ margin: "3px 0 0", fontSize: "12px", lineHeight: 1.5 }}>
+              설정한 시간 기준으로 하루 최대 {estimate.maxPerDay}곳 × {estimate.nDays}일이라 나머지 {estimate.excluded}곳은 빠질 수 있어요.{" "}
+              {settings.priority !== "efficiency"
+                ? "여행 기간이나 이용 시간을 늘리거나, 일정 스타일을 '효율적'으로 바꾸면 더 많이 들어가요."
+                : "여행 기간이나 이용 시간을 늘리면 더 많이 들어가요."}{" "}
+              (예상이라 실제와 조금 다를 수 있어요)
+            </p>
+          </div>
+        )}
+
+        {/* 생성 버튼이 잠긴 이유 — 중간 섹션은 스크롤하면 안 보여서 푸터 바로 위에 배너로 고정 노출 */}
+        {!isLoading && !canGenerate && (
+          <div
+            role="alert"
+            style={{
+              padding: "14px 30px",
+              background: "#ffebee",
+              borderTop: "3px solid #e53935",
+              color: "#c62828",
+            }}
+          >
+            <p style={{ margin: "0 0 6px", fontSize: "14px", fontWeight: 800 }}>
+              ⚠️ 아직 일정을 생성할 수 없어요
+            </p>
+            {readinessIssues.map((issue, i) => (
+              <p key={i} style={{ margin: "3px 0 0", fontSize: "13px", lineHeight: 1.5 }}>
+                • {issue}
+              </p>
+            ))}
+          </div>
+        )}
 
         {/* ── 푸터 ── */}
         <div

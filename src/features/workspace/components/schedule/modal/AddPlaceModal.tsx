@@ -3,7 +3,10 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import "../../../styles/modals.css";
 import { useNaverMap } from "../../../hooks/useNaverMap";
 import { searchPlaces } from "../../../../../api/place.api";
+import type { PlaceSearchItem } from "../../../../../api/place.api";
 import { CATEGORY_COLOR, CATEGORY_LIST, getCategoryIcon } from "../../../hooks/schedule.constants";
+import type { NaverMapObject } from "../../../hooks/naverMapTypes";
+import { apiMessage } from "../../../hooks/apiError";
 
 interface Place {
   id: string;
@@ -19,6 +22,8 @@ interface Place {
 
 interface AddPlaceModalProps {
   onClose: () => void;
+  /** 있으면 헤더에 "저장한 장소에서 고르기" 링크를 보여준다 */
+  onBackToSaved?: () => void;
   onAddPlace: (place: Place) => void | Promise<void>;
   existingPlaces: Place[];
 }
@@ -35,6 +40,7 @@ const CATEGORY_MAP: Record<string, string> = {
 
 const AddPlaceModal: React.FC<AddPlaceModalProps> = ({
   onClose,
+  onBackToSaved,
   onAddPlace,
   existingPlaces,
 }) => {
@@ -50,10 +56,10 @@ const AddPlaceModal: React.FC<AddPlaceModalProps> = ({
   const { mapLoaded, mapKey } = useNaverMap();
 
   const mapRef = useRef<HTMLDivElement>(null);
-  const mapInstanceRef = useRef<any>(null);
-  const markersRef = useRef<any[]>([]);
-  const markerByPlaceIdRef = useRef<Record<string, any>>({});
-  const infoWindowRef = useRef<any>(null);
+  const mapInstanceRef = useRef<NaverMapObject>(null);
+  const markersRef = useRef<NaverMapObject[]>([]);
+  const markerByPlaceIdRef = useRef<Record<string, NaverMapObject>>({});
+  const infoWindowRef = useRef<NaverMapObject>(null);
   const searchSeqRef = useRef(0); // 오래된 검색 응답이 최신 결과를 덮어쓰지 않도록
 
   // ── geocoder 서브모듈 추가 로드 (역지오코딩용, 이 모달에서만 필요) ──
@@ -90,7 +96,7 @@ const AddPlaceModal: React.FC<AddPlaceModalProps> = ({
     });
 
     // 지도 클릭 → 해당 위치에서 검색
-    window.naver.maps.Event.addListener(map, "click", (e: any) => {
+    window.naver.maps.Event.addListener(map, "click", (e: NaverMapObject) => {
       const lat = e.latlng.lat();
       const lng = e.latlng.lng();
       handleMapClick(lat, lng, map);
@@ -197,10 +203,10 @@ const AddPlaceModal: React.FC<AddPlaceModalProps> = ({
         return;
       }
 
-      const mapped: Place[] = data.places.map((p: any, idx: number) => ({
+      const mapped: Place[] = data.places.map((p: PlaceSearchItem, idx: number) => ({
         id: `search_${Date.now()}_${idx}`,
         name: p.name,
-        category: CATEGORY_MAP[p.category] ?? p.category ?? "관광",
+        category: CATEGORY_MAP[p.category ?? ""] ?? p.category ?? "관광",
         address: p.address || "",
         description: p.description || "",
         lat: p.lat,
@@ -213,9 +219,9 @@ const AddPlaceModal: React.FC<AddPlaceModalProps> = ({
       setTimeout(() => {
         drawMarkers(mapped, (p) => setSelectedPlace(p));
       }, 0);
-    } catch (e: any) {
+    } catch (e) {
       if (seq !== searchSeqRef.current) return;
-      setErrorMsg(e.response?.data?.message || e.message || "검색 중 오류가 발생했습니다.");
+      setErrorMsg(apiMessage(e, "검색 중 오류가 발생했습니다."));
     } finally {
       if (seq === searchSeqRef.current) setIsSearching(false);
     }
@@ -227,7 +233,7 @@ const AddPlaceModal: React.FC<AddPlaceModalProps> = ({
   };
 
   // ── 지도 클릭 → 임시 핀 + 네이버 SDK reverseGeocode 후 검색 ──
-  const handleMapClick = (lat: number, lng: number, map: any) => {
+  const handleMapClick = (lat: number, lng: number, map: NaverMapObject) => {
     if (!window.naver) return;
     setHasClickedMap(true);
 
@@ -261,7 +267,7 @@ const AddPlaceModal: React.FC<AddPlaceModalProps> = ({
           window.naver.maps.Service.OrderType.ROAD_ADDR,
         ].join(","),
       },
-      (status: any, response: any) => {
+      (status: NaverMapObject, response: NaverMapObject) => {
         tempMarker.setMap(null);
 
         if (status !== window.naver.maps.Service.Status.OK) return;
@@ -316,8 +322,8 @@ const AddPlaceModal: React.FC<AddPlaceModalProps> = ({
       await onAddPlace(place);
       setAddedName(place.name);
       setTimeout(() => setAddedName(null), 2500);
-    } catch (e: any) {
-      setErrorMsg(e?.response?.data?.message || e?.message || `'${place.name}' 추가에 실패했습니다.`);
+    } catch (e) {
+      setErrorMsg(apiMessage(e, `'${place.name}' 추가에 실패했습니다.`));
     } finally {
       setAddingId(null);
     }
@@ -340,6 +346,14 @@ const AddPlaceModal: React.FC<AddPlaceModalProps> = ({
         {/* ── 헤더 ── */}
         <div className="modal-header">
           <span className="mh-title">&gt;&gt; ADD NEW PLACE</span>
+          {onBackToSaved && (
+            <button
+              onClick={onBackToSaved}
+              style={{ marginLeft: "auto", marginRight: "12px", background: "none", border: "1px solid #fff", color: "#fff", borderRadius: "4px", padding: "4px 10px", fontSize: "12px", cursor: "pointer" }}
+            >
+              ← 저장한 장소에서 고르기
+            </button>
+          )}
           <button className="mh-close" onClick={onClose}>CLOSE [X]</button>
         </div>
 
@@ -528,7 +542,7 @@ const AddPlaceModal: React.FC<AddPlaceModalProps> = ({
                           lineHeight: 1.4,
                           overflow: "hidden", textOverflow: "ellipsis",
                           display: "-webkit-box", WebkitLineClamp: 2,
-                          WebkitBoxOrient: "vertical" as any,
+                          WebkitBoxOrient: "vertical" as React.CSSProperties["WebkitBoxOrient"],
                         }}>
                           {place.description}
                         </p>

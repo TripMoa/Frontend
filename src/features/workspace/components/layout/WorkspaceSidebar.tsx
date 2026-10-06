@@ -26,10 +26,7 @@ const WorkspaceSidebar: React.FC = () => {
     currentNoticeGroupId,
     selectTab,
     selectNoticeGroup,
-    addDateLog,
     addNoticeGroup,
-    renameDateLog,
-    deleteDateLog,
     renameNoticeGroup,
     deleteNoticeGroup,
     isNoticeGroupsLoading,
@@ -97,19 +94,7 @@ const WorkspaceSidebar: React.FC = () => {
       </div>
 
       <div className="ws-nav">
-        <div
-          className="ws-group-title"
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
-          <span>&gt;&gt; SCHEDULE</span>
-          <button className="btn-add-mini" onClick={addDateLog}>
-            [+]
-          </button>
-        </div>
+        <div className="ws-group-title">&gt;&gt; SCHEDULE</div>
 
         <div id="date-log-list">
           <div
@@ -137,11 +122,6 @@ const WorkspaceSidebar: React.FC = () => {
               <a className="ws-item" onClick={() => selectTab(day, "timeline")}>
                 {day}
               </a>
-
-              <div className="ws-item-controls">
-                <span onClick={() => renameDateLog(idx)}>✎</span>
-                <span onClick={() => deleteDateLog(idx)}>🗑</span>
-              </div>
             </div>
           ))}
         </div>

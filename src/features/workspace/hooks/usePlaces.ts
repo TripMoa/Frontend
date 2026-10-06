@@ -1,6 +1,8 @@
 // src/features/workspace/hooks/usePlaces.ts
 import { useEffect, useState, useCallback } from "react";
 import { getPlaces, createPlace, updatePlace, deletePlace } from "../../../api/place.api";
+import type { PlaceApiItem } from "../../../api/place.api";
+import { apiMessage } from "./apiError";
 
 export interface Place {
   id: string;
@@ -25,7 +27,7 @@ export const usePlaces = (tripId: number | null) => {
     setError(null);
     try {
       const { data } = await getPlaces(tripId);
-      setPlaces(data.map((p: any) => ({
+      setPlaces(data.map((p: PlaceApiItem) => ({
         id: String(p.id),
         name: p.name,
         category: p.category,
@@ -34,8 +36,8 @@ export const usePlaces = (tripId: number | null) => {
         lat: p.lat,
         lng: p.lng,
       })));
-    } catch (e: any) {
-      setError(e.message);
+    } catch (e) {
+      setError(apiMessage(e, "저장한 장소를 불러오지 못했어요."));
     } finally {
       setLoading(false);
     }
@@ -56,8 +58,8 @@ export const usePlaces = (tripId: number | null) => {
         lat: data.lat,
         lng: data.lng,
       }]);
-    } catch (e: any) {
-      setError(e.message);
+    } catch (e) {
+      setError(apiMessage(e, "장소를 저장하지 못했어요."));
       throw e; // 호출자(AddPlaceModal 등)가 성공/실패를 구분해서 피드백을 줄 수 있게 재전파
     }
   }, [tripId]);
@@ -68,8 +70,8 @@ export const usePlaces = (tripId: number | null) => {
       setPlaces((prev) => prev.map((p) =>
         p.id === placeId ? { ...p, category: data.category } : p
       ));
-    } catch (e: any) {
-      setError(e.message);
+    } catch (e) {
+      setError(apiMessage(e, "장소를 수정하지 못했어요."));
     }
   }, []);
 
@@ -77,8 +79,8 @@ export const usePlaces = (tripId: number | null) => {
     try {
       await deletePlace(placeId);
       setPlaces((prev) => prev.filter((p) => p.id !== placeId));
-    } catch (e: any) {
-      setError(e.message);
+    } catch (e) {
+      setError(apiMessage(e, "장소를 삭제하지 못했어요."));
     }
   }, []);
 
