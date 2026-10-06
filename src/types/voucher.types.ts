@@ -12,12 +12,14 @@ export type VoucherCreateRequest = {
   type: VoucherType;
   title: string;
   description?: string;
+  scheduleItemId?: number | null;
 };
 
 export type VoucherUpdateRequest = {
   type: VoucherType;
   title: string;
   description?: string;
+  scheduleItemId?: number | null;
 };
 
 // ===================
@@ -37,4 +39,5 @@ export type VoucherResponse = {
   createdByUserId: number | null;
   createdAt: string;
   updatedAt: string;
+  scheduleItemId: number | null;
 };

@@ -7,9 +7,11 @@ import type {
   VoucherUpdateRequest,
 } from "../types/voucher.types";
 
-// 바우처 목록 조회
-export const getVouchers = (tripId: number) => {
-  return api.get<VoucherResponse[]>(`/trips/${tripId}/vouchers`);
+// 바우처 목록 조회 (scheduleItemId를 주면 해당 일정 항목에 연결된 바우처만 조회)
+export const getVouchers = (tripId: number, scheduleItemId?: number) => {
+  return api.get<VoucherResponse[]>(`/trips/${tripId}/vouchers`, {
+    params: scheduleItemId != null ? { scheduleItemId } : undefined,
+  });
 };
 
 // 바우처 상세 조회

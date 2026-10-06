@@ -6,6 +6,7 @@ import type {
   ExpenseSettings,
   ShareType,
 } from "../../../hooks/expense.ui.types";
+import type { ScheduleItemOption } from "../../../../../types/scheduleItemOption.types";
 
 interface MemberLike {
   nickname: ExpenseMember;
@@ -31,6 +32,7 @@ interface ExpenseListProps {
   viewReceipt: (receiptUrl: string) => void;
   openAddModal: () => void;
   detailsRef: React.RefObject<HTMLDivElement | null>;
+  scheduleItemOptions?: ScheduleItemOption[];
 }
 
 const ExpenseList: React.FC<ExpenseListProps> = ({
@@ -53,8 +55,13 @@ const ExpenseList: React.FC<ExpenseListProps> = ({
   viewReceipt,
   openAddModal,
   detailsRef,
+  scheduleItemOptions = [],
 }) => {
   const SHARE_TYPES: ShareType[] = ["ALL", "SHARED", "PERSONAL"];
+
+  const scheduleItemLabelById = new Map(
+    scheduleItemOptions.map((opt) => [opt.id, `${opt.day} · ${opt.title}`]),
+  );
 
   const getInvolvedLabel = (item: ExpenseItem) => {
     const unique = Array.from(new Set((item.involved ?? []).filter(Boolean)));
@@ -186,6 +193,16 @@ const ExpenseList: React.FC<ExpenseListProps> = ({
                     <i className="fa-solid fa-user-group"></i>{" "}
                     {getInvolvedLabel(item)}
                   </span>
+                  {item.scheduleItemId != null &&
+                    scheduleItemLabelById.has(item.scheduleItemId) && (
+                      <>
+                        {" "}
+                        |{" "}
+                        <span style={{ color: "#666" }}>
+                          🔗 {scheduleItemLabelById.get(item.scheduleItemId)}
+                        </span>
+                      </>
+                    )}
                 </div>
               </div>
               <div className="exp-cost">- {item.cost.toLocaleString()}</div>

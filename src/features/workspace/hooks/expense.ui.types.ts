@@ -28,6 +28,7 @@ export interface ExpenseItem {
   split: SplitMap;
   receipt: string | null;
   fileName: string | null;
+  scheduleItemId?: number | null;
 }
 
 export interface ExpenseSummary {
