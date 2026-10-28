@@ -12,6 +12,7 @@ import { useWorkspaceCore } from "../../hooks/useWorkspaceCore";
 import { useTimeline } from "../../hooks/useTimeline";
 import { computeDayTabs, countTripDays, dayKeysWithItems } from "../../hooks/dayTabs";
 import { usePlaces } from "../../hooks/usePlaces";
+import { useWorkspaceRealtime } from "../../hooks/useWorkspaceRealtime";
 import { useTopOption } from "../../hooks/useTopOption";
 import { useExpenses } from "../../hooks/useExpenses";
 import type { ExpenseMember } from "../../hooks/expense.ui.types";
@@ -54,7 +55,11 @@ const WorkspaceCenter: React.FC<Props> = ({ noticeStore }) => {
   const params = useParams<{ tripId: string }>();
   const tripId = Number(params.tripId) || null;
 
-  const { ownerUserId, currentUserId } = useTripContext();
+  const { ownerUserId, currentUserId, tripDetail } = useTripContext();
+
+  // 제목 옆 아이콘: 함께하는 멤버가 있는 여행인지 (서버의 visibility 는 공개 여부가 아니라 이 뜻이다).
+  // 예전에는 항상 자물쇠가 떠서 멤버가 여럿이어도 "비공개"처럼 보였다.
+  const isSharedTrip = tripDetail?.visibility === "PUBLIC";
 
   const [isMemberModalOpen, setIsMemberModalOpen] = useState(false);
   const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState(false);
@@ -78,7 +83,7 @@ const WorkspaceCenter: React.FC<Props> = ({ noticeStore }) => {
 
   // usePlaces: 장소 목록 (localStorage 대체)
   // DayAllView/DayDetailView가 동일한 인스턴스를 공유해야 탭 전환 시에도 최신 상태가 유지됨
-  const { places: savedPlaces, addPlace, updatePlace, deletePlace } = usePlaces(tripId);
+  const { places: savedPlaces, addPlace, updatePlace, deletePlace, refetch: refetchPlaces } = usePlaces(tripId);
 
   // useTimeline: tripId 전달
   const {
@@ -99,9 +104,20 @@ const WorkspaceCenter: React.FC<Props> = ({ noticeStore }) => {
     moveNodeToDay,
     loadFromExternal,
     refetch,
+    syncFromServer,
+    dayKeyOfSchedule,
     error: timelineLoadError,
     actionError: timelineActionError,
   } = useTimeline(currentDay, tripId);
+
+  // 같은 여행의 다른 멤버가 일정·장소를 바꾸면 서버 알림을 받아 이 화면을 서버 기준으로 맞춘다 (+ 무엇이 바뀌었는지 토스트)
+  // generation: 다른 멤버가 AI 일정을 만드는 중이면 그 정보 — 배너를 띄우고 AI 생성·일정 수정을 막는다
+  const { notice: realtimeNotice, generation, scheduleRevision } = useWorkspaceRealtime({
+    tripId,
+    syncSchedules: syncFromServer,
+    syncPlaces: () => refetchPlaces({ silent: true }),
+    dayKeyOfSchedule,
+  });
 
   // 타임라인 조작(추가·수정·삭제·이동) 실패 안내 — 서버 기준으로 되돌린 뒤에도 사용자가 이유를 알 수 있게 토스트로 보여준다
   const [timelineToast, setTimelineToast] = useState<string | null>(null);
@@ -217,7 +233,6 @@ const WorkspaceCenter: React.FC<Props> = ({ noticeStore }) => {
 
   const {
     open,
-    isPrivate,
     isEditOpen,
     toggle,
     openEdit: openTripEdit,
@@ -275,10 +290,8 @@ const WorkspaceCenter: React.FC<Props> = ({ noticeStore }) => {
     <div className="ws-main">
       <div className="ws-top">
         <div className="ws-title-wrap">
-          <span id="privacy-badge">
-            <i
-              className={`fa-solid ${isPrivate ? "fa-lock" : "fa-lock-open"}`}
-            />
+          <span id="privacy-badge" title={isSharedTrip ? "함께하는 여행" : "나만의 여행"}>
+            <i className={`fa-solid ${isSharedTrip ? "fa-users" : "fa-user"}`} />
           </span>
           <div className="ws-title">{trip.title}</div>
         </div>
@@ -350,6 +363,9 @@ const WorkspaceCenter: React.FC<Props> = ({ noticeStore }) => {
                 autoOpenAiModal={autoOpenAiModal}
                 onAutoOpenAiModalHandled={() => setAutoOpenAiModal(false)}
                 scheduledItems={scheduledItems}
+                generationLock={generation}
+                onScheduleRestored={() => syncFromServer([])}
+                scheduleRevision={scheduleRevision}
               />
             ) : (
               <DayDetailView
@@ -385,6 +401,7 @@ const WorkspaceCenter: React.FC<Props> = ({ noticeStore }) => {
                   setPrefillExpenseScheduleItemId(scheduleItemId);
                   expenseStore.openAddModal();
                 }}
+                generationLock={generation}
               />
             )}
           </div>
@@ -530,7 +547,34 @@ const WorkspaceCenter: React.FC<Props> = ({ noticeStore }) => {
         onConfirm={closeNotice}
       />
 
-      {timelineToast && (
+      {generation && activeView === "timeline" && (
+        <div
+          role="status"
+          data-testid="generation-banner"
+          style={{
+            // 화면 아래(토스트 바로 위)에 둔다 — 위쪽에 두면 페이지 제목·상단 버튼을 가린다. 클릭은 그대로 통과시킨다.
+            position: "fixed", bottom: "84px", left: "50%",
+            transform: "translateX(-50%)",
+            background: "#fff8e1", color: "#5d4037",
+            border: "2px solid #000", borderRadius: "8px",
+            padding: "10px 18px",
+            fontSize: "13px", fontWeight: "bold",
+            boxShadow: "3px 3px 0 #000",
+            zIndex: 900,
+            display: "flex", alignItems: "center", gap: "10px",
+            maxWidth: "calc(100vw - 32px)",
+            pointerEvents: "none",
+          }}
+        >
+          <span>✨</span>
+          <span>
+            {generation.actorNickname ? `${generation.actorNickname}님이` : "다른 멤버가"} AI 일정을 만드는 중이에요
+            <span style={{ fontWeight: 500 }}> · 끝날 때까지 일정 수정이 잠시 막혀요 (메모는 쓸 수 있어요)</span>
+          </span>
+        </div>
+      )}
+
+      {(timelineToast ?? realtimeNotice) && (
         <div
           role="alert"
           style={{
@@ -544,7 +588,7 @@ const WorkspaceCenter: React.FC<Props> = ({ noticeStore }) => {
             pointerEvents: "none",
           }}
         >
-          {timelineToast}
+          {timelineToast ?? realtimeNotice}
         </div>
       )}
     </div>

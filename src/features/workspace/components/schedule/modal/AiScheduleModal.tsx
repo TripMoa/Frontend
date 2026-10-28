@@ -6,6 +6,7 @@ import type { ScheduleEstimate, GeneratedScheduleItem } from "../../../../../api
 import { searchPlaces } from "../../../../../api/place.api";
 import type { PlaceSearchItem } from "../../../../../api/place.api";
 import { apiMessage } from "../../../hooks/apiError";
+import type { GenerationLock } from "../../../hooks/tripChange";
 import "../../../styles/modals.css";
 import {
   CATEGORY_TO_BACKEND,
@@ -101,6 +102,8 @@ interface AiScheduleModalProps {
   hasExistingSchedule?: boolean;
   /** 모달 안에서 바로 장소를 추가할 수 있도록 부모의 핸들러를 받음 */
   onAddPlace: (place: Place) => void | Promise<void>;
+  /** 다른 멤버가 이 순간 AI 일정을 만드는 중이면 그 정보 — 모달을 열어 둔 사이에 시작될 수 있다. 끝날 때까지 생성 버튼을 막는다 */
+  generationLock?: GenerationLock | null;
 }
 
 
@@ -132,6 +135,7 @@ const AiScheduleModal: React.FC<AiScheduleModalProps> = ({
   tripId,
   hasExistingSchedule = false,
   onAddPlace,
+  generationLock = null,
 }) => {
   const [settings, setSettings] = useState<AiScheduleSettings>({
     startTime: "09:00",
@@ -430,6 +434,10 @@ const AiScheduleModal: React.FC<AiScheduleModalProps> = ({
 
   // ─── 제출 ────────────────────────────────────────────────
   const handleSubmit = async () => {
+    if (generationLock) {
+      setErrorMsg(`${generationLock.actorNickname ?? "다른 멤버"}님이 AI 일정을 만드는 중이에요. 끝나면 다시 시도해주세요.`);
+      return;
+    }
     if (!canGenerate) {
       setErrorMsg(readinessIssues[0]);
       return;
@@ -1675,18 +1683,18 @@ const AiScheduleModal: React.FC<AiScheduleModalProps> = ({
           </button>
           <button
             onClick={handleSubmit}
-            disabled={isLoading || !canGenerate}
-            title={!canGenerate ? readinessIssues[0] : undefined}
+            disabled={isLoading || !canGenerate || generationLock !== null}
+            title={generationLock ? "다른 멤버가 AI 일정을 만드는 중이에요" : !canGenerate ? readinessIssues[0] : undefined}
             style={{
               padding: "12px 25px",
-              background: isLoading || !canGenerate ? "#999" : "#000",
+              background: isLoading || !canGenerate || generationLock ? "#999" : "#000",
               color: "#fff", border: "2px solid #000", borderRadius: "6px",
               fontWeight: "bold", fontSize: "14px",
-              cursor: isLoading || !canGenerate ? "not-allowed" : "pointer",
+              cursor: isLoading || !canGenerate || generationLock ? "not-allowed" : "pointer",
               transition: "0.2s",
             }}
           >
-            {isLoading ? "⏳ 생성 중..." : "✨ AI 일정 생성하기"}
+            {isLoading ? "⏳ 생성 중..." : generationLock ? "⏳ 다른 멤버가 생성 중" : "✨ AI 일정 생성하기"}
           </button>
         </div>
       </div>
