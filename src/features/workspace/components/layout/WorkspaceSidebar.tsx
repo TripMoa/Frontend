@@ -4,9 +4,22 @@ import "../../styles/sidebar.css";
 import { useWorkspaceCore } from "../../hooks/useWorkspaceCore";
 import { useTripContext } from "../../hooks/useTripContext";
 import { ActionPromptModal } from "../../../../shared/components/ActionPromptModal";
+import {
+  regenerateTripInviteCode,
+  updateTripInviteEnabled,
+} from "../../../../api/trip.api";
+import { apiMessage } from "../../hooks/apiError";
 
 const WorkspaceSidebar: React.FC = () => {
-  const { isOwner } = useTripContext();
+  const { isOwner, tripId, tripDetail } = useTripContext();
+
+  // 소유자가 링크를 다시 만들거나 켜고 끈 뒤의 값. 없으면 서버에서 받아온 값을 쓴다.
+  const [inviteOverride, setInviteOverride] = useState<{
+    code: string;
+    enabled: boolean;
+  } | null>(null);
+  const [inviteBusy, setInviteBusy] = useState(false);
+  const [confirmRegenerate, setConfirmRegenerate] = useState(false);
 
   const [inviteModal, setInviteModal] = useState<{
     open: boolean;
@@ -54,8 +67,45 @@ const WorkspaceSidebar: React.FC = () => {
     return `${diff}박 ${diff + 1}일`;
   };
 
+  const inviteCode = inviteOverride?.code ?? tripDetail?.inviteCode ?? trip?.inviteCode;
+  const inviteEnabled = inviteOverride?.enabled ?? tripDetail?.inviteEnabled ?? true;
+
+  const showInviteMessage = (headline: string, description: string) =>
+    setInviteModal({ open: true, headline, description });
+
+  const handleToggleInvite = async () => {
+    if (inviteBusy || !Number.isFinite(tripId)) return;
+    setInviteBusy(true);
+    try {
+      const { data } = await updateTripInviteEnabled(tripId, !inviteEnabled);
+      setInviteOverride({ code: data.inviteCode, enabled: data.inviteEnabled });
+    } catch (e) {
+      showInviteMessage("변경하지 못했어요", apiMessage(e, "잠시 후 다시 시도해주세요."));
+    } finally {
+      setInviteBusy(false);
+    }
+  };
+
+  const handleRegenerateInvite = async () => {
+    setConfirmRegenerate(false);
+    if (inviteBusy || !Number.isFinite(tripId)) return;
+    setInviteBusy(true);
+    try {
+      const { data } = await regenerateTripInviteCode(tripId);
+      setInviteOverride({ code: data.inviteCode, enabled: data.inviteEnabled });
+      showInviteMessage(
+        "초대 링크를 새로 만들었어요",
+        "이전 링크는 더 이상 쓸 수 없어요. 새 링크는 INVITE FRIENDS 버튼으로 복사하세요.",
+      );
+    } catch (e) {
+      showInviteMessage("링크를 만들지 못했어요", apiMessage(e, "잠시 후 다시 시도해주세요."));
+    } finally {
+      setInviteBusy(false);
+    }
+  };
+
   const handleCopyInviteLink = async () => {
-    if (!trip?.inviteCode) {
+    if (!inviteCode) {
       setInviteModal({
         open: true,
         headline: "초대코드를 찾을 수 없습니다",
@@ -64,7 +114,17 @@ const WorkspaceSidebar: React.FC = () => {
       return;
     }
 
-    const inviteLink = `${window.location.origin}/invite/${trip.inviteCode}`;
+    if (!inviteEnabled) {
+      showInviteMessage(
+        "링크 초대가 꺼져 있어요",
+        isOwner
+          ? "아래 '링크 초대' 버튼으로 다시 켜면 링크를 공유할 수 있어요."
+          : "여행 소유자가 링크 초대를 닫아 두었어요.",
+      );
+      return;
+    }
+
+    const inviteLink = `${window.location.origin}/invite/${inviteCode}`;
 
     try {
       await navigator.clipboard.writeText(inviteLink);
@@ -256,7 +316,39 @@ const WorkspaceSidebar: React.FC = () => {
         <button className="btn-invite" onClick={handleCopyInviteLink}>
           <i className="fa-solid fa-share-nodes"></i> INVITE FRIENDS
         </button>
+
+        {isOwner && (
+          <div className="invite-admin">
+            <button
+              type="button"
+              className="invite-admin-btn"
+              onClick={handleToggleInvite}
+              disabled={inviteBusy}
+              title="끄면 링크로 새로 참여할 수 없어요 (이미 참여한 멤버는 그대로예요)"
+            >
+              링크 초대 {inviteEnabled ? "ON" : "OFF"}
+            </button>
+            <button
+              type="button"
+              className="invite-admin-btn"
+              onClick={() => setConfirmRegenerate(true)}
+              disabled={inviteBusy}
+              title="새 링크를 만들고 이전 링크는 못 쓰게 해요"
+            >
+              링크 다시 만들기
+            </button>
+          </div>
+        )}
       </div>
+      <ActionPromptModal
+        open={confirmRegenerate}
+        title="INVITE LINK"
+        headline="초대 링크를 새로 만들까요?"
+        description="이전에 공유한 링크는 바로 못 쓰게 돼요. 이미 참여한 멤버는 그대로 유지돼요."
+        confirmText="새로 만들기"
+        onClose={() => setConfirmRegenerate(false)}
+        onConfirm={() => void handleRegenerateInvite()}
+      />
       <ActionPromptModal
         open={inviteModal.open}
         title="INVITE FRIENDS"
