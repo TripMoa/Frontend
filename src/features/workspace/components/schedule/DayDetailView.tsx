@@ -9,6 +9,7 @@ import DayComputeBanner from "./DayComputeBanner";
 import StopDetailPanel from "./StopDetailPanel";
 import TimelineBoard from "./TimelineBoard";
 import type { DayInfo, ScheduleWarning } from "../../hooks/useTimeline";
+import type { GenerationLock } from "../../hooks/tripChange";
 import type { TransitResult } from "../schedule/modal/TransitDetailModal";
 import { getTransitRoutes } from "../../../../api/schedule.api";
 import { useNaverMap } from "../../hooks/useNaverMap";
@@ -149,6 +150,8 @@ interface DayDetailViewProps {
   onAddVoucherForItem?: (scheduleItemId: number) => void;
   expenses?: ExpenseItem[];
   onAddExpenseForItem?: (scheduleItemId: number) => void;
+  /** 다른 멤버가 AI 일정을 만드는 중이면 그 정보 — 끝날 때까지 일정 수정(구조 편집)을 막는다. 메모는 그대로 쓸 수 있다 */
+  generationLock?: GenerationLock | null;
 }
 
 const DayDetailView: React.FC<DayDetailViewProps> = ({
@@ -176,6 +179,7 @@ const DayDetailView: React.FC<DayDetailViewProps> = ({
   onAddVoucherForItem,
   expenses = [],
   onAddExpenseForItem,
+  generationLock = null,
 }) => {
   // 열려 있는 정거장 상세 — 노드 id로 잡아서 순서가 바뀌어도 같은 노드를 가리키고, 다른 일차로 가면 자동으로 닫힌다
   const [sel, setSel] = useState<{ day: string; id: number } | null>(null);
@@ -199,7 +203,11 @@ const DayDetailView: React.FC<DayDetailViewProps> = ({
 
   const dragFromIdx = React.useRef<number | null>(null);
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
-  const [isEditing, setIsEditing] = useState(false);
+  // 사용자가 "일정 수정하기"를 켰는지. AI 생성 중에는 실제 수정 모드를 꺼서(구조 편집 전부가 이 값 뒤에 있다)
+  // 드래그·삭제·이동·장소 바꾸기·계획·설정을 한 번에 막고, 생성이 끝나면 사용자가 켜 둔 상태로 자연스럽게 돌아온다.
+  const [editRequested, setEditRequested] = useState(false);
+  const generationLocked = generationLock !== null;
+  const isEditing = editRequested && !generationLocked;
   const autoOn = !!dayInfo?.autoCompute;
   const showBoard = autoOn && viewMode === "board" && nodes.length > 0;
   const overWarning = autoOn ? dayInfo?.warnings.find((w) => w.code === "over_end") : undefined;
@@ -534,13 +542,17 @@ const DayDetailView: React.FC<DayDetailViewProps> = ({
               </button>
             )}
             <button
-              onClick={() => setIsEditing((v) => !v)}
+              onClick={() => setEditRequested((v) => !v)}
+              disabled={generationLocked}
+              title={generationLocked ? "AI가 일정을 만드는 동안에는 일정을 수정할 수 없어요" : undefined}
               style={{
                 padding: "10px 20px",
                 background: isEditing ? "#000" : "#fff",
                 color: isEditing ? "#fff" : "#000",
                 border: "2px solid #000",
-                fontWeight: "bold", fontSize: "14px", cursor: "pointer", borderRadius: "4px",
+                fontWeight: "bold", fontSize: "14px", borderRadius: "4px",
+                cursor: generationLocked ? "not-allowed" : "pointer",
+                opacity: generationLocked ? 0.45 : 1,
               }}
             >
               {isEditing ? "✓ 완료" : "✏️ 일정 수정하기"}

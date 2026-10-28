@@ -22,6 +22,13 @@ export const api = axios.create({
   withCredentials: true,
 });
 
+// 탭(페이지 로드)마다 고유한 id — 모든 요청에 X-Client-Id 로 실어 보낸다.
+// 서버가 이 값을 여행 실시간 알림의 originId 로 되돌려 주므로, 받은 쪽이 "내가 방금 한 변경"을 걸러낼 수 있다.
+export const CLIENT_ID: string =
+  typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+    ? crypto.randomUUID()
+    : `${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`;
+
 // accessToken 메모리 관리
 let accessTokenMemory: string | null = null;
 
@@ -65,8 +72,9 @@ api.interceptors.request.use(
   (config) => {
     const token = getAccessToken();
 
+    config.headers = config.headers ?? {};
+    config.headers["X-Client-Id"] = CLIENT_ID;
     if (token) {
-      config.headers = config.headers ?? {};
       config.headers.Authorization = `Bearer ${token}`;
     }
 

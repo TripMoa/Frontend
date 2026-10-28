@@ -35,6 +35,32 @@ export interface GeneratedScheduleDay {
 export const generateSchedule = (body: object) =>
   api.post<GeneratedScheduleDay[]>("/schedules/ai", body);
 
+// AI 일정 생성이 지금 진행 중인지 (여행 멤버 누구나) — 화면을 처음 열 때·실시간 연결이 (다시) 붙을 때 현재 상태를 맞추는 데 쓴다
+export interface ScheduleGenerationStatus {
+  generating: boolean;
+  startedAt: number | null;
+  actorUserId: number | null;
+  actorNickname: string | null;
+}
+
+export const getScheduleGenerationStatus = (tripId: number) =>
+  api.get<ScheduleGenerationStatus>("/schedules/generation", { params: { tripId } });
+
+// AI 재생성을 직전 상태로 되돌릴 수 있는지 — 재생성 뒤에 일정이 수정되었다면 available=false, editedSince=true
+export interface ScheduleUndoStatus {
+  available: boolean;
+  editedSince: boolean;
+  actorNickname: string | null;
+  generatedAt: number | null;
+}
+
+export const getScheduleUndoStatus = (tripId: number) =>
+  api.get<ScheduleUndoStatus>("/schedules/undo", { params: { tripId } });
+
+// AI 재생성 되돌리기 — 재생성 직전의 일정으로 교체한다 (그 뒤 수정이 있으면 409)
+export const undoScheduleGeneration = (tripId: number) =>
+  api.post<GeneratedScheduleDay[]>("/schedules/undo", null, { params: { tripId } });
+
 // AI 일정 생성 전 예상 — 저장 없이 "몇 곳이 들어가고 빠질지"만 계산 (요청 본문은 generateSchedule과 동일)
 export type ScheduleEstimate = {
   totalPlaces: number;

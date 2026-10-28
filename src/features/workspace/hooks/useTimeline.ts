@@ -168,13 +168,24 @@ export const useTimeline = (currentDay: string, tripId: number | null) => {
     setActionError({ message, key: Date.now() });
   }, []);
   const ensureRef = useRef<Record<string, Promise<number>>>({});
+  const scheduleIdMapRef = useRef<Record<string, number>>({});
+  scheduleIdMapRef.current = scheduleIdMap;
+  // 오래된 응답이 최신 상태를 덮지 않도록: 전체 조회는 시작할 때마다 번호를 올리고, 일차 조회는 일차별로 번호를 올린다
+  const fullGen = useRef(0);
+  const dayGen = useRef<Record<number, number>>({});
 
-  const fetchAll = useCallback(async () => {
+  // silent: 다른 멤버가 바꾼 걸 맞추는 조회 — 로딩 표시를 켜지 않고 실패해도 안내하지 않는다(다음 조회 때 맞춰진다)
+  const fetchAll = useCallback(async (opts?: { silent?: boolean }) => {
     if (!tripId) return;
-    setLoading(true);
-    setError(null);
+    const silent = opts?.silent === true;
+    const gen = ++fullGen.current;
+    if (!silent) {
+      setLoading(true);
+      setError(null);
+    }
     try {
       const { data } = await getSchedules(tripId);
+      if (gen !== fullGen.current) return;   // 그 사이 더 새 조회가 시작됐다 — 이 결과는 낡았다
       const mapped: Record<string, TimelineNode[]> = {};
       const idMap: Record<string, number> = {};
       const infoMap: Record<string, DayInfo> = {};
@@ -188,9 +199,9 @@ export const useTimeline = (currentDay: string, tripId: number | null) => {
       setScheduleIdMap(idMap);
       setDayInfo(infoMap);
     } catch {
-      setError("일정을 불러오지 못했습니다.");
+      if (!silent && gen === fullGen.current) setError("일정을 불러오지 못했습니다.");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [tripId]);
 
@@ -226,6 +237,38 @@ export const useTimeline = (currentDay: string, tripId: number | null) => {
     setAllDays((prev) => ({ ...prev, [key]: toTimelineNodes(schedule.scheduleId, schedule.items, prev[key]) }));
     setScheduleIdMap((prev) => ({ ...prev, [key]: schedule.scheduleId }));
     setDayInfo((prev) => ({ ...prev, [key]: toDayInfo(schedule) }));
+  }, []);
+
+  // 다른 멤버가 바꾼 일정을 서버 기준으로 맞춘다 (실시간 알림을 받았을 때).
+  // - scheduleIds 가 비었거나 화면이 모르는 일차가 섞여 있으면(일차 생성·AI 재생성) 전체를 조용히 다시 불러온다.
+  // - 아니면 알려진 일차만 다시 불러온다. 한 일차 조회가 실패하면(그 일차가 지워졌을 수 있다) 전체로 넘어간다.
+  const syncFromServer = useCallback(async (scheduleIds: number[]) => {
+    if (!tripId) return;
+    const known = new Set(Object.values(scheduleIdMapRef.current));
+    if (scheduleIds.length === 0 || scheduleIds.some((id) => !known.has(id))) {
+      await fetchAll({ silent: true });
+      return;
+    }
+    const gen = fullGen.current;
+    let needFull = false;
+    await Promise.all(scheduleIds.map(async (id) => {
+      const n = (dayGen.current[id] = (dayGen.current[id] ?? 0) + 1);
+      try {
+        const { data } = await getScheduleDay(id);
+        // 그 사이 같은 일차를 더 새로 불러왔거나 전체를 다시 불러왔다면 이 결과는 버린다
+        if (gen !== fullGen.current || dayGen.current[id] !== n) return;
+        applyDay(data as ScheduleResponse);
+      } catch {
+        needFull = true;
+      }
+    }));
+    if (needFull) await fetchAll({ silent: true });
+  }, [tripId, fetchAll, applyDay]);
+
+  // 일차 id → "DAY 2" (알림 문구용)
+  const dayKeyOfSchedule = useCallback((scheduleId: number): string | null => {
+    const hit = Object.entries(scheduleIdMapRef.current).find(([, id]) => id === scheduleId);
+    return hit ? hit[0] : null;
   }, []);
 
   // 노드 구성이 바뀐 뒤(추가·삭제·순서·이동) 자동 계산이 켜진 날이면 서버가 다시 계산한 시각을 받아온다.
@@ -540,5 +583,6 @@ export const useTimeline = (currentDay: string, tripId: number | null) => {
     addNode, addNodeFromPlace, updateNode, deleteNode, reorderNodes, moveNodeToDay,
     setNodeStay, setNodePin, setDayAutoCompute, updateDaySettings, replaceNodePlace, setNodeMemo,
     loadFromExternal, refetch: fetchAll,
+    syncFromServer, dayKeyOfSchedule,
   };
 };
