@@ -189,3 +189,27 @@
   color: #000;
   box-shadow: 2px 2px 0px rgba(0, 0, 0, 0.5);
 }
+
+.invite-admin {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+.invite-admin-btn {
+  flex: 1;
+  padding: 6px 4px;
+  background: #fff;
+  color: #000;
+  font-family: var(--font-mono);
+  font-weight: bold;
+  font-size: 11px;
+  border: 2px solid #000;
+  cursor: pointer;
+}
+.invite-admin-btn:hover:not(:disabled) {
+  background: #f0f0f0;
+}
+.invite-admin-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}

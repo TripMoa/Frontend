@@ -4,10 +4,13 @@ import React, { useEffect, useState } from "react";
 import BaseModal from "../../../../shared/components/BaseModal";
 import "../../styles/modals.css";
 import {
+  addTripMember,
   getTripMembers,
   removeTripMember,
   updateTripMemberNickname,
 } from "../../../../api/trip.api";
+import { checkEmail } from "../../../../api/auth.api";
+import { apiMessage } from "../../hooks/apiError";
 import type { TripMemberResponse } from "../../../../types/trip.types";
 import { useAuth } from "../../../user/pages/AuthContext";
 
@@ -52,6 +55,47 @@ const WorkspaceMemberModal: React.FC<WorkspaceMemberModalProps> = ({
   };
 
   const isCurrentUserOwner = currentUserId === ownerUserId;
+
+  // 소유자: 이메일로 가입자를 찾아 멤버로 추가
+  const [addEmail, setAddEmail] = useState("");
+  const [isAdding, setIsAdding] = useState(false);
+  const [addMessage, setAddMessage] = useState<{ text: string; ok: boolean } | null>(null);
+
+  const handleAddMember = async () => {
+    const email = addEmail.trim().toLowerCase();
+    if (!email || isAdding) return;
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setAddMessage({ text: "이메일 형식이 올바르지 않습니다.", ok: false });
+      return;
+    }
+
+    setIsAdding(true);
+    setAddMessage(null);
+
+    try {
+      const { data: found } = await checkEmail({ email });
+
+      if (!found.exists || found.userId == null) {
+        setAddMessage({ text: "가입되지 않은 이메일입니다.", ok: false });
+        return;
+      }
+
+      if (members.some((m) => m.userId === found.userId)) {
+        setAddMessage({ text: "이미 이 여행의 멤버입니다.", ok: false });
+        return;
+      }
+
+      await addTripMember(tripId, found.userId);
+      setAddEmail("");
+      setAddMessage({ text: `${found.name ?? email}님을 멤버로 추가했어요.`, ok: true });
+      await fetchMembers();
+    } catch (e) {
+      setAddMessage({ text: apiMessage(e, "멤버를 추가하지 못했어요."), ok: false });
+    } finally {
+      setIsAdding(false);
+    }
+  };
 
   const fetchMembers = async () => {
     if (!tripId) return;
@@ -148,6 +192,38 @@ const WorkspaceMemberModal: React.FC<WorkspaceMemberModalProps> = ({
       className="member-window"
       bodyClassName="member-modal-body"
     >
+      {isCurrentUserOwner && (
+        <div className="member-add-box">
+          <div className="member-add-row">
+            <input
+              className="member-nickname-input"
+              type="email"
+              value={addEmail}
+              onChange={(e) => setAddEmail(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") void handleAddMember();
+              }}
+              placeholder="추가할 친구의 가입 이메일"
+              disabled={isAdding}
+            />
+            <button
+              type="button"
+              className="member-action-btn"
+              onClick={() => void handleAddMember()}
+              disabled={isAdding || !addEmail.trim()}
+            >
+              {isAdding ? "확인 중..." : "멤버 추가"}
+            </button>
+          </div>
+          {addMessage && (
+            <p className={addMessage.ok ? "member-add-ok" : "modal-error"}>
+              {addMessage.ok ? "" : "⚠ "}
+              {addMessage.text}
+            </p>
+          )}
+        </div>
+      )}
+
       {isLoading && (
         <p className="member-guide">멤버 목록을 불러오는 중입니다.</p>
       )}

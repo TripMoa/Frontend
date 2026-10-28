@@ -12,6 +12,14 @@ import { ActionPromptModal } from "../../../shared/components/ActionPromptModal"
 import { checkReviewExists } from "../../../api/stories.api";
 import type { MyTripSummaryResponse } from "../../../types";
 
+// 필터 이름 — 서버의 PUBLIC/PRIVATE 는 "공개 여부"가 아니라 "함께하는 멤버가 있는지"라서 뜻에 맞게 보여준다
+const FILTER_LABEL: Record<TripFilter, string> = {
+  all: "ALL SECTORS",
+  public: "함께하는 여행",
+  private: "나만의 여행",
+  invited: "초대된 여행",
+};
+
 export default function MyTrips() {
   const {
     filter,
@@ -192,7 +200,7 @@ export default function MyTrips() {
                     className={`filter-btn ${filter === type ? "active" : ""}`}
                     onClick={() => setFilter(type)}
                   >
-                    {type === "all" ? "ALL SECTORS" : type.toUpperCase()}
+                    {FILTER_LABEL[type]}
                   </button>
                 ))}
               </div>
