@@ -44,19 +44,30 @@ export interface TripDetailResponse {
   status: TripStatus;
   visibility: TripVisibility;
   inviteCode: string;
+  inviteEnabled: boolean;
   ownerUserId: number;
   ownerName: string;
   members: TripMemberResponse[];
 }
 
+// 초대 링크 미리보기 — 멤버가 아닌 사람도 받는 정보라서 식별 정보(userId·프로필 이미지)는 빠져 있다
+export interface TripInviteMemberPreview {
+  nickname: string;
+  profileType: string | null;
+  avatarEmoji: string | null;
+  avatarColor: string | null;
+}
+
 export interface TripInviteResponse {
-  tripId: number;
+  /** 이미 멤버일 때만 값이 있다 (워크스페이스로 보내기 위해) */
+  tripId: number | null;
   title: string;
   tripStartDate: string;
   tripEndDate: string;
   ownerNickname: string;
   memberCount: number;
-  members: TripMemberResponse[];
+  alreadyMember: boolean;
+  members: TripInviteMemberPreview[];
 }
 
 // ===================

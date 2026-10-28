@@ -27,8 +27,12 @@ export const TripCard = ({
   const visibleMembers = members.slice(0, MAX_VISIBLE_MEMBERS);
   const extraMemberCount = Math.max(members.length - MAX_VISIBLE_MEMBERS, 0);
 
-  const visibilityText = trip.visibility === "PRIVATE" ? "PRIVATE" : "PUBLIC";
-  const visibilityClass = trip.visibility === "PRIVATE" ? "private" : "public";
+  // visibility 는 "공개 여부"가 아니라 사실상 "함께하는 멤버가 있는지"를 나타낸다
+  // (멤버가 둘 이상이면 PUBLIC, 혼자면 PRIVATE — 서버가 멤버 수에 따라 자동으로 바꾸고, 다른 사람에게 공개되지는 않는다).
+  // 그래서 화면에는 PUBLIC/PRIVATE 대신 뜻에 맞는 이름을 보여준다.
+  const isShared = trip.visibility !== "PRIVATE";
+  const visibilityText = isShared ? "함께하는 여행" : "나만의 여행";
+  const visibilityClass = isShared ? "public" : "private";
 
   const startDate = trip.tripStartDate ?? "";
   const endDate = trip.tripEndDate ?? "";
@@ -80,11 +84,7 @@ export const TripCard = ({
               {status.rightLabel}
             </span>
             <span className={`sys-tag ${visibilityClass}`}>
-              <i
-                className={`fa-solid ${
-                  trip.visibility === "PRIVATE" ? "fa-lock" : "fa-lock-open"
-                }`}
-              ></i>{" "}
+              <i className={`fa-solid ${isShared ? "fa-users" : "fa-user"}`}></i>{" "}
               {visibilityText}
             </span>
           </div>
