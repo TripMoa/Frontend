@@ -29,15 +29,76 @@ export interface Story {
   isPublic: boolean;
   tripId?: number | null;
 
-  expenses?: {
-    transportation: number;
-    accommodation: number;
-    food: number;
-    attraction: number;
-    shopping: number;
-    total: number;
-  };
+  // 계획한 동선 스냅샷 - parseRoute()로 변환해서 사용
+  route?: string | null;
+
+  // 경비 공개 여부
+  showExpense?: boolean;
+
+  // 여행 인원 ("외 n명" 표시용)
+  memberCount?: number | null;
+
+  // 수정·삭제 가능 여부 (작성자 또는 여행 멤버)
+  canEdit?: boolean | null;
+
+  expenses?: StoryExpenses;
 }
+
+// 후기 경비 (memberCount 있으면 TRAVEL LOG 요약)
+export interface StoryExpenses {
+  transportation: number | null;
+  accommodation: number | null;
+  food: number | null;
+  attraction: number | null;
+  shopping: number | null;
+  etc?: number | null;
+  memberCount?: number | null;
+  total: number;
+}
+
+// 동선 스냅샷 타입
+export interface RouteItem {
+  order: number;
+  time?: string | null;
+  title: string;
+  category?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+  travelMinutes?: number | null;
+}
+ 
+export interface RouteDay {
+  day: number;
+  items: RouteItem[];
+}
+ 
+// route JSON 문자열 → 배열 (비어 있거나 깨졌으면 빈 배열)
+export const parseRoute = (route?: string | null): RouteDay[] => {
+  if (!route) return [];
+  try {
+    const parsed = JSON.parse(route);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
+// 동선 스냅샷 타입
+export interface RouteItem {
+  order: number;
+  time?: string | null;
+  title: string;
+  category?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+  travelMinutes?: number | null;
+}
+
+export interface RouteDay {
+  day: number;
+  items: RouteItem[];
+}
+
 
 // 스토리 목록 조회 시 사용할 필터 및 페이지네이션 파라미터 타입
 export interface StoryListParams {
@@ -73,7 +134,7 @@ export interface CreateStoryData {
   };
 }
 
-// 서버 전송 전 tags 배열을 쉼표로 구분된 문자열로 변환 (백엔드 스펙 대응)
+// 서버 전송 전 tags 배열을 쉼표로 구분된 문자열로 변환 
 const convertTagsToString = (data: CreateStoryData | Partial<CreateStoryData>) => {
   if (data.tags && Array.isArray(data.tags)) {
     return {
@@ -146,6 +207,16 @@ export const getSavedItineraries = () => {
 // 특정 스토리 조회수 증가
 export const incrementStoryViews = (id: number) => {
   return api.post(`/stories/${id}/view`);
+};
+
+// 후기 작성 페이지 동선 미리보기
+export const getRoutePreview = (tripId: number) => {
+  return api.get<{ route: string | null }>(`/stories/route-preview`, { params: { tripId } });
+};
+
+// 후기 작성 페이지 경비 미리보기 (TRAVEL LOG 카테고리별 합계)
+export const getExpensePreview = (tripId: number) => {
+  return api.get<StoryExpenses>(`/stories/expense-preview`, { params: { tripId } });
 };
 
 // 특정 여행의 리뷰 작성 여부 확인
