@@ -419,7 +419,7 @@
   margin-bottom: 8px;
 }
 
-/* 정렬 왼쪽 영역 (아이콘 + SORT BY + 드롭다운) */
+/* 정렬 */
 .travel-story-app .ts-sort-left {
   display: flex;
   align-items: center;
@@ -653,5 +653,10 @@
 
 .type-filter button:hover::after {
   width: 100%;
+}
+
+.travel-story-app .ts-header {
+  position: relative;
+  z-index: 0;
 }
 

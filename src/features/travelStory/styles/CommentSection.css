@@ -39,7 +39,7 @@
   color: var(--text-gray);
 }
 
-/* 댓글 목록 - 세로 방향으로 나열 */
+/* 댓글 목록 */
 .comments-list {
   display: flex;
   flex-direction: column;
@@ -55,7 +55,7 @@
   position: relative;
 }
 
-/* 수정/삭제 버튼 - 우측 상단 고정 */
+/* 수정/삭제 버튼 */
 .comment-actions {
   position: absolute;
   top: 16px;
@@ -108,7 +108,7 @@
   flex-shrink: 0;   /* 레이아웃 변화에도 크기 고정 */
 }
 
-/* 프로필 이미지 - 아바타 원 안에 꽉 차게 */
+/* 프로필 이미지 */
 .comment-avatar img {
   width: 100%;
   height: 100%;
@@ -130,7 +130,7 @@
   font-family: var(--font-mono);
 }
 
-/* 댓글 본문 - 아바타 너비(40px) + gap(12px)만큼 들여쓰기 */
+/* 댓글 본문 */
 .comment-content {
   font-size: 14px;
   line-height: 1.6;
@@ -158,7 +158,7 @@
   border-color: var(--primary-color);
 }
 
-/* SAVE / CANCEL 버튼 영역 - 우측 정렬 */
+/* SAVE / CANCEL 버튼 영역 */
 .comment-edit-actions {
   display: flex;
   justify-content: flex-end;
@@ -177,7 +177,7 @@
   border: 3px solid var(--border-color);
 }
 
-/* SAVE 버튼 - 검은 배경 */
+/* SAVE 버튼 */
 .comment-btn.save {
   background: var(--primary-color);
   color: var(--secondary-color);
@@ -189,7 +189,7 @@
   transform: translate(-1px, -1px);
 }
 
-/* CANCEL 버튼 - 흰 배경 */
+/* CANCEL 버튼 */
 .comment-btn.cancel {
   background: var(--secondary-color);
   color: var(--primary-color);
@@ -200,7 +200,7 @@
   background: var(--bg-light);
 }
 
-/* 비활성화 상태 - 클릭 불가 */
+/* 비활성화 상태 */
 .comment-btn:disabled {
   cursor: not-allowed;
   opacity: 0.5;
@@ -225,7 +225,7 @@
   border-color: var(--primary-color);
 }
 
-/* POST COMMENT 버튼 - 우측 정렬 */
+/* POST COMMENT 버튼 */
 .comment-submit-wrapper {
   display: flex;
   justify-content: flex-end;
@@ -307,14 +307,14 @@
   margin: 0 0 24px 0;
 }
 
-/* 모달 버튼 영역 - 우측 정렬 */
+/* 모달 버튼 영역 */
 .comment-modal-actions {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
 }
 
-/* 작성자 뱃지 - 댓글 작성자가 스토리 작성자일 때 표시 */
+/* 작성자 뱃지 */
 .comment-author-badge {
   margin-left: 8px;
   padding: 2px 8px;
@@ -344,7 +344,7 @@
   background: var(--bg-light);
 }
 
-/* 삭제 버튼 - 호버 시 빨간 배경 */
+/* 삭제 버튼 */
 .comment-modal-btn.delete {
   border-color: #d00000;
   color: #d00000;
@@ -360,7 +360,7 @@
   opacity: 0.5;
 }
 
-/* ••• 더보기 버튼 래퍼 - 우측 상단 고정 */
+/* ••• 더보기 버튼 래퍼 */
 .comment-more-wrapper {
   position: absolute;
   top: 16px;
@@ -426,7 +426,7 @@
   color: #fff;
 }
 
-/* 신고 버튼 - 타인 댓글 우측 상단 표시 */
+/* 신고 버튼 */
 .comment-report-btn {
   position: absolute;
   top: 12px;

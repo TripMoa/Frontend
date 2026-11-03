@@ -1,4 +1,3 @@
-/* 모달 배경 오버레이 - 페이드인 애니메이션 */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -22,7 +21,7 @@
   }
 }
 
-/* 모달 본체 - 아래에서 위로 슬라이드 애니메이션 */
+
 .modal-container {
   background: var(--secondary-color);
   border: 4px solid var(--border-color);
@@ -62,7 +61,7 @@
   margin-bottom: 32px;
 }
 
-/* 줄바꿈 문자(\n) 처리를 위해 white-space: pre-line 적용 */
+
 .modal-message {
   font-size: 15px;
   line-height: 1.8;
