@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import CommentSection from "../components/CommentSection";
 import { toggleLike as toggleLikeAPI } from "../../../api/stories.api";
 import { submitReport } from '../../../api/report.api';
@@ -9,10 +9,29 @@ import { createTrip } from "../../../api/trip.api";
 import { getPlaces, createPlace } from "../../../api/place.api";
 import { useNavigate } from "react-router-dom";
 import { TripCreateModal } from "../../myTrips/components/TripCreateModal";
+import RouteSection from "../components/RouteSection";
+import ExpenseSummary from "../components/ExpenseSummary";
 
 import { useAuth } from "../../user/pages/AuthContext";
 import { useAccessGuard } from "../../../shared/hooks/useAccessGuard";
 import { ActionPromptModal } from "../../../shared/components/ActionPromptModal";
+
+// 사진 칸을 1번째 사진부터 보이게 정리 (첫 화면 깜빡임 방지)
+const showFirstSliderImage = (html: string) => {
+  if (!html || typeof DOMParser === "undefined") return html;
+  try {
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    doc.querySelectorAll(".slider-images-container").forEach((container) => {
+      const imgs = Array.from(container.querySelectorAll("img")) as HTMLImageElement[];
+      imgs.forEach((img, idx) => { img.style.display = idx === 0 ? "block" : "none"; });
+      const indicator = container.parentElement?.querySelector(".slider-indicator");
+      if (indicator && imgs.length > 0) indicator.textContent = `1/${imgs.length}`;
+    });
+    return doc.body.innerHTML;
+  } catch {
+    return html;
+  }
+};
 
 // description HTML을 dangerouslySetInnerHTML로 렌더링 (불필요한 리렌더링 방지를 위해 memo 적용)
 const StoryDescription = React.memo(({ html }: { html: string }) => (
@@ -50,6 +69,14 @@ function DetailPage({
   const { isAuthenticated } = useAuth();
   const { requireLogin, showLoginModal, closeLoginModal, moveToLogin } =
     useAccessGuard();
+
+  // 1번째 사진부터 보이도록 정리한 본문
+  const descriptionHtml = useMemo(() => showFirstSliderImage(story.description), [story.description]);
+
+  // 상세 페이지 진입 시 맨 위로 스크롤
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, [story.id]);
 
   // 조회수 중복 증가 방지용 플래그
   const hasIncrementedViews = useRef(false);
@@ -193,6 +220,34 @@ function DetailPage({
   // description 렌더링 후 이미지 슬라이더 초기화 (상대경로 URL 변환 및 prev/next 버튼 이벤트 등록)
   useEffect(() => {
     setTimeout(() => {
+      // 사진 칸을 본문 맨 위로 (여러 개면 하나로 합침)
+      const descEl = document.querySelector(".detail-description");
+      if (descEl) {
+        const allSliders = Array.from(descEl.querySelectorAll(".image-slider-wrapper")) as HTMLElement[];
+        if (allSliders.length > 0) {
+          const main = allSliders[0];
+          if (allSliders.length > 1) {
+            const container = main.querySelector(".slider-images-container");
+            allSliders.slice(1).forEach((other) => {
+              other.querySelectorAll(".slider-images-container img").forEach((img) => {
+                container?.appendChild(img);
+              });
+              other.remove();
+            });
+          }
+          // 2장 이상인데 이전/다음 버튼이 없으면 생성
+          if (main.querySelectorAll(".slider-images-container img").length > 1 && !main.querySelector(".slider-prev-btn")) {
+            ["slider-prev-btn", "slider-next-btn"].forEach((cls, i) => {
+              const btn = document.createElement("button");
+              btn.className = cls;
+              btn.innerHTML = i === 0 ? "‹" : "›";
+              main.appendChild(btn);
+            });
+          }
+          if (descEl.firstChild !== main) descEl.insertBefore(main, descEl.firstChild);
+        }
+      }
+
       const sliders = document.querySelectorAll(".image-slider-wrapper");
       sliders.forEach((slider) => {
         const images = slider.querySelectorAll("img");
@@ -351,11 +406,16 @@ function DetailPage({
         <div className="detail-author-info">
           {renderAvatar()}
           <div className="detail-author-text">
-            <div className="detail-author-name">{author.displayName}</div>
+            <div className="detail-author-name">
+              {author.displayName}
+              {/* 여럿이 간 여행이면 "외 n명" */}
+              {story.type === 'REVIEW' && (story.memberCount ?? 0) > 1 && ` 외 ${story.memberCount - 1}명`}
+            </div>
           </div>
         </div>
 
-        {currentUserId && author.id !== currentUserId && (
+        {/* 신고 버튼 - 수정 권한 없는 타인 글에만 */}
+        {currentUserId && author.id !== currentUserId && !story.canEdit && (
           <div className="detail-report-btn-wrapper">
             <button className="detail-report-btn"
               onClick={(e) => { e.stopPropagation(); setShowReportMenu(!showReportMenu); }}>
@@ -377,29 +437,7 @@ function DetailPage({
         )}
       </div> {/* detail-header 닫기 */}
 
-      <StoryDescription html={story.description} />
-
-      {story.type === 'REVIEW' && (
-        <div className="detail-expenses">
-          <h2 className="detail-expenses-title">여행 경비 총정리</h2>
-          {[
-            ["교통비", story.expenses?.transportation || 0],
-            ["숙박비", story.expenses?.accommodation || 0],
-            ["식비", story.expenses?.food || 0],
-            ["관광/입장료", story.expenses?.attraction || 0],
-            ["쇼핑/기타", story.expenses?.shopping || 0],
-          ].map(([label, price]) => (
-            <div key={label} className="detail-expense-row">
-              <span>{label}</span>
-              <span>{((price as number) || 0).toLocaleString()}원</span>
-            </div>
-          ))}
-          <div className="detail-expenses-total">
-            <span>총 합계</span>
-            <span>{(story.expenses?.total || 0).toLocaleString()}원</span>
-          </div>
-        </div>
-      )}
+      <StoryDescription html={descriptionHtml} />
 
       <div className="detail-actions">
         <div className="detail-action-tooltip-wrapper">
@@ -451,6 +489,17 @@ function DetailPage({
         </div>
       </div>
     </div> 
+
+    {/* 계획한 동선 - route 없으면 숨김 */}
+    {story.type === 'REVIEW' && <RouteSection route={story.route} />}
+
+    {/* 여행 경비 - 숨김이면 표시 안 함 */}
+    {story.type === 'REVIEW' && story.showExpense !== false && story.expenses && (
+      <div className="detail-expenses">
+        <h2 className="detail-expenses-title">여행 경비 총정리</h2>
+        <ExpenseSummary expenses={story.expenses} />
+      </div>
+    )}
 
     <CommentSection
       storyId={story.id}
