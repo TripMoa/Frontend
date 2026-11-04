@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import '../styles/StoryCard.css';
 import type { Story } from '../../../api/stories.api';
+import { toggleLike as toggleLikeAPI, saveItinerary, unsaveItinerary } from '../../../api/stories.api';
 
 interface StoryCardProps {
   story: Story;
@@ -13,6 +14,32 @@ interface StoryCardProps {
   onDelete?: (id: number) => void;
   isMyStory?: boolean;
 }
+
+// URL 비교용 - 경로만 추출
+const toPath = (url: string) => {
+  try {
+    return new URL(url, window.location.origin).pathname;
+  } catch {
+    return url;
+  }
+};
+
+// 본문에서 커버 사진의 object-position 값 추출
+const getCoverPosition = (description: string, coverUrl: string | null): string | null => {
+  if (!description || !coverUrl || typeof DOMParser === "undefined") return null;
+  try {
+    const doc = new DOMParser().parseFromString(description, "text/html");
+    const target = toPath(coverUrl);
+    const imgs = Array.from(doc.querySelectorAll("img"));
+    const match = imgs.find((img) => {
+      const src = img.getAttribute("data-image-src") || img.getAttribute("src") || "";
+      return src && toPath(src) === target;
+    });
+    return match?.style.objectPosition || null;
+  } catch {
+    return null;
+  }
+};
 
 function StoryCard({
   story,
@@ -37,23 +64,39 @@ function StoryCard({
     if (onDelete) onDelete(story.id);
   };
 
-  // 좋아요 토글 (이미 좋아요한 경우 제거, 아닌 경우 추가)
-  const toggleLike = (e: React.MouseEvent) => {
+  // 좋아요 수
+  const [likeCount, setLikeCount] = useState<number>(story.likes ?? 0);
+  useEffect(() => { setLikeCount(story.likes ?? 0); }, [story.likes]);
+
+  // 좋아요 토글 (서버 저장)
+  const toggleLike = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (likedStories.includes(story.id)) {
-      setLikedStories(prev => prev.filter(id => id !== story.id));
-    } else {
-      setLikedStories(prev => [...prev, story.id]);
+    try {
+      const res = await toggleLikeAPI(story.id);
+      const nowLiked = !!res.data;
+      setLikedStories(prev =>
+        nowLiked ? (prev.includes(story.id) ? prev : [...prev, story.id]) : prev.filter(id => id !== story.id)
+      );
+      setLikeCount(prev => Math.max(0, prev + (nowLiked ? 1 : -1)));
+    } catch {
+      alert("로그인 후 좋아요를 누를 수 있어요.");
     }
   };
 
-  // 일정 저장 토글 (이미 저장한 경우 제거, 아닌 경우 추가)
-  const toggleFollow = (e: React.MouseEvent) => {
+  // 일정 저장 토글 (서버 저장)
+  const toggleFollow = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (followedStories.includes(story.id)) {
-      setFollowedStories(prev => prev.filter(id => id !== story.id));
-    } else {
-      setFollowedStories(prev => [...prev, story.id]);
+    const isFollowed = followedStories.includes(story.id);
+    try {
+      if (isFollowed) {
+        await unsaveItinerary(story.id);
+        setFollowedStories(prev => prev.filter(id => id !== story.id));
+      } else {
+        await saveItinerary(story.id);
+        setFollowedStories(prev => [...prev, story.id]);
+      }
+    } catch {
+      alert("로그인 후 일정을 저장할 수 있어요.");
     }
   };
 
@@ -95,6 +138,12 @@ function StoryCard({
       return 'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=800';
     })();
 
+  // 드래그로 맞춘 커버 위치를 카드에도 적용
+  const coverPosition = useMemo(
+    () => getCoverPosition(story.description, imageUrl),
+    [story.description, imageUrl]
+  );
+
   const typeLabelMap = {
   FREE: 'FREE',
   REVIEW: 'REVIEW',
@@ -105,7 +154,12 @@ return (
 
     <div className="story-card-image-wrapper">
     {imageUrl ? (
-      <img src={imageUrl} alt={story.title} className="story-card-image" />
+      <img
+        src={imageUrl}
+        alt={story.title}
+        className="story-card-image"
+        style={coverPosition ? { objectPosition: coverPosition } : undefined}
+      />
     ) : (
       <div style={{
         width: '100%', height: '100%',
@@ -156,7 +210,11 @@ return (
               </div>
             );
           })()}
-          <span className="story-card-author-name">{story.author?.name}</span>
+          <span className="story-card-author-name">
+            {story.author?.name}
+            {/* 여럿이 간 여행이면 "외 n명" */}
+            {story.type === 'REVIEW' && (story.memberCount ?? 0) > 1 && ` 외 ${(story.memberCount as number) - 1}명`}
+          </span>
         </div>
 
         <div className="story-card-divider"></div>
@@ -201,7 +259,8 @@ return (
                       stroke="currentColor"
                       strokeWidth="2"/>
               </svg>
-              <span>LIKES</span>
+              {/* 좋아요 수 */}
+              <span>{likeCount}</span>
             </button>
 
             {/* 일정 저장 버튼 */}

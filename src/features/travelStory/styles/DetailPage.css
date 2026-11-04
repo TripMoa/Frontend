@@ -92,11 +92,6 @@
   color: #000;
 }
 
-/* 기존 목적지+기간 통합 스타일 - 미사용 */
-.detail-location-duration {
-  display: none;
-}
-
 /* 태그 목록 */
 .detail-tags {
   display: flex;
@@ -106,11 +101,6 @@
   margin-bottom: 8px;
   margin-top: 0;
   width: 100%;
-}
-
-/* 태그 구분선 - 미사용 */
-.detail-tags-divider {
-  display: none;
 }
 
 /* 태그 칩 */
@@ -139,16 +129,6 @@
   font-size: 12px;
   font-weight: 700;
   font-family: var(--font-mono);
-}
-
-/* 헤더 우측 - 미사용 */
-.detail-header-right {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 12px;
-  margin-top: -32px;
-  padding-right: 0;
 }
 
 /* X 닫기 버튼 - 헤더 우측 상단 원형 */
@@ -236,46 +216,6 @@
   line-height: 1.2;
   text-align: center;
   margin-top: -4px;
-}
-
-/* 작성일/조회수/메타 - 미사용 */
-.detail-author-date,
-.detail-author-views,
-.detail-author-meta {
-  display: none;
-}
-
-/* 커버 이미지 - 현재 미사용 */
-.detail-cover-image {
-  position: relative;
-  width: 100%;
-  max-width: 960px;
-  margin: 0 auto;
-  border: 3px solid var(--border-color);
-  box-shadow: var(--shadow-default);
-  overflow: hidden;
-}
-
-.detail-cover-image img {
-  width: 100%;
-  height: 460px;
-  object-fit: cover;
-  display: block;
-}
-
-/* 커버 이미지 뱃지 */
-.detail-cover-badge {
-  position: absolute;
-  top: 16px;
-  left: 16px;
-  background: #f5c800;
-  color: #000;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-weight: 700;
-  padding: 5px 12px;
-  border: 2px solid #000;
-  letter-spacing: 0.05em;
 }
 
 /* 본문 에디터 HTML 렌더링 영역 */
@@ -683,4 +623,143 @@
 
 .detail-report-btn:hover {
   color: var(--primary-color);
+}
+
+/* ===================== 계획한 동선 ===================== */
+ 
+/* 동선 박스 - 경비 박스와 동일한 크기/테두리 */
+.detail-route {
+  background: var(--secondary-color);
+  padding: 14px 20px;
+  margin: 10px auto 24px;
+  max-width: 693px;
+  width: 100%;
+  border: 3px solid var(--border-color);
+  box-shadow: var(--shadow-default);
+  box-sizing: border-box;
+}
+ 
+/* 동선 제목 - 경비 제목과 동일 */
+.detail-route-title {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  margin: 0 0 10px 0;
+  padding-bottom: 10px;
+  border-bottom: 3px solid var(--border-color);
+  box-shadow: 0 3px 0 0 var(--border-color);
+}
+ 
+/* DAY 탭 목록 */
+.detail-route-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 14px 0 10px;
+}
+ 
+/* DAY 탭 */
+.detail-route-tab {
+  padding: 4px 12px;
+  border: 2px solid var(--border-color);
+  background: var(--secondary-color);
+  color: var(--primary-color);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+ 
+.detail-route-tab:hover {
+  background: var(--bg-light);
+}
+ 
+/* 선택된 DAY 탭 */
+.detail-route-tab.active {
+  background: var(--primary-color);
+  color: var(--secondary-color);
+  box-shadow: var(--shadow-small);
+  transform: translate(-1px, -1px);
+}
+ 
+/* 장소 한 줄 - 경비 행과 동일한 톤, 왼쪽 색 띠로 카테고리 표시 */
+.detail-route-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px;
+  border: 2px solid var(--border-color);
+  border-left-width: 6px;
+  background: var(--bg-light);
+  margin-bottom: 6px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+}
+ 
+/* 순서 번호 (01, 02 / ALL 탭에서는 D1, D2) */
+.detail-route-order {
+  width: 26px;
+  flex-shrink: 0;
+  font-size: 11px;
+}
+ 
+/* 시간 */
+.detail-route-time {
+  width: 42px;
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--text-gray);
+}
+ 
+/* 장소명 - 길면 말줄임 */
+.detail-route-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+ 
+/* 카테고리 */
+.detail-route-category {
+  flex-shrink: 0;
+  font-size: 11px;
+}
+ 
+ 
+/* 다음 장소까지 이동시간 */
+.detail-route-move {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-gray);
+  margin: -2px 0 6px 18px;
+}
+ 
+/* 총 방문 - 경비 총 합계와 동일한 검은 줄 */
+.detail-route-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 16px;
+  border: 3px solid var(--border-color);
+  background: var(--primary-color);
+  color: var(--secondary-color);
+  margin-top: 10px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 14px;
+}
+
+/* 동선·경비 카드 - 댓글 카드와 같은 모양 (상세 페이지에만 적용) */
+.detail-page-container > .detail-route,
+.detail-page-container > .detail-expenses {
+  max-width: 1200px;
+  width: 100%;
+  margin: 60px auto 0 auto;
+  padding: 32px 40px;
+  box-sizing: border-box;
+  background: var(--secondary-color);
+  border: 3px solid var(--border-color);
+  box-shadow: 8px 8px 0px rgba(0, 0, 0, 1);
 }

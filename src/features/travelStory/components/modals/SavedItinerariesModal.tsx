@@ -6,7 +6,7 @@ interface SavedItinerariesModalProps {
   onUseItinerary?: (story: any) => void;
 }
 
-function SavedItinerariesModal({ show, onClose, stories, onStoryClick }: SavedItinerariesModalProps) {
+function SavedItinerariesModal({ show, onClose, stories, onStoryClick, onUseItinerary }: SavedItinerariesModalProps) {
   if (!show) return null;
 
   return (
@@ -147,8 +147,8 @@ function SavedItinerariesModal({ show, onClose, stories, onStoryClick }: SavedIt
                 >
                   여행기 보기
                 </button>
-                <button
-                  onClick={() => alert('준비 중입니다.')}
+                                <button
+                  onClick={() => onUseItinerary?.(story)}
                   style={{
                     padding: '8px 14px',
                     border: '2px solid #000',
