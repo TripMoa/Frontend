@@ -4,6 +4,7 @@ import { ActionPromptModal } from "../../../../shared/components/ActionPromptMod
 import "../../styles/center.css";
 import type { VoucherResponse } from "../../../../types/voucher.types";
 import { useTripContext } from "../../hooks/useTripContext";
+import type { ScheduleItemOption } from "../../../../types/scheduleItemOption.types";
 
 interface Props {
   vouchers: VoucherResponse[];
@@ -11,6 +12,7 @@ interface Props {
   onDelete: (id: number) => void;
   onDownload: (id: number) => void;
   onPreview: (id: number) => void;
+  scheduleItemOptions?: ScheduleItemOption[];
 }
 
 const getVoucherIcon = (type: string) => {
@@ -38,8 +40,13 @@ const VoucherView: React.FC<Props> = ({
   onDelete,
   onDownload,
   onPreview,
+  scheduleItemOptions = [],
 }) => {
   const { isOwner } = useTripContext();
+
+  const scheduleItemLabelById = new Map(
+    scheduleItemOptions.map((opt) => [opt.id, `${opt.day} · ${opt.title}`]),
+  );
 
   const [deletePrompt, setDeletePrompt] = useState({
     open: false,
@@ -133,6 +140,24 @@ const VoucherView: React.FC<Props> = ({
               >
                 {formatMeta(v.createdAt)}
               </div>
+
+              {v.scheduleItemId != null && scheduleItemLabelById.has(v.scheduleItemId) && (
+                <div
+                  style={{
+                    display: "inline-block",
+                    fontSize: "10px",
+                    fontWeight: "bold",
+                    color: "#000",
+                    background: "#f5f5f5",
+                    border: "1px solid #ddd",
+                    borderRadius: "3px",
+                    padding: "2px 6px",
+                    marginTop: "5px",
+                  }}
+                >
+                  🔗 {scheduleItemLabelById.get(v.scheduleItemId)}
+                </div>
+              )}
             </div>
 
             <div style={{ display: "flex", flexDirection: "column" }}>

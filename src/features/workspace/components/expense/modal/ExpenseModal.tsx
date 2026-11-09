@@ -15,9 +15,12 @@ import type {
   SplitMode,
 } from "../../../hooks/expense.ui.types";
 import { API_BASE_URL } from "../../../../../shared/config/env";
+import type { ScheduleItemOption } from "../../../../../types/scheduleItemOption.types";
 
 interface Props {
   store: UseExpensesStore;
+  scheduleItemOptions?: ScheduleItemOption[];
+  initialScheduleItemId?: number | null;
 }
 
 const fmt = (n: number) =>
@@ -90,8 +93,19 @@ const calcEqualSplit = (
   return out;
 };
 
-const ExpenseModal: React.FC<Props> = ({ store }) => {
+const ExpenseModal: React.FC<Props> = ({
+  store,
+  scheduleItemOptions = [],
+  initialScheduleItemId = null,
+}) => {
   const { tripId } = useTripContext();
+
+  const groupedScheduleItemsByDay = scheduleItemOptions.reduce<
+    Record<string, ScheduleItemOption[]>
+  >((acc, opt) => {
+    (acc[opt.day] ??= []).push(opt);
+    return acc;
+  }, {});
 
   const {
     isExpenseModalOpen,
@@ -138,6 +152,10 @@ const ExpenseModal: React.FC<Props> = ({ store }) => {
   const [splitAmounts, setSplitAmounts] = useState<
     Record<ExpenseMember, number>
   >({});
+
+  const [scheduleItemId, setScheduleItemId] = useState<number | null>(
+    initialScheduleItemId,
+  );
 
   type PromptMode = "notice" | "confirm";
 
@@ -242,11 +260,13 @@ const ExpenseModal: React.FC<Props> = ({ store }) => {
       setCurrentFileName(null);
       setCurrentReceiptBase64(null);
       setSplitAmounts(makeEmptySplitAmounts(expenseMembers));
+      setScheduleItemId(initialScheduleItemId);
       return;
     }
 
     if (!editingItem) return;
     setSubmitted(false);
+    setScheduleItemId(editingItem.scheduleItemId ?? null);
     setDate(editingItem.date);
     setStoreName(editingItem.storeName ?? "");
     setTitle(editingItem.title);
@@ -273,6 +293,7 @@ const ExpenseModal: React.FC<Props> = ({ store }) => {
     editingItem,
     expenseMembers,
     defaultPayer,
+    initialScheduleItemId,
     setCurrentFileName,
     setCurrentReceiptBase64,
   ]);
@@ -436,6 +457,7 @@ const ExpenseModal: React.FC<Props> = ({ store }) => {
     setExpenseKind(null);
     setSplitMode("EQUAL");
     setSplitAmounts(makeEmptySplitAmounts(expenseMembers));
+    setScheduleItemId(initialScheduleItemId);
     setReceiptFile(null);
     setCurrentFileName(null);
     setCurrentReceiptBase64(null);
@@ -590,6 +612,7 @@ const ExpenseModal: React.FC<Props> = ({ store }) => {
       split: finalSplit,
       receipt: currentReceiptBase64,
       fileName: currentFileName,
+      scheduleItemId,
     };
 
     try {
@@ -952,6 +975,34 @@ const ExpenseModal: React.FC<Props> = ({ store }) => {
                 </select>
               </div>
             </div>
+
+            {scheduleItemOptions.length > 0 && (
+              <div className="exp2-field">
+                <label>연결할 일정 (선택)</label>
+                <select
+                  className="exp2-select"
+                  value={scheduleItemId ?? ""}
+                  onChange={(e) =>
+                    setScheduleItemId(
+                      e.target.value ? Number(e.target.value) : null,
+                    )
+                  }
+                >
+                  <option value="">연결 안 함</option>
+                  {Object.entries(groupedScheduleItemsByDay).map(
+                    ([day, items]) => (
+                      <optgroup key={day} label={day}>
+                        {items.map((item) => (
+                          <option key={item.id} value={item.id}>
+                            {item.time} · {item.title}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ),
+                  )}
+                </select>
+              </div>
+            )}
 
             <div className="exp2-split-card">
               <div className="exp2-split-head">

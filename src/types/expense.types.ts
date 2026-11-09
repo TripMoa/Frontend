@@ -28,6 +28,7 @@ export type ExpenseCreateRequest = {
   autoIncludePayer?: boolean;
   splitMode: SplitMode;
   splits?: ExpenseSplitCreateRequest[];
+  scheduleItemId?: number | null;
 };
 
 export type ExpensePreviewManualSplitRequest = {
@@ -64,6 +65,7 @@ export type ExpenseResponse = {
   receiptFileName: string | null;
   paidAt: string;
   createdAt: string;
+  scheduleItemId: number | null;
 };
 
 export type ExpenseDetailSplitResponse = {
@@ -91,6 +93,7 @@ export type ExpenseDetailResponse = {
   paidAt: string;
   createdAt: string;
   splits?: ExpenseDetailSplitResponse[];
+  scheduleItemId: number | null;
 };
 
 export type ExpensePreviewSplitResponse = {

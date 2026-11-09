@@ -15,6 +15,7 @@ import ProtectedRoute from "./features/user/pages/ProtectedRoute";
 import { AuthProvider } from "./features/user/pages/AuthContext";
 import NoticePage from "./features/user/pages/NoticePage";
 import FaqPage from "./features/user/pages/FaqPage";
+import InvitePage from "./features/invite/pages/InvitePage";
 
 export default function App() {
 
@@ -43,6 +44,9 @@ export default function App() {
           <Route path="/travelstory/edit/:storyId" element={<TravelStoryEdit />} />
           <Route path="/travelstory/detail/:id" element={<TravelStory />} />
           <Route path="/travelstory/mystories" element={<TravelStory />} />
+
+          {/* 초대 링크: 비로그인도 진입(안내 후 로그인 → 복귀)하므로 ProtectedRoute 밖에 둔다 */}
+          <Route path="/invite/:code" element={<InvitePage />} />
 
           {/* 보호된 라우트: 설정 페이지 */}
           <Route element={<ProtectedRoute />}>

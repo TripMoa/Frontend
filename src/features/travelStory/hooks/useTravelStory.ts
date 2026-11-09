@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import * as storyAPI from "../../../api/stories.api";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import * as draftAPI from "../../../api/drafts.api";
 import { getMyInfo } from "../../../api/auth.api";
 import { useAuth } from "../../user/pages/AuthContext";
@@ -23,6 +23,7 @@ interface Draft {
 function useTravelStory() {
 
   const navigate = useNavigate();
+  const location = useLocation();
 
   const { isAuthenticated } = useAuth();
 
@@ -265,6 +266,35 @@ useEffect(() => {
     }
   };
 
+  // 브라우저 뒤로가기/앞으로가기 시 화면 맞추기 (글쓰기 화면 제외)
+  useEffect(() => {
+    const path = location.pathname;
+
+    if (path.startsWith("/travelstory/detail")) {
+      const idFromPath = Number(path.split("/")[3]);
+      if (idFromPath && idFromPath !== selectedStoryId) {
+        setSelectedStoryId(idFromPath);
+        localStorage.setItem("selectedStoryId", String(idFromPath));
+      }
+      if (currentPage !== "detail") setCurrentPageState("detail");
+      return;
+    }
+
+    if (currentPage === "write") return;
+
+    if (path.startsWith("/travelstory/mystories")) {
+      if (currentPage !== "myStories") setCurrentPageState("myStories");
+      return;
+    }
+
+    if (path === "/travelstory" || path === "/travelstory/") {
+      if (currentPage !== "main") {
+        setCurrentPageState("main");
+        setSelectedStory(null);
+      }
+    }
+  }, [location.pathname]);
+
   // 이전 페이지로 이동 및 편집/선택 상태 초기화
   const goBack = () => {
   const reviewFrom = localStorage.getItem("reviewFrom");
@@ -308,7 +338,7 @@ useEffect(() => {
           ? true
           : story.duration === filters.duration;
 
-      // 예산 범위 필터 (원 단위)
+      // 예산 범위 필터
       const budget = parseInt(story.budget) || 0;
       const matchesBudget = (() => {
         switch (filters.minBudget) {
@@ -364,6 +394,10 @@ useEffect(() => {
 
   // 스토리 클릭 시 상세 페이지로 이동
   const handleStoryClick = (story: any) => {
+    // 돌아갈 화면 기억
+    if (currentPage !== "detail") {
+      setPreviousPage(currentPage);
+    }
     setSelectedStory(story);
      setCurrentPageState("detail");
     navigate(`/travelstory/detail/${story.id}`);
@@ -469,22 +503,8 @@ useEffect(() => {
       isPublic: publishData?.isPublic ?? true,
       tripId: publishData?.tripId || null,
 
-      // 경비 항목 개별 필드로 전달
-      transportation: publishData?.expenses
-        ? JSON.parse(publishData.expenses).transportation
-        : null,
-      accommodation: publishData?.expenses
-        ? JSON.parse(publishData.expenses).accommodation
-        : null,
-      food: publishData?.expenses
-        ? JSON.parse(publishData.expenses).food
-        : null,
-      attraction: publishData?.expenses
-        ? JSON.parse(publishData.expenses).attraction
-        : null,
-      shopping: publishData?.expenses
-        ? JSON.parse(publishData.expenses).shopping
-        : null,
+      // 경비 공개 여부
+      showExpense: publishData?.showExpense ?? true,
     };
 
     try {
@@ -492,11 +512,12 @@ useEffect(() => {
       if (editingStory) {
         // 수정 모드
         const response = await storyAPI.updateStory(editingStory.id, storyData);
-        setMyStories(
-          myStories.map((story) =>
-            story.id === editingStory.id ? response.data : story,
-          ),
-        );
+        // 수정본을 모든 목록에 반영
+        const replaceEdited = (list: Story[]) =>
+          list.map((story) => (story.id === editingStory.id ? response.data : story));
+        setMyStories(replaceEdited);
+        setAllStories(replaceEdited);
+        setStories(replaceEdited);
         showCustomAlert("여행기가 수정되었습니다.", () => {  
           setEditingStory(null);
           setCurrentDraftId(null);

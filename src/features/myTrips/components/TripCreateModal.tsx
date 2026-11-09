@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { checkEmail } from "../../../api/auth.api";
 import BaseModal from "../../../shared/components/BaseModal";
+import { MAX_TRIP_MEMBERS } from "../../../shared/config/tripLimits";
 import "../styles/TripCreateModal.css";
 import type { UserResponse } from "../../../types";
 import type {
@@ -48,6 +49,10 @@ export const TripCreateModal = ({
     [formData.selectedMembers],
   );
 
+  // 본인(소유자)은 자동 포함이라 인원에 1을 더해서 센다
+  const memberCount = formData.selectedMembers.length + 1;
+  const isMemberLimitReached = memberCount >= MAX_TRIP_MEMBERS;
+
   const showTempMessage = (message: string) => {
     setAgentMessage(message);
     window.setTimeout(() => {
@@ -67,6 +72,11 @@ export const TripCreateModal = ({
 
     if (currentUser?.email && email === currentUser.email.toLowerCase()) {
       showTempMessage("본인은 자동 포함됩니다.");
+      return;
+    }
+
+    if (isMemberLimitReached) {
+      showTempMessage(`여행은 본인을 포함해 최대 ${MAX_TRIP_MEMBERS}명까지 함께할 수 있어요.`);
       return;
     }
 
@@ -189,7 +199,12 @@ export const TripCreateModal = ({
         </div>
 
         <div className="tcm-field">
-          <label>AGENTS</label>
+          <label>
+            AGENTS{" "}
+            <span style={{ fontWeight: 500, opacity: 0.7 }}>
+              (본인 포함 {memberCount}/{MAX_TRIP_MEMBERS}명)
+            </span>
+          </label>
 
           <div className="tcm-agent-row">
             <input
@@ -209,7 +224,8 @@ export const TripCreateModal = ({
               type="button"
               onClick={() => void addAgent()}
               className="tcm-add-btn"
-              disabled={isCheckingAgent}
+              disabled={isCheckingAgent || isMemberLimitReached}
+              title={isMemberLimitReached ? `최대 ${MAX_TRIP_MEMBERS}명까지예요` : undefined}
             >
               {isCheckingAgent ? "CHECKING..." : "ADD"}
             </button>

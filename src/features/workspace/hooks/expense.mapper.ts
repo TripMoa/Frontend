@@ -203,6 +203,7 @@ export const mapExpenseResponseToItem = (
     split,
     receipt: (row as any).receiptUrl ?? null,
     fileName: (row as any).receiptFileName ?? null,
+    scheduleItemId: (row as any).scheduleItemId ?? null,
   };
 };
 

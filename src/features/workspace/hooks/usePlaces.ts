@@ -1,6 +1,8 @@
 // src/features/workspace/hooks/usePlaces.ts
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { getPlaces, createPlace, updatePlace, deletePlace } from "../../../api/place.api";
+import type { PlaceApiItem } from "../../../api/place.api";
+import { apiMessage } from "./apiError";
 
 export interface Place {
   id: string;
@@ -19,13 +21,22 @@ export const usePlaces = (tripId: number | null) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchPlaces = useCallback(async () => {
+  // 오래된 응답이 최신 목록을 덮지 않도록 조회마다 번호를 올린다
+  const fetchGen = useRef(0);
+
+  // silent: 다른 멤버가 바꾼 걸 맞추는 조회 — 로딩 표시를 켜지 않고 실패해도 안내하지 않는다
+  const fetchPlaces = useCallback(async (opts?: { silent?: boolean }) => {
     if (!tripId) return;
-    setLoading(true);
-    setError(null);
+    const silent = opts?.silent === true;
+    const gen = ++fetchGen.current;
+    if (!silent) {
+      setLoading(true);
+      setError(null);
+    }
     try {
       const { data } = await getPlaces(tripId);
-      setPlaces(data.map((p: any) => ({
+      if (gen !== fetchGen.current) return;
+      setPlaces(data.map((p: PlaceApiItem) => ({
         id: String(p.id),
         name: p.name,
         category: p.category,
@@ -34,10 +45,10 @@ export const usePlaces = (tripId: number | null) => {
         lat: p.lat,
         lng: p.lng,
       })));
-    } catch (e: any) {
-      setError(e.message);
+    } catch (e) {
+      if (!silent && gen === fetchGen.current) setError(apiMessage(e, "저장한 장소를 불러오지 못했어요."));
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [tripId]);
 
@@ -56,8 +67,8 @@ export const usePlaces = (tripId: number | null) => {
         lat: data.lat,
         lng: data.lng,
       }]);
-    } catch (e: any) {
-      setError(e.message);
+    } catch (e) {
+      setError(apiMessage(e, "장소를 저장하지 못했어요."));
       throw e; // 호출자(AddPlaceModal 등)가 성공/실패를 구분해서 피드백을 줄 수 있게 재전파
     }
   }, [tripId]);
@@ -68,8 +79,8 @@ export const usePlaces = (tripId: number | null) => {
       setPlaces((prev) => prev.map((p) =>
         p.id === placeId ? { ...p, category: data.category } : p
       ));
-    } catch (e: any) {
-      setError(e.message);
+    } catch (e) {
+      setError(apiMessage(e, "장소를 수정하지 못했어요."));
     }
   }, []);
 
@@ -77,8 +88,8 @@ export const usePlaces = (tripId: number | null) => {
     try {
       await deletePlace(placeId);
       setPlaces((prev) => prev.filter((p) => p.id !== placeId));
-    } catch (e: any) {
-      setError(e.message);
+    } catch (e) {
+      setError(apiMessage(e, "장소를 삭제하지 못했어요."));
     }
   }, []);
 

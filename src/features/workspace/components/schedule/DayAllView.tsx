@@ -3,12 +3,17 @@
 import React, { useState, useEffect, useRef } from "react";
 import AddPlaceModal from "../schedule/modal/AddPlaceModal";
 import AiScheduleModal from "../schedule/modal/AiScheduleModal";
-import type { TimelineNode } from "../schedule/modal/AiScheduleModal";
+import type { TimelineNode, AiScheduleSettings } from "../schedule/modal/AiScheduleModal";
 import { useWorkspaceCore } from "../../hooks/useWorkspaceCore";
 import { useNaverMap } from "../../hooks/useNaverMap";
+import type { NaverMapObject } from "../../hooks/naverMapTypes";
 import { CATEGORY_COLOR, CATEGORY_LIST, getCategoryIcon } from "../../hooks/schedule.constants";
 import "../../styles/center.css";
 import "../../styles/modals.css";
+import { itemMatchesPlace } from "../../hooks/placeMatch";
+import type { GenerationLock } from "../../hooks/tripChange";
+import { useScheduleUndo } from "../../hooks/useScheduleUndo";
+import { ActionPromptModal } from "../../../../shared/components/ActionPromptModal";
 
 interface Place {
   id: string;
@@ -79,13 +84,25 @@ interface DayAllViewProps {
   addPlace: (place: Omit<Place, "id">) => Promise<void>;
   updatePlace: (placeId: string, patch: { category?: string }) => Promise<void>;
   deletePlace: (placeId: string) => Promise<void>;
+  // 밖(WorkspaceCenter)에서 AI 생성 모달을 열어달라는 신호 — 여행 기간 변경 안내의 "지금 재생성" 버튼용.
+  // DAY ALL 탭이 아직 마운트 전이어도 마운트되는 순간 처리되도록 boolean 신호 + 처리 완료 콜백으로 둔다.
+  autoOpenAiModal?: boolean;
+  onAutoOpenAiModalHandled?: () => void;
+  // 현재 일정에 들어 있는 항목들 — 저장된 장소 중 일정에 못 들어간 것에 "일정 미포함"을 표시하는 데 쓴다.
+  // 생성 응답이 아니라 저장된 일정에서 계산하므로 새로고침해도 유지된다.
+  scheduledItems?: { title: string; lat?: number; lng?: number }[];
+  /** 다른 멤버가 AI 일정을 만드는 중이면 그 정보 — 끝날 때까지 새 AI 생성을 막는다 (서버도 거절한다) */
+  generationLock?: GenerationLock | null;
+  /** AI 재생성을 되돌린 뒤 — 서버 기준으로 일정을 다시 불러온다 */
+  onScheduleRestored?: () => Promise<void> | void;
+  /** 다른 멤버의 일정 변경 알림이 올 때마다 올라간다 — 되돌리기 가능 여부를 다시 확인하는 신호 */
+  scheduleRevision?: number;
 }
 
 
 
 const DayAllView: React.FC<DayAllViewProps> = ({
   tripId,
-  tripTitle,
   startDate,
   endDate,
   onScheduleGenerated,
@@ -93,6 +110,12 @@ const DayAllView: React.FC<DayAllViewProps> = ({
   addPlace,
   updatePlace,
   deletePlace,
+  autoOpenAiModal = false,
+  onAutoOpenAiModalHandled,
+  scheduledItems = [],
+  generationLock = null,
+  onScheduleRestored,
+  scheduleRevision = 0,
 }) => {
   const { selectTab } = useWorkspaceCore();
   const { mapLoaded, mapKey } = useNaverMap();
@@ -103,21 +126,32 @@ const DayAllView: React.FC<DayAllViewProps> = ({
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
   const [category, setCategory] = useState("all");
-  const [viewTab, setViewTab] = useState<"list" | "map">("list");
   const [toast, setToast] = useState<{ message: string; onUndo?: () => void } | null>(null);
+  // AI 재생성 되돌리기 — 다른 멤버의 생성이 끝나거나(generationLock 이 풀리면) 일정이 바뀌었다는 알림이 오면 상태를 다시 확인한다
+  const undoState = useScheduleUndo(tripId, `${generationLock !== null}-${scheduleRevision}`);
+  const [isUndoConfirmOpen, setIsUndoConfirmOpen] = useState(false);
   // 삭제 유예 — 바로 지우지 않고 몇 초간 "실행취소" 가능한 상태로 숨겨둠
   const [pendingDeleteIds, setPendingDeleteIds] = useState<Set<string>>(new Set());
   const pendingDeleteTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   // ── 지도 refs ──────────────────────────────────────────────
   const mapRef = useRef<HTMLDivElement>(null);
-  const mapInstanceRef = useRef<any>(null);
-  const markersRef = useRef<any[]>([]);
-  const markerByPlaceIdRef = useRef<Record<string, any>>({});
-  const infoWindowRef = useRef<any>(null);
+  const mapInstanceRef = useRef<NaverMapObject>(null);
+  const markersRef = useRef<NaverMapObject[]>([]);
+  const markerByPlaceIdRef = useRef<Record<string, NaverMapObject>>({});
+  const infoWindowRef = useRef<NaverMapObject>(null);
 
   // 삭제 유예 중인 장소는 실행취소 가능한 동안 리스트/지도에서 숨김
   const visiblePlaces = savedPlaces.filter((p) => !pendingDeleteIds.has(p.id));
+
+  // 일정에 아직 못 들어간 장소인지 — 이름이 같거나 좌표가 거의 같은 항목이 일정에 있으면 들어간 것으로 본다.
+  // (제목을 고쳐도 좌표로 잡히게 함. 숙소·교통은 방문 후보가 아니라 기준점이라 제외)
+  const isUnscheduled = (place: Place) => {
+    if (scheduledItems.length === 0) return false; // 일정이 아직 없으면 전부 "미포함"이 되므로 표시하지 않음
+    if (place.category === "숙소" || place.category === "교통") return false;
+    return !scheduledItems.some((item) => itemMatchesPlace(item, place));
+  };
+  const unscheduledCount = visiblePlaces.filter(isUnscheduled).length;
 
   // ── 지도 초기화 ──────────────────────────────────────────
   useEffect(() => {
@@ -174,7 +208,7 @@ const DayAllView: React.FC<DayAllViewProps> = ({
   };
 
   // 핀 클릭 시 정보창 오픈 로직
-  const openPlaceInfo = (place: Place, marker: any) => {
+  const openPlaceInfo = (place: Place, marker: NaverMapObject) => {
     const color = CATEGORY_COLOR[place.category] || "#333";
     infoWindowRef.current.setContent(`
       <div style="padding:12px 16px;min-width:180px;max-width:240px;font-family:inherit">
@@ -317,22 +351,42 @@ const DayAllView: React.FC<DayAllViewProps> = ({
   };
 
   const handleOpenAiModal = () => {
+    if (generationLock) { showToast("지금 다른 멤버가 AI 일정을 만들고 있어요. 끝나면 다시 시도해주세요."); return; }
     if (savedPlaces.length === 0) { showToast("장소를 먼저 추가해주세요."); return; }
     setIsAiModalOpen(true);
   };
 
+  useEffect(() => {
+    if (!autoOpenAiModal) return;
+    handleOpenAiModal();
+    onAutoOpenAiModalHandled?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoOpenAiModal]);
+
   // AiScheduleModal이 API 응답을 localStorage에 직접 저장 후 onGenerate 호출.
   // loadFromExternal로 현재 탭 nodes 상태를 즉시 업데이트한다.
   const handleGenerateSchedule = (
-    _settings: any,
+    _settings: AiScheduleSettings,
     generatedSchedule: Record<string, TimelineNode[]>,
     dayKeys: string[]
   ) => {
     onScheduleGenerated(generatedSchedule);
     setIsAiModalOpen(false);
+    void undoState.refresh();   // 방금 만든 일정을 되돌릴 수 있게 됐다
     // 생성된 첫 번째 DAY로 자동 이동
     const firstDay = dayKeys[0] ?? "DAY 1";
     selectTab(firstDay, "timeline");
+  };
+
+  const handleConfirmUndo = async () => {
+    setIsUndoConfirmOpen(false);
+    try {
+      await undoState.undo();
+      await onScheduleRestored?.();
+      showToast("AI 일정을 이전 상태로 되돌렸어요.");
+    } catch (e) {
+      showToast((e as Error).message);
+    }
   };
 
   // ── 필터된 장소 ────────────────────────────────────────────
@@ -362,12 +416,34 @@ const DayAllView: React.FC<DayAllViewProps> = ({
             >
               + 새 장소 추가
             </button>
+            {undoState.status?.available && (
+              <button
+                onClick={() => setIsUndoConfirmOpen(true)}
+                disabled={generationLock !== null || undoState.isUndoing}
+                title={`${undoState.status.actorNickname ?? "누군가"}님이 AI로 다시 만들기 직전의 일정으로 되돌려요`}
+                style={{
+                  padding: "10px 20px", background: "#fff", color: "#000", border: "2px solid #000", borderRadius: "4px",
+                  fontWeight: "bold", fontSize: "14px",
+                  cursor: generationLock || undoState.isUndoing ? "not-allowed" : "pointer",
+                  opacity: generationLock || undoState.isUndoing ? 0.45 : 1,
+                }}
+              >
+                {undoState.isUndoing ? "되돌리는 중..." : "↩ 이전 일정으로"}
+              </button>
+            )}
             {savedPlaces.length > 0 && (
               <button
                 onClick={handleOpenAiModal}
-                style={{ padding: "10px 20px", background: "#000", color: "#fff", border: "2px solid #000", borderRadius: "4px", fontWeight: "bold", fontSize: "14px", cursor: "pointer" }}
+                disabled={generationLock !== null}
+                title={generationLock ? "다른 멤버가 AI 일정을 만드는 중이에요" : undefined}
+                style={{
+                  padding: "10px 20px", background: "#000", color: "#fff", border: "2px solid #000", borderRadius: "4px",
+                  fontWeight: "bold", fontSize: "14px",
+                  cursor: generationLock ? "not-allowed" : "pointer",
+                  opacity: generationLock ? 0.45 : 1,
+                }}
               >
-                ✨ AI 일정 생성
+                {generationLock ? "⏳ AI 생성 중..." : "✨ AI 일정 생성"}
               </button>
             )}
           </div>
@@ -402,6 +478,20 @@ const DayAllView: React.FC<DayAllViewProps> = ({
                 );
               })}
             </div>
+
+            {/* 일정에 못 들어간 장소 안내 — 생성 직후 몇 초만 뜨는 안내를 놓쳐도 계속 보이도록 */}
+            {unscheduledCount > 0 && (
+              <div
+                style={{
+                  flexShrink: 0, marginBottom: "10px", padding: "10px 12px",
+                  background: "#fff8e1", border: "1px solid #ffd54f", borderRadius: "6px",
+                  fontSize: "12px", color: "#795548", lineHeight: 1.5,
+                }}
+              >
+                ⚠️ 일정에 들어가지 못한 장소가 {unscheduledCount}곳 있어요. 일정 화면에서 직접 추가하거나,
+                일정 스타일·일수를 바꿔 다시 생성해보세요.
+              </div>
+            )}
 
             {/* 카드 목록 */}
             <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: "6px" }}>
@@ -440,6 +530,18 @@ const DayAllView: React.FC<DayAllViewProps> = ({
                           </h3>
                           {place.rating && (
                             <span style={{ fontSize: "11px", color: "#ff9800", flexShrink: 0 }}>⭐ {place.rating}</span>
+                          )}
+                          {isUnscheduled(place) && (
+                            <span
+                              title="현재 일정에 포함되지 않은 장소예요"
+                              style={{
+                                flexShrink: 0, fontSize: "10px", fontWeight: "bold", color: "#795548",
+                                background: "#fff8e1", border: "1px solid #ffd54f",
+                                borderRadius: "8px", padding: "1px 6px",
+                              }}
+                            >
+                              일정 미포함
+                            </span>
                           )}
                         </div>
                         <p style={{ fontSize: "12px", color: "#999", margin: "2px 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -532,8 +634,21 @@ const DayAllView: React.FC<DayAllViewProps> = ({
           startDate={startDate}
           endDate={endDate}
           tripId={tripId}
+          hasExistingSchedule={scheduledItems.length > 0}
+          generationLock={generationLock}
         />
       )}
+
+      <ActionPromptModal
+        open={isUndoConfirmOpen}
+        title="UNDO AI SCHEDULE"
+        headline="AI 일정을 이전 상태로 되돌릴까요?"
+        description={`${undoState.status?.actorNickname ?? "누군가"}님이 AI로 다시 만들기 직전의 일정으로 돌아가요. 다시 만들어진 일정은 사라지고, 되돌린 뒤에는 이 작업을 취소할 수 없어요. 다시 만들 때 일정에서 빠졌던 장소에 걸려 있던 지출·바우처 연결은 복원되지 않아요(지출·바우처 자체는 그대로예요).`}
+        cancelText="취소"
+        confirmText="되돌리기"
+        onClose={() => setIsUndoConfirmOpen(false)}
+        onConfirm={() => void handleConfirmUndo()}
+      />
 
       {toast && (
         <div style={{

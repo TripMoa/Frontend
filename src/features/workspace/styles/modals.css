@@ -239,6 +239,31 @@
   height: 42px;
 }
 
+.member-add-box {
+  margin-bottom: 14px;
+}
+
+.member-add-row {
+  display: flex;
+  gap: 8px;
+}
+
+.member-add-row .member-action-btn {
+  height: 42px;
+}
+
+.member-add-row .member-action-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.member-add-ok {
+  margin: 8px 0 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: #1b7a3a;
+}
+
 @media (max-width: 700px) {
   .member-item {
     align-items: stretch;

@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "./AuthContext";
+import { readPendingInvite } from "../../invite/inviteStorage";
 import styles from "../styles/Login.module.css";
 
 /**
@@ -30,7 +31,9 @@ export default function OAuthSuccess() {
       const success = await refreshAuth();
 
       if (success) {
-        navigate("/", { replace: true });
+        // 초대 링크로 들어왔다가 로그인한 경우 그 초대 페이지로 복귀
+        const pendingInvite = readPendingInvite();
+        navigate(pendingInvite ? `/invite/${pendingInvite}` : "/", { replace: true });
         return;
       }
 

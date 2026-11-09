@@ -43,6 +43,10 @@ export const updateTripVisibility = (
   data: TripVisibilityUpdateRequest,
 ) => api.patch<TripDetailResponse>(`/trips/${tripId}/visibility`, data);
 
+// 여행 멤버 추가 (소유자, 가입자를 바로 멤버로 등록)
+export const addTripMember = (tripId: number, userId: number) =>
+  api.post<TripDetailResponse>(`/trips/${tripId}/members`, { userId });
+
 // 여행 멤버 닉네임 수정
 export const updateTripMemberNickname = (
   tripId: number,
@@ -61,6 +65,14 @@ export const getTripInviteInfo = (inviteCode: string) =>
 // 초대코드로 여행 참여
 export const joinTripByInviteCode = (inviteCode: string) =>
   api.post<TripDetailResponse>(`/trips/invites/${inviteCode}/join`);
+
+// 링크 초대 켜기/끄기 (소유자)
+export const updateTripInviteEnabled = (tripId: number, enabled: boolean) =>
+  api.patch<TripDetailResponse>(`/trips/${tripId}/invite`, { enabled });
+
+// 초대 코드 다시 만들기 (소유자, 이전 링크 무효)
+export const regenerateTripInviteCode = (tripId: number) =>
+  api.post<TripDetailResponse>(`/trips/${tripId}/invite/regenerate`);
 
 // 여행 삭제
 export const deleteTrip = (tripId: number) =>

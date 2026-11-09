@@ -510,10 +510,10 @@ selectedMembers: [],
         drafts={hook.drafts}
         onClose={() => hook.setShowDraftModal(false)}
         onSelectDraft={(draft) => {
+          // 현재 화면은 유지하고 제목·본문·사진만 불러오기
           hook.setCurrentDraft(draft);
           hook.setCurrentDraftId(draft.id);
           hook.setShowDraftModal(false);
-          hook.setWriteType("FREE"); 
           hook.navigateToPage('write');
         }}
         onDeleteDraft={hook.deleteDraft}
@@ -531,6 +531,12 @@ selectedMembers: [],
         onStoryClick={(story) => {
           hook.setShowLikesModal(false);
           hook.handleStoryClick(story);
+        }}
+        // 저장한 일정으로 새 여행 만들기
+        onUseItinerary={(story) => {
+          hook.setShowLikesModal(false);
+          setSelectedItineraryStory(story);
+          setShowTripModal(true);
         }}
       />
 
