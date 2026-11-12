@@ -33,11 +33,6 @@ function FreeWritePage({
 
   const editorRef = useRef<EditorHandle>(null);
 
-  // 진입 시 맨 위로 스크롤
-  useEffect(() => {
-    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
-  }, []);
-
   // 나가기 경고 표시 여부 판단
   const hasContent = useCallback(() => {
     if (editingStory || currentDraft) return true;
@@ -169,13 +164,12 @@ function FreeWritePage({
           <div className="write-title-section">
             <label className="write-label">TITLE *</label>
             <input
-              // 임시저장 불러오면 제목 다시 채우기
-              key={`title-${currentDraft?.id || editingStory?.id || "new"}`}
+              key={`title-${editingStory?.id || "new"}`}
               type="text"
               className="title-input"
-              placeholder="제목을 입력하세요."
-              defaultValue={currentDraft?.title || editingStory?.title || ""}
-              maxLength={15}
+              placeholder="여행 제목을 입력하세요."
+              defaultValue={editingStory?.title || currentDraft?.title || ""}
+              maxLength={30}
             />
           </div>
 
