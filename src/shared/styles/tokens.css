@@ -1,0 +1,88 @@
+:root {
+  --tm-ink: #111111;
+  --tm-paper: #ffffff;
+  --tm-yellow: #ffe94a;
+  --tm-red: #ff4b2b;
+  --tm-soft: #f5f5f3;
+  --tm-line: #cfcfcf;
+  --tm-line-strong: #999999;
+  --tm-mute: #555555;
+  --tm-grid: #ebebeb;
+  --tm-yellow-soft: #fffbe0;
+  --tm-blue-soft: #e8f5ff;
+  --tm-overlay: rgba(17, 17, 17, .45);
+
+  --tm-warn-bg: #fff0e0;
+  --tm-warn-line: #e65100;
+  --tm-warn-text: #8a3a00;
+  --tm-ok: #1b7a3a;
+  --tm-ok-bg: #e7f7ea;
+  --tm-danger: #c62828;
+  --tm-danger-bg: #fdeaea;
+  --tm-info: #1565c0;
+  --tm-info-bg: #eaf2ff;
+  --tm-mint: #b8f0d0;
+
+  --tm-tint-yellow: #fff6bf;
+  --tm-tint-mint: #e6f9ef;
+  --tm-tint-blue: #e4f4ff;
+  --tm-tint-pink: #ffe9f1;
+  --tm-tint-red: #ffe9e4;
+  --tm-tint-red-text: #c4331a;
+  --tm-tint-red-line: #ffd0c6;
+  --tm-link: var(--tm-info);
+
+  --tm-kakao: #fee500;
+  --tm-naver: #03c75a;
+
+  --tm-cat-sight: #1976d2;
+  --tm-cat-food: #e64a19;
+  --tm-cat-cafe: #f9a825;
+  --tm-cat-shop: #7b1fa2;
+  --tm-cat-stay: #00897b;
+  --tm-cat-move: #37474f;
+
+  --tm-bd: 2px solid var(--tm-ink);
+  --tm-bd-thin: 1.5px solid var(--tm-ink);
+  --tm-bd-heavy: 3px solid var(--tm-ink);
+  --tm-bd-soft: 1px solid var(--tm-line);
+  --tm-bd-dash: 1.5px dashed var(--tm-ink);
+
+  --tm-font: "Pretendard Variable", "Pretendard", "Noto Sans KR", -apple-system, "Malgun Gothic", sans-serif;
+  --tm-font-num: var(--tm-font);
+  --tm-fs-xs: 13px;
+  --tm-fs-sm: 13.5px;
+  --tm-fs-md: 15px;
+  --tm-fs-lg: 17px;
+  --tm-fs-xl: 22px;
+  --tm-fs-2xl: 26px;
+  --tm-fs-hero: 34px;
+  --tm-fs-display: clamp(48px, 7.6vw, 104px);
+  --tm-font-hand: "Gaegu", "Pretendard Variable", cursive;
+
+  --tm-gap-1: 4px;
+  --tm-gap-2: 8px;
+  --tm-gap-3: 12px;
+  --tm-gap-4: 16px;
+  --tm-gap-5: 24px;
+  --tm-gap-6: 40px;
+
+  --tm-h-header: 68px;
+  --tm-h-btn: 40px;
+  --tm-h-btn-sm: 32px;
+  --tm-h-input: 42px;
+  --tm-w-narrow: 640px;
+  --tm-w-page: 1240px;
+  --tm-w-wide: 1240px;
+  --tm-radius: 0;
+
+  --tm-shadow-float: 0 10px 30px rgba(0, 0, 0, .18);
+
+  --tm-ease: .12s;
+
+  --tm-z-sticky: 50;
+  --tm-z-header: 60;
+  --tm-z-dropdown: 80;
+  --tm-z-overlay: 2000;
+  --tm-z-toast: 2100;
+}
