@@ -1,4 +1,7 @@
 // src/features/myTrips/components/TripCard.tsx
+//
+// 여행 카드 — 시안(design-proposal-merged 의 내 여행) 모양: 색 머리(상태 · 기간 · 제목) + 아래 칸(날짜 · 멤버 · 버튼).
+// 눌러서 작업 화면으로 가는 동작, 후기 작성, 삭제는 예전과 같다. 이모지는 쓰지 않는다(아바타는 닉네임 첫 글자).
 
 import { useNavigate } from "react-router-dom";
 import type { MyTripSummaryResponse } from "../../../types";
@@ -7,16 +10,38 @@ import type { TripStatusInfo } from "./../hooks/useMyTrips";
 interface TripCardProps {
   trip: MyTripSummaryResponse;
   status: TripStatusInfo;
+  /** 머리 색 순서(노랑 · 하늘 · 민트 순서로 돌아간다) */
+  index: number;
   onDelete: (trip: MyTripSummaryResponse) => void;
   isInvited: boolean;
   onWriteReview?: () => void;
 }
 
 const MAX_VISIBLE_MEMBERS = 6;
+const HEAD_TONES = ["yellow", "blue", "mint"] as const;
+
+/** "3박 4일" — 당일이면 "당일치기" */
+function nightsLabel(start: string, end: string) {
+  const s = new Date(start);
+  const e = new Date(end);
+  if (Number.isNaN(s.getTime()) || Number.isNaN(e.getTime())) return "";
+  const nights = Math.round((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24));
+  if (nights <= 0) return "당일치기";
+  return `${nights}박 ${nights + 1}일`;
+}
+
+/** "2025.10.12 – 10.15" (같은 해면 끝 날짜는 월.일만) */
+function rangeLabel(start: string, end: string) {
+  const dot = (v: string) => v.replace(/-/g, ".");
+  if (!start && !end) return "";
+  if (start.slice(0, 4) === end.slice(0, 4)) return `${dot(start)} – ${dot(end).slice(5)}`;
+  return `${dot(start)} – ${dot(end)}`;
+}
 
 export const TripCard = ({
   trip,
   status,
+  index,
   onDelete,
   isInvited,
   onWriteReview,
@@ -32,12 +57,11 @@ export const TripCard = ({
   // 그래서 화면에는 PUBLIC/PRIVATE 대신 뜻에 맞는 이름을 보여준다.
   const isShared = trip.visibility !== "PRIVATE";
   const visibilityText = isShared ? "함께하는 여행" : "나만의 여행";
-  const visibilityClass = isShared ? "public" : "private";
 
   const startDate = trip.tripStartDate ?? "";
   const endDate = trip.tripEndDate ?? "";
 
-    // 후기 작성 가능 여부 (종료 후 30일 이내) ← 여기
+  // 후기 작성 가능 여부 (종료 후 60일 이내)
   const canWriteReview = (() => {
     if (!status.isEnd) return false;
     const end = new Date(endDate);
@@ -46,134 +70,72 @@ export const TripCard = ({
     return diffDays <= 60;
   })();
 
+  const statusText =
+    status.rightLabel === "출발 전" ? `출발 전 · ${status.leftLabel}` : status.rightLabel;
+  const statusTone = status.isEnd ? " tm-tag--dark" : status.rightLabel === "여행 중" ? " tm-tag--ok" : " tm-tag--red";
+
   return (
-    <div
-      className="mate-ticket trip-card"
-      style={{
-        opacity: status.isEnd ? 0.6 : 1,
-        cursor: "pointer",
-        position: "relative",
-        zIndex: 1,
-      }}
-      onClick={() => navigate(`/workspace/${trip.tripId}`)}
-    >
-      <div
-        className="mt-side"
-        style={{
-          background: status.isEnd ? "#eee" : "#000",
-          color: status.isEnd ? "#999" : "#fff",
-        }}
-      >
-        <span style={{ fontSize: "12px", fontWeight: "bold" }}>STATUS</span>
-        <span style={{ fontSize: "24px", fontWeight: "900" }}>
-          {status.leftLabel}
-        </span>
+    <article className="mt-card" onClick={() => navigate(`/workspace/${trip.tripId}`)}>
+      <div className={`mt-card__head mt-card__head--${HEAD_TONES[index % HEAD_TONES.length]}`}>
+        <div className="mt-card__tags">
+          <span className={`tm-tag${statusTone}`}>{statusText}</span>
+          <span className="tm-tag">{visibilityText}</span>
+          <span className="mt-card__sp" />
+          <span className="tm-tag">{nightsLabel(startDate, endDate)}</span>
+        </div>
+        <h3 className="mt-card__title">{trip.title}</h3>
       </div>
 
-      <div className="mt-center" style={{ flex: 1, padding: "20px" }}>
-        <div className="top-badges" style={{ justifyContent: "space-between" }}>
-          <div style={{ display: "flex", gap: "5px" }}>
-            <span
-              className="sys-tag"
-              style={{
-                background: status.isEnd ? "#fff" : "#000",
-                color: status.isEnd ? "#555" : "#fff",
-                border: status.isEnd ? "1px solid #999" : "none",
-              }}
-            >
-              {status.rightLabel}
-            </span>
-            <span className={`sys-tag ${visibilityClass}`}>
-              <i className={`fa-solid ${isShared ? "fa-users" : "fa-user"}`}></i>{" "}
-              {visibilityText}
-            </span>
+      <div className="mt-card__body">
+        <div className="mt-card__date">{rangeLabel(startDate, endDate)}</div>
+
+        <div className="mt-card__row">
+          <span className="mt-card__label">멤버</span>
+          <div className="mt-card__members">
+            {visibleMembers.map((member, i) => (
+              <span
+                key={member.memberId}
+                className={`tm-avatar${member.sortOrder === 1 ? " tm-avatar--dark" : i === 1 ? " tm-avatar--red" : ""}`}
+                title={member.nickname}
+              >
+                {member.profileType === "CUSTOM" && member.profileImage ? (
+                  <img src={member.profileImage} alt={member.nickname} />
+                ) : (
+                  (member.nickname ?? "").substring(0, 1)
+                )}
+              </span>
+            ))}
+            {extraMemberCount > 0 && <span className="tm-avatar">+{extraMemberCount}</span>}
           </div>
 
+          <span className="mt-card__sp" />
+
+          {canWriteReview && (
+            <button
+              type="button"
+              className="tm-btn tm-btn--sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onWriteReview) onWriteReview();
+              }}
+            >
+              후기 작성
+            </button>
+          )}
           {!isInvited && (
             <button
-              className="delete-trip-btn"
+              type="button"
+              className="tm-btn tm-btn--sm tm-btn--danger"
               onClick={(e) => {
                 e.stopPropagation();
                 onDelete(trip);
               }}
             >
-              <i className="fa-solid fa-trash-can"></i>
+              삭제
             </button>
           )}
         </div>
-
-        <h3 className="mt-tit">{trip.title}</h3>
-        <p className="mt-txt">
-          {startDate} - {endDate}
-        </p>
-
-        <div className="participants">
-          <span className="p-label">AGENTS:</span>
-          <div className="p-avatars">
-            {visibleMembers.map((member) => (
-              <div
-                key={member.memberId}
-                className="p-circle"
-                style={
-                  member.sortOrder === 1
-                    ? { border: "2px solid #000" }
-                    : undefined
-                }
-                title={member.nickname}
-              >
-                {member.profileType === "CUSTOM" && member.profileImage ? (
-                  <img
-                    src={member.profileImage}
-                    alt={member.nickname}
-                    className="p-avatar-img"
-                  />
-                ) : member.profileType === "AVATAR" &&
-                  member.avatarEmoji &&
-                  member.avatarColor ? (
-                  <span
-                    className="p-avatar-emoji"
-                    style={{ backgroundColor: member.avatarColor }}
-                  >
-                    {member.avatarEmoji}
-                  </span>
-                ) : (
-                  <span className="p-avatar-text">
-                    {(member.nickname ?? "").substring(0, 2).toUpperCase()}
-                  </span>
-                )}
-              </div>
-            ))}
-
-            {extraMemberCount > 0 && (
-              <div className="p-circle">+{extraMemberCount}</div>
-            )}
-          </div>
-        </div>
-
-        {/* 후기 작성 버튼 - 오른쪽 아래 */}
-        {canWriteReview && (
-          <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "10px" }}>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                if (onWriteReview) onWriteReview();
-              }}
-              style={{
-                padding: "6px 12px",
-                background: "#000",
-                color: "#fff",
-                border: "none",
-                cursor: "pointer",
-                fontFamily: "Share Tech Mono, monospace",
-                fontSize: "12px",
-                fontWeight: "700",
-              }}
-            >
-              REVIEW
-            </button>
-          </div>
-        )}
       </div>
-    </div>
+    </article>
   );
 };

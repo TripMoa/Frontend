@@ -8,13 +8,13 @@ import { TripCard } from "./../components/TripCard";
 import { TripCreateModal } from "./../components/TripCreateModal";
 import type { TripFilter } from "./../hooks/useMyTrips";
 import { joinTripByInviteCode } from "../../../api/trip.api";
-import { ActionPromptModal } from "../../../shared/components/ActionPromptModal";
+import MtConfirm from "../components/MtConfirm";
 import { checkReviewExists } from "../../../api/stories.api";
 import type { MyTripSummaryResponse } from "../../../types";
 
 // 필터 이름 — 서버의 PUBLIC/PRIVATE 는 "공개 여부"가 아니라 "함께하는 멤버가 있는지"라서 뜻에 맞게 보여준다
 const FILTER_LABEL: Record<TripFilter, string> = {
-  all: "ALL SECTORS",
+  all: "전체",
   public: "함께하는 여행",
   private: "나만의 여행",
   invited: "초대된 여행",
@@ -49,8 +49,11 @@ export default function MyTrips() {
   const [deleteTargetTrip, setDeleteTargetTrip] =
     useState<MyTripSummaryResponse | null>(null);
 
+  // 생성 실패 · 후기 안내처럼 확인 버튼 하나만 있는 안내창
   const [createErrorModal, setCreateErrorModal] = useState({
     open: false,
+    title: "여행 만들기",
+    headline: "여행을 만들 수 없습니다",
     message: "",
   });
 
@@ -124,6 +127,8 @@ export default function MyTrips() {
     } catch (error: any) {
       setCreateErrorModal({
         open: true,
+        title: "여행 만들기",
+        headline: "여행을 만들 수 없습니다",
         message:
           error?.response?.data?.message ||
           error?.message ||
@@ -167,12 +172,7 @@ export default function MyTrips() {
   };
 
   return (
-    <section className="page-section">
-      <button className="fab-btn" onClick={openModal}>
-        <i className="fa-solid fa-plus"></i>
-        <span className="fab-text">NEW PLAN</span>
-      </button>
-
+    <section className="page-section tm-grid-bg mt-page">
       <TripCreateModal
         isOpen={isModalOpen}
         onClose={closeModal}
@@ -183,62 +183,48 @@ export default function MyTrips() {
         currentUser={currentUser}
       />
 
-      <div className="container" id="trip-list-ui">
-        <div className="section-header-neob">
-          <div className="header-content">
-            <h2 className="sec-title">MY PLAN BOARD</h2>
-            <p className="sec-desc">수립된 여행 작전 목록입니다.</p>
+      <div className="tm-page" id="trip-list-ui">
+        <div className="tm-page-head">
+          <div className="tm-page-head__text">
+            <h1 className="tm-page-head__title">내 여행</h1>
           </div>
-
-          <div className="filter-wrapper-neob">
-            <div className="filter-tabs">
-              {/* 왼쪽 그룹 */}
-              <div className="filter-left">
-                {(["all", "public", "private"] as TripFilter[]).map((type) => (
-                  <button
-                    key={type}
-                    className={`filter-btn ${filter === type ? "active" : ""}`}
-                    onClick={() => setFilter(type)}
-                  >
-                    {FILTER_LABEL[type]}
-                  </button>
-                ))}
-              </div>
-
-              {/* 오른쪽 그룹 */}
-              <div className="filter-right">
-                <button
-                  className="filter-btn invite-join-btn"
-                  onClick={openJoinModal}
-                >
-                  초대코드
-                </button>
-
-                <button
-                  className={`filter-btn ${filter === "invited" ? "active" : ""}`}
-                  onClick={() => setFilter("invited")}
-                >
-                  초대된 여행
-                </button>
-              </div>
-            </div>
+          <div className="tm-page-head__actions">
+            <button type="button" className="tm-btn" onClick={openJoinModal}>
+              초대코드로 참여
+            </button>
+            <button type="button" className="tm-btn tm-btn--primary" onClick={openModal}>
+              + 새 여행
+            </button>
           </div>
         </div>
 
-        <div className="trip-grid">
-          {isLoading && (
-            <p className="empty-text">여행 목록을 불러오는 중입니다.</p>
-          )}
-          {!isLoading && error && <p className="empty-text">{error}</p>}
-          {!isLoading && !error && trips.length === 0 && (
-            <p className="empty-text">표시할 여행이 없습니다.</p>
-          )}
-          {!isLoading &&
-            !error &&
-            trips.map((trip) => (
+        <div className="tm-row tm-row--wrap tm-gap-2 mt-filters">
+          {(["all", "public", "private", "invited"] as TripFilter[]).map((type) => (
+            <button
+              key={type}
+              type="button"
+              className={`tm-pill${filter === type ? " is-on" : ""}`}
+              aria-pressed={filter === type}
+              onClick={() => setFilter(type)}
+            >
+              {FILTER_LABEL[type]}
+            </button>
+          ))}
+        </div>
+
+        {isLoading && <div className="tm-loading">여행 목록을 불러오는 중입니다.</div>}
+        {!isLoading && error && <div className="tm-empty">{error}</div>}
+        {!isLoading && !error && trips.length === 0 && (
+          <div className="tm-empty">표시할 여행이 없습니다.</div>
+        )}
+
+        {!isLoading && !error && trips.length > 0 && (
+          <div className="mt-grid">
+            {trips.map((trip, i) => (
               <TripCard
                 key={trip.tripId}
                 trip={trip}
+                index={i}
                 status={getTripStatus(trip.tripStartDate, trip.tripEndDate)}
                 onDelete={requestDeleteTrip}
                 isInvited={filter === "invited"}
@@ -246,16 +232,21 @@ export default function MyTrips() {
                   // 이미 작성된 리뷰 있는지 확인
                   const res = await checkReviewExists(trip.tripId);
                   if (res.data === true) {
-                    alert("이미 해당 여행의 후기를 작성했습니다.");
+                    setCreateErrorModal({
+                      open: true,
+                      title: "후기 작성",
+                      headline: "이미 후기를 작성했어요",
+                      message: "해당 여행의 후기는 이미 작성되어 있습니다.",
+                    });
                     return;
                   }
-                  
+
                   localStorage.setItem("reviewFrom", "mytrips");
-                  
+
                   const start = new Date(trip.tripStartDate);
                   const end = new Date(trip.tripEndDate);
                   const diffDays = Math.floor((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-                  
+
                   const duration = diffDays === 0 ? "당일치기"
                     : diffDays === 1 ? "1박 2일"
                     : diffDays === 2 ? "2박 3일"
@@ -264,68 +255,73 @@ export default function MyTrips() {
                     : diffDays === 5 ? "5박 6일"
                     : "1주일 이상";
 
-                  navigate("/travelstory", { 
-                    state: { 
-                      goToWrite: true, 
+                  navigate("/travelstory", {
+                    state: {
+                      goToWrite: true,
                       writeType: "REVIEW",
                       tripData: {
                         departureDate: trip.tripStartDate,
                         duration,
-                        tripId: trip.tripId,  // ← tripId 추가
-                      }
-                    } 
+                        tripId: trip.tripId,
+                      },
+                    },
                   });
                 }}
               />
             ))}
-        </div>
+          </div>
+        )}
       </div>
 
-      <ActionPromptModal
+      <MtConfirm
         open={isJoinModalOpen}
-        title="INVITE CODE"
-        headline="초대코드로 여행 참여"
-        description="공유받은 초대코드를 입력해 여행에 참여할 수 있습니다."
+        title="초대코드로 여행 참여"
+        description="공유받은 초대링크 또는 초대코드를 입력해 여행에 참여할 수 있습니다."
         cancelText="취소"
         confirmText={isJoining ? "참여 중..." : "참여하기"}
+        disabled={isJoining}
         onClose={closeJoinModal}
         onConfirm={handleJoinByInviteCode}
       >
         <input
-          className="modal-input"
+          className={`tm-input${joinError ? " tm-input--error" : ""}`}
           value={inviteCode}
           onChange={(e) => setInviteCode(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") void handleJoinByInviteCode();
+          }}
           placeholder="초대링크 또는 초대코드 입력"
+          aria-label="초대링크 또는 초대코드"
         />
+        {joinError && <p className="tm-field__error" role="alert">{joinError}</p>}
+      </MtConfirm>
 
-        {joinError && <p className="modal-error-text">{joinError}</p>}
-      </ActionPromptModal>
-
-      <ActionPromptModal
+      <MtConfirm
         open={deleteTargetTrip !== null}
-        title="DELETE TRIP"
-        headline="여행을 삭제하시겠습니까?"
+        title="여행 삭제"
+        headline="여행을 삭제할까요?"
         description="삭제 가능한 여행만 삭제됩니다. 지출 또는 입금 내역이 있으면 삭제할 수 없습니다."
         cancelText="취소"
         confirmText="삭제"
+        danger
         onClose={() => setDeleteTargetTrip(null)}
         onConfirm={() => void handleConfirmDeleteTrip()}
       />
 
-      <ActionPromptModal
+      <MtConfirm
         open={createErrorModal.open}
-        title="CREATE FAILED"
-        headline="여행을 생성할 수 없습니다"
+        title={createErrorModal.title}
+        headline={createErrorModal.headline}
         description={createErrorModal.message}
         hideCancel
         confirmText="확인"
-        onClose={() => setCreateErrorModal({ open: false, message: "" })}
-        onConfirm={() => setCreateErrorModal({ open: false, message: "" })}
+        onClose={() => setCreateErrorModal((p) => ({ ...p, open: false }))}
+        onConfirm={() => setCreateErrorModal((p) => ({ ...p, open: false }))}
       />
 
-      <ActionPromptModal
+      <MtConfirm
         open={deleteErrorModal.open}
-        title="DELETE FAILED"
+        title="여행 삭제"
         headline="여행을 삭제할 수 없습니다"
         description={deleteErrorModal.message}
         hideCancel

@@ -2,9 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { checkEmail } from "../../../api/auth.api";
-import BaseModal from "../../../shared/components/BaseModal";
 import { MAX_TRIP_MEMBERS } from "../../../shared/config/tripLimits";
-import "../styles/TripCreateModal.css";
 import type { UserResponse } from "../../../types";
 import type {
   SelectedMember,
@@ -144,118 +142,123 @@ export const TripCreateModal = ({
     }));
   };
 
+  if (!isOpen) return null;
+
   return (
-    <BaseModal
-      open={isOpen}
-      onClose={onClose}
-      title="CREATE NEW MISSION"
-      className="tcm-modal"
-      bodyClassName="tcm-body"
-    >
-      <form onSubmit={onSubmit} className="tcm-form">
-        <div className="tcm-field">
-          <label>MISSION TITLE</label>
-          <input
-            type="text"
-            value={formData.title}
-            onChange={(e) =>
-              setFormData((prev) => ({ ...prev, title: e.target.value }))
-            }
-            placeholder="작전명을 입력하세요"
-            required
-          />
+    <div className="tm-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <form
+        className="tm-modal tm-modal--narrow"
+        role="dialog"
+        aria-modal="true"
+        aria-label="새 여행 만들기"
+        onClick={(e) => e.stopPropagation()}
+        onSubmit={onSubmit}
+      >
+        <div className="tm-modal__head">
+          <h3 className="tm-modal__title">새 여행 만들기</h3>
+          <button type="button" className="tm-btn tm-btn--sm" onClick={onClose}>닫기</button>
         </div>
 
-        <div className="tcm-date-row">
-          <div className="tcm-field">
-            <label>START DATE</label>
+        <div className="tm-modal__body">
+          <div className="tm-field">
+            <label className="tm-label" htmlFor="mt-title">여행 제목</label>
             <input
-              type="date"
-              value={formData.tripStartDate}
-              min="1900-01-01"
-              max="9999-12-31"
-              onChange={(e) => handleStartDateChange(e.target.value)}
+              id="mt-title"
+              type="text"
+              className="tm-input"
+              value={formData.title}
+              onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
+              placeholder="여행 제목을 입력하세요"
               required
             />
           </div>
 
-          <div className="tcm-field">
-            <label>END DATE</label>
-            <input
-              type="date"
-              value={formData.tripEndDate}
-              min={formData.tripStartDate || "1900-01-01"}
-              max="9999-12-31"
-              onChange={(e) => handleEndDateChange(e.target.value)}
-              required
-            />
+          <div className="tm-form-grid">
+            <div className="tm-field">
+              <label className="tm-label" htmlFor="mt-start">출발 날짜</label>
+              <input
+                id="mt-start"
+                type="date"
+                className="tm-input"
+                value={formData.tripStartDate}
+                min="1900-01-01"
+                max="9999-12-31"
+                onChange={(e) => handleStartDateChange(e.target.value)}
+                required
+              />
+            </div>
+            <div className="tm-field">
+              <label className="tm-label" htmlFor="mt-end">복귀 날짜</label>
+              <input
+                id="mt-end"
+                type="date"
+                className={`tm-input${isDateRangeValid ? "" : " tm-input--error"}`}
+                value={formData.tripEndDate}
+                min={formData.tripStartDate || "1900-01-01"}
+                max="9999-12-31"
+                onChange={(e) => handleEndDateChange(e.target.value)}
+                required
+              />
+            </div>
           </div>
-
           {!isDateRangeValid && (
-            <p className="tcm-error">
-              ⚠ 도착 날짜는 출발 날짜 이후여야 합니다.
-            </p>
+            <p className="tm-field__error" role="alert">복귀 날짜는 출발 날짜 이후여야 합니다.</p>
           )}
-        </div>
 
-        <div className="tcm-field">
-          <label>
-            AGENTS{" "}
-            <span style={{ fontWeight: 500, opacity: 0.7 }}>
-              (본인 포함 {memberCount}/{MAX_TRIP_MEMBERS}명)
-            </span>
-          </label>
+          <div className="tm-field">
+            <label className="tm-label" htmlFor="mt-member">
+              멤버 <span className="tm-hint">(본인 포함 {memberCount}/{MAX_TRIP_MEMBERS}명)</span>
+            </label>
+            <div className="tm-input-group">
+              <input
+                id="mt-member"
+                type="email"
+                className="tm-input"
+                value={agentInput}
+                onChange={(e) => setAgentInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    void addAgent();
+                  }
+                }}
+                placeholder="친구 이메일 입력"
+              />
+              <button
+                type="button"
+                className="tm-btn tm-btn--sm"
+                onClick={() => void addAgent()}
+                disabled={isCheckingAgent || isMemberLimitReached}
+                title={isMemberLimitReached ? `최대 ${MAX_TRIP_MEMBERS}명까지예요` : undefined}
+              >
+                {isCheckingAgent ? "확인 중" : "추가"}
+              </button>
+            </div>
+            <p className="tm-field__hint">본인은 자동 포함됩니다.</p>
+            {agentMessage && <p className="tm-field__error" role="alert">{agentMessage}</p>}
 
-          <div className="tcm-agent-row">
-            <input
-              type="email"
-              value={agentInput}
-              onChange={(e) => setAgentInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  void addAgent();
-                }
-              }}
-              placeholder="이메일 입력"
-            />
-
-            <button
-              type="button"
-              onClick={() => void addAgent()}
-              className="tcm-add-btn"
-              disabled={isCheckingAgent || isMemberLimitReached}
-              title={isMemberLimitReached ? `최대 ${MAX_TRIP_MEMBERS}명까지예요` : undefined}
-            >
-              {isCheckingAgent ? "CHECKING..." : "ADD"}
-            </button>
-          </div>
-
-          {agentMessage && <p className="tcm-error">⚠ {agentMessage}</p>}
-
-          <div className="tcm-agent-tags">
-            {formData.selectedMembers.map((member) => (
-              <span key={member.userId} className="tcm-agent-tag">
-                {member.name ?? member.email}
-                <button
-                  type="button"
-                  onClick={() => removeAgent(member.userId)}
-                >
-                  ×
-                </button>
-              </span>
-            ))}
+            {formData.selectedMembers.length > 0 && (
+              <div className="tm-row tm-row--wrap tm-gap-2 tm-mt-2">
+                {formData.selectedMembers.map((member) => (
+                  <span key={member.userId} className="tm-tag tm-tag--x">
+                    {member.name ?? member.email}
+                    <button type="button" aria-label="멤버 빼기" onClick={() => removeAgent(member.userId)}>
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
-        <button
-          type="submit"
-          className="tcm-submit"
-          disabled={isSubmitting || !isDateRangeValid}
-        >
-          {isSubmitting ? "SAVING..." : "SAVE MISSION"}
-        </button>
+        <div className="tm-modal__foot">
+          <button type="button" className="tm-btn" onClick={onClose}>취소</button>
+          <button type="submit" className="tm-btn tm-btn--primary" disabled={isSubmitting || !isDateRangeValid}>
+            {isSubmitting ? "만드는 중..." : "여행 만들기"}
+          </button>
+        </div>
       </form>
-    </BaseModal>
+    </div>
   );
 };
