@@ -1,6 +1,6 @@
 // src/features/workspace/components/schedule/PlanControls.tsx
 //
-// 계산되는 일정의 노드 조작 — 머무는 시간(± 버튼)과 고정 시각(📌).
+// 계산되는 일정의 "언제" 블록 — 시작 · 끝 · 머무는 시간(− / + 버튼)과 "시작 시각 고정".
 // 화면은 값을 서버에 보내기만 하고, 그 결과로 바뀌는 시각은 서버(엔진)가 계산해 돌려준다.
 
 import React, { useEffect, useRef, useState } from "react";
@@ -16,7 +16,8 @@ export const ClockInput: React.FC<{
   onCommit: (value: string) => Promise<boolean>;
   width?: string;
   title?: string;
-}> = ({ value, onCommit, width = "84px", title }) => {
+  label?: string;
+}> = ({ value, onCommit, width = "104px", title, label = "시각" }) => {
   // 입력 중인 값 — 저장이 끝나거나 취소되면 비우고, 그다음부터는 서버가 준 값을 그대로 보여준다
   const [draft, setDraft] = useState<string | null>(null);
 
@@ -29,16 +30,15 @@ export const ClockInput: React.FC<{
   return (
     <input
       type="time"
+      className="tm-input ws-clock"
       value={draft ?? value ?? ""}
       title={title}
+      aria-label={label}
       onChange={(e) => setDraft(e.target.value)}
       onBlur={() => void commit()}
       onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
       onClick={(e) => e.stopPropagation()}
-      style={{
-        width, padding: "3px 6px", border: "1.5px solid #ddd", borderRadius: "4px",
-        fontSize: "12px", fontFamily: "var(--font-mono)", boxSizing: "border-box",
-      }}
+      style={{ width }}
     />
   );
 };
@@ -46,14 +46,18 @@ export const ClockInput: React.FC<{
 interface Props {
   stayMinutes?: number;
   startTime: string;
+  endTime?: string;
   pinnedTime?: string;
+  /** true면 값만 보여주고 바꾸지 못한다 (일정 수정 중이 아니거나 고정 노드) */
+  readOnly?: boolean;
   onStay: (minutes: number) => Promise<boolean>;
   onPin: (time: string | null) => Promise<boolean>;
 }
 
-const PlanControls: React.FC<Props> = ({ stayMinutes, startTime, pinnedTime, onStay, onPin }) => {
+const PlanControls: React.FC<Props> = ({ stayMinutes, startTime, endTime, pinnedTime, readOnly = false, onStay, onPin }) => {
   // 버튼으로 바꾼 값(저장 대기 중) — 저장이 끝나면 비우고 서버가 준 값을 보여준다
   const [pending, setPending] = useState<number | null>(null);
+  const [tipOpen, setTipOpen] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
 
@@ -69,57 +73,81 @@ const PlanControls: React.FC<Props> = ({ stayMinutes, startTime, pinnedTime, onS
     }, COMMIT_DELAY_MS);
   };
 
-  const stepButton = (label: string, delta: number, disabled: boolean) => (
-    <button
-      onClick={(e) => { e.stopPropagation(); change(delta); }}
-      disabled={disabled}
-      style={{
-        width: "22px", height: "22px", padding: 0, lineHeight: 1, fontSize: "14px", fontWeight: 700,
-        border: "1.5px solid #ddd", borderRadius: "4px", background: "#fff",
-        color: disabled ? "#ccc" : "#333", cursor: disabled ? "not-allowed" : "pointer",
-      }}
-    >
-      {label}
-    </button>
-  );
-
   const shown = pending ?? stayMinutes;
+  const hasEnd = !!endTime && (stayMinutes ?? 0) > 0;
 
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: "14px", flexWrap: "wrap", marginTop: "6px" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: "5px" }} onClick={(e) => e.stopPropagation()}>
-        <span style={{ fontSize: "11px", color: "#888", whiteSpace: "nowrap" }}>머무는 시간</span>
-        {stepButton("−", -STAY_STEP, shown == null || shown <= STAY_MIN)}
-        <span style={{ minWidth: "44px", textAlign: "center", fontSize: "12px", fontWeight: 700, fontFamily: "var(--font-mono)", whiteSpace: "nowrap" }}>
-          {shown != null ? `${shown}분` : "-"}
-        </span>
-        {stepButton("+", STAY_STEP, shown == null || shown >= STAY_MAX)}
+    <>
+      <div className="ws-when">
+        <div className="ws-when__cell">
+          <span className="ws-when__l">시작</span>
+          <b className="ws-when__v">{startTime}</b>
+        </div>
+        <div className="ws-when__cell">
+          <span className="ws-when__l">끝</span>
+          <b className="ws-when__v">{hasEnd ? endTime : "-"}</b>
+        </div>
+        <div className="ws-when__cell">
+          <span className="ws-when__l">머무는 시간</span>
+          {readOnly ? (
+            <b className="ws-when__v">{shown != null ? `${shown}분` : "-"}</b>
+          ) : (
+            <div className="ws-step" role="group" aria-label="머무는 시간">
+              <button
+                type="button"
+                aria-label="10분 줄이기"
+                disabled={shown == null || shown <= STAY_MIN}
+                onClick={() => change(-STAY_STEP)}
+              >
+                −
+              </button>
+              <b aria-live="polite">{shown != null ? `${shown}분` : "-"}</b>
+              <button
+                type="button"
+                aria-label="10분 늘리기"
+                disabled={shown == null || shown >= STAY_MAX}
+                onClick={() => change(STAY_STEP)}
+              >
+                +
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
-      <div style={{ display: "flex", alignItems: "center", gap: "5px", whiteSpace: "nowrap" }} onClick={(e) => e.stopPropagation()}>
-        {pinnedTime ? (
-          <>
-            <span style={{ fontSize: "11px", color: "#e65100", fontWeight: 700 }}>📌 이 시각에 시작</span>
-            <ClockInput value={pinnedTime} onCommit={(v) => onPin(v)} />
-            <button
-              onClick={() => void onPin(null)}
-              title="고정 해제"
-              style={{ padding: "2px 7px", border: "1.5px solid #eee", borderRadius: "4px", background: "#fff", color: "#999", fontSize: "11px", cursor: "pointer" }}
-            >
-              해제
-            </button>
-          </>
-        ) : (
+      {readOnly ? (
+        pinnedTime && <p className="tm-hint tm-mt-3">{pinnedTime}에 시작하도록 고정돼 있어요</p>
+      ) : (
+        <div className="tm-row tm-mt-3 ws-pinrow">
+          <label className="tm-check">
+            <input
+              type="checkbox"
+              checked={!!pinnedTime}
+              onChange={(e) => void onPin(e.target.checked ? startTime : null)}
+            />
+            <span>시작 시각 고정</span>
+          </label>
           <button
-            onClick={() => void onPin(startTime)}
-            title="지금 시작 시각으로 고정 — 앞 일정이 밀려도 이 시각에 시작하도록 맞춰요"
-            style={{ padding: "2px 9px", border: "1.5px dashed #bbb", borderRadius: "4px", background: "#fff", color: "#666", fontSize: "11px", cursor: "pointer" }}
+            type="button"
+            className="ws-info"
+            aria-label="시작 시각 고정 설명"
+            aria-expanded={tipOpen}
+            onClick={() => setTipOpen((v) => !v)}
           >
-            📌 시각 고정
+            i
           </button>
-        )}
-      </div>
-    </div>
+          {pinnedTime && <ClockInput value={pinnedTime} onCommit={(v) => onPin(v)} label="고정할 시작 시각" />}
+          {tipOpen && (
+            <>
+              <div className="ws-tip" role="note">
+                앞 일정이 밀려도 이 시각에 시작해요. 끄면 앞 일정에 맞춰 시각이 자동으로 바뀌어요.
+              </div>
+              <div className="tm-backdrop" onClick={() => setTipOpen(false)} />
+            </>
+          )}
+        </div>
+      )}
+    </>
   );
 };
 

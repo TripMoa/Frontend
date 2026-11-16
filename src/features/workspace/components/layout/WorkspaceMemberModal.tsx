@@ -1,8 +1,6 @@
 // src/features/workspace/components/layout/WorkspaceMemberModal.tsx
 
 import React, { useEffect, useState } from "react";
-import BaseModal from "../../../../shared/components/BaseModal";
-import "../../styles/modals.css";
 import {
   addTripMember,
   getTripMembers,
@@ -14,7 +12,8 @@ import { apiMessage } from "../../hooks/apiError";
 import type { TripMemberResponse } from "../../../../types/trip.types";
 import { useAuth } from "../../../user/pages/AuthContext";
 
-import { ActionPromptModal } from "../../../../shared/components/ActionPromptModal";
+import WsConfirm from "./WsConfirm";
+import WorkspaceInviteBox from "./WorkspaceInviteBox";
 
 interface WorkspaceMemberModalProps {
   tripId: number;
@@ -171,182 +170,190 @@ const WorkspaceMemberModal: React.FC<WorkspaceMemberModalProps> = ({
       await removeTripMember(tripId, removeTargetMember.memberId);
       setRemoveTargetMember(null);
       await fetchMembers();
-    } catch (error: any) {
+    } catch (error) {
       console.error("멤버 내보내기 실패:", error);
 
       setRemoveTargetMember(null);
 
-      const message =
-        error?.response?.data?.message ||
-        "지출 또는 입금 내역이 있어 멤버를 내보낼 수 없습니다.";
+      const message = apiMessage(error, "지출 또는 입금 내역이 있어 멤버를 내보낼 수 없습니다.");
 
       showNotice("내보내기 불가", "멤버를 내보낼 수 없습니다", message);
     }
   };
 
   return (
-    <BaseModal
-      open={true}
-      title="MEMBER MANAGEMENT"
-      onClose={onClose}
-      className="member-window"
-      bodyClassName="member-modal-body"
-    >
-      {isCurrentUserOwner && (
-        <div className="member-add-box">
-          <div className="member-add-row">
-            <input
-              className="member-nickname-input"
-              type="email"
-              value={addEmail}
-              onChange={(e) => setAddEmail(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") void handleAddMember();
-              }}
-              placeholder="추가할 친구의 가입 이메일"
-              disabled={isAdding}
-            />
-            <button
-              type="button"
-              className="member-action-btn"
-              onClick={() => void handleAddMember()}
-              disabled={isAdding || !addEmail.trim()}
-            >
-              {isAdding ? "확인 중..." : "멤버 추가"}
-            </button>
+    <>
+      <div className="tm-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+        <div
+          className="tm-modal tm-modal--narrow"
+          role="dialog"
+          aria-modal="true"
+          aria-label={isCurrentUserOwner ? "멤버 관리" : "멤버 보기"}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="tm-modal__head">
+            <h3 className="tm-modal__title">{isCurrentUserOwner ? "멤버 관리" : "멤버 보기"}</h3>
+            <button type="button" className="tm-btn tm-btn--sm" onClick={onClose}>닫기</button>
           </div>
-          {addMessage && (
-            <p className={addMessage.ok ? "member-add-ok" : "modal-error"}>
-              {addMessage.ok ? "" : "⚠ "}
-              {addMessage.text}
-            </p>
-          )}
-        </div>
-      )}
 
-      {isLoading && (
-        <p className="member-guide">멤버 목록을 불러오는 중입니다.</p>
-      )}
+          <div className="tm-modal__body">
+            {isCurrentUserOwner && (
+              <>
+                <div className="tm-input-group">
+                  <input
+                    className="tm-input tm-grow"
+                    type="email"
+                    aria-label="친구 이메일"
+                    value={addEmail}
+                    onChange={(e) => setAddEmail(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") void handleAddMember();
+                    }}
+                    placeholder="추가할 친구의 가입 이메일"
+                    disabled={isAdding}
+                  />
+                  <button
+                    type="button"
+                    className="tm-btn tm-btn--sm tm-btn--primary"
+                    onClick={() => void handleAddMember()}
+                    disabled={isAdding || !addEmail.trim()}
+                  >
+                    {isAdding ? "확인 중..." : "멤버 추가"}
+                  </button>
+                </div>
+                {addMessage && (
+                  <p
+                    className="tm-hint ws-mem__msg"
+                    role="status"
+                    style={{ color: addMessage.ok ? "var(--tm-ok)" : "var(--tm-red-strong)" }}
+                  >
+                    {addMessage.text}
+                  </p>
+                )}
+              </>
+            )}
 
-      {errorMessage && <p className="modal-error">⚠ {errorMessage}</p>}
+            {isLoading && <p className="tm-hint tm-mt-3">멤버 목록을 불러오는 중이에요.</p>}
 
-      {!isLoading && !errorMessage && members.length === 0 && (
-        <p className="member-guide">등록된 멤버가 없습니다.</p>
-      )}
+            {errorMessage && (
+              <p className="tm-hint ws-mem__msg" role="alert" style={{ color: "var(--tm-red-strong)" }}>
+                {errorMessage}
+              </p>
+            )}
 
-      {!isLoading && !errorMessage && members.length > 0 && (
-        <>
-          <div className="member-list">
-            {members.map((member) => (
-              <div
-                key={member.memberId}
-                className={`member-item ${
-                  isInactiveMember(member) ? "inactive" : ""
-                } ${editingMemberId === member.memberId ? "editing" : ""}`}
-              >
-                <div className="member-info">
-                  <div className="member-name-row">
-                    <span className="member-name">{member.nickname}</span>
+            {!isLoading && !errorMessage && members.length === 0 && (
+              <p className="tm-empty">등록된 멤버가 없어요.</p>
+            )}
 
-                    {isOwner(member) && (
-                      <span className="owner-badge">
-                        <i className="fa-solid fa-crown"></i>
+            {!isLoading && members.length > 0 && (
+              <ul className="tm-list tm-mt-3">
+                {members.map((member, idx) => {
+                  const owner = isOwner(member);
+                  const editing = editingMemberId === member.memberId;
+                  const inactive = isInactiveMember(member);
+                  return (
+                    <li
+                      key={member.memberId}
+                      className={`tm-list__item ws-mem__item${inactive ? " is-off" : ""}`}
+                    >
+                      <span className={`tm-avatar${owner || idx === 0 ? " tm-avatar--dark" : ""}`}>
+                        {member.profileImage ? (
+                          <img src={member.profileImage} alt="" />
+                        ) : (
+                          member.nickname.slice(0, 1)
+                        )}
                       </span>
-                    )}
-
-                    {isMe(member) && !isOwner(member) && (
-                      <span className="me-badge">ME</span>
-                    )}
-                  </div>
-
-                  <span className="member-sub">
-                    {isOwner(member)
-                      ? "여행 소유주"
-                      : isInactiveMember(member)
-                        ? "탈퇴 또는 제재 멤버"
-                        : "여행 멤버"}
-                  </span>
-
-                  {editingMemberId === member.memberId && (
-                    <div className="member-edit-box">
-                      <input
-                        className="member-nickname-input"
-                        value={nicknameValue}
-                        maxLength={20}
-                        onChange={(e) => setNicknameValue(e.target.value)}
-                        placeholder="닉네임 입력"
-                      />
-
-                      <div className="member-edit-actions">
-                        <button
-                          type="button"
-                          className="member-action-btn"
-                          onClick={() => void handleUpdateNickname(member)}
-                        >
-                          저장
-                        </button>
-                        <button
-                          type="button"
-                          className="member-action-btn"
-                          onClick={() => {
-                            setEditingMemberId(null);
-                            setNicknameValue("");
-                            setErrorMessage(null);
-                          }}
-                        >
-                          취소
-                        </button>
+                      <div className="tm-list__main">
+                        <div className="tm-list__title">
+                          {member.nickname}
+                          {isMe(member) && <span className="ws-mem__me"> (나)</span>}
+                        </div>
+                        <div className="tm-list__sub">
+                          {owner ? "여행 소유주" : inactive ? "탈퇴 또는 제재 멤버" : "여행 멤버"}
+                        </div>
                       </div>
-                    </div>
-                  )}
-                </div>
 
-                <div className="member-actions">
-                  {isMe(member) &&
-                    !isInactiveMember(member) &&
-                    editingMemberId !== member.memberId && (
-                      <button
-                        type="button"
-                        className="member-action-btn"
-                        onClick={() => startEditNickname(member)}
-                      >
-                        닉네임 수정
-                      </button>
-                    )}
+                      {isMe(member) && !inactive && !editing && (
+                        <button
+                          type="button"
+                          className="tm-btn tm-btn--link tm-btn--sm ws-ulink"
+                          onClick={() => startEditNickname(member)}
+                        >
+                          닉네임 수정
+                        </button>
+                      )}
+                      {isCurrentUserOwner && !owner && !editing && (
+                        <button
+                          type="button"
+                          className="tm-btn tm-btn--link tm-btn--sm ws-ulink ws-ulink--danger"
+                          onClick={() => setRemoveTargetMember(member)}
+                        >
+                          내보내기
+                        </button>
+                      )}
 
-                  {isCurrentUserOwner &&
-                    !isOwner(member) &&
-                    editingMemberId !== member.memberId && (
-                      <button
-                        type="button"
-                        className="member-action-btn danger"
-                        onClick={() => setRemoveTargetMember(member)}
-                      >
-                        내보내기
-                      </button>
-                    )}
-                </div>
-              </div>
-            ))}
+                      {editing && (
+                        <div className="ws-mem__edit">
+                          <input
+                            className="tm-input tm-grow"
+                            aria-label="닉네임"
+                            value={nicknameValue}
+                            maxLength={20}
+                            onChange={(e) => setNicknameValue(e.target.value)}
+                            placeholder="닉네임 입력"
+                          />
+                          <button
+                            type="button"
+                            className="tm-btn tm-btn--sm tm-btn--primary"
+                            onClick={() => void handleUpdateNickname(member)}
+                          >
+                            저장
+                          </button>
+                          <button
+                            type="button"
+                            className="tm-btn tm-btn--sm"
+                            onClick={() => {
+                              setEditingMemberId(null);
+                              setNicknameValue("");
+                              setErrorMessage(null);
+                            }}
+                          >
+                            취소
+                          </button>
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+
+            <div className="tm-subsec">
+              <h4>친구 초대</h4>
+              <WorkspaceInviteBox />
+            </div>
           </div>
-        </>
-      )}
-      <ActionPromptModal
+
+          <div className="tm-modal__foot">
+            <button type="button" className="tm-btn" onClick={onClose}>닫기</button>
+          </div>
+        </div>
+      </div>
+
+      <WsConfirm
         open={!!removeTargetMember}
-        title="REMOVE MEMBER"
+        title="멤버 내보내기"
         headline="멤버를 내보내시겠습니까?"
         description={
-          removeTargetMember
-            ? `${removeTargetMember.nickname}님을 이 여행에서 내보냅니다.`
-            : ""
+          removeTargetMember ? `${removeTargetMember.nickname}님을 이 여행에서 내보냅니다.` : ""
         }
-        cancelText="취소"
         confirmText="내보내기"
+        danger
         onClose={() => setRemoveTargetMember(null)}
         onConfirm={() => void handleRemoveMember()}
       />
 
-      <ActionPromptModal
+      <WsConfirm
         open={noticeModal.open}
         title={noticeModal.title}
         headline={noticeModal.headline}
@@ -356,7 +363,7 @@ const WorkspaceMemberModal: React.FC<WorkspaceMemberModalProps> = ({
         onClose={closeNotice}
         onConfirm={closeNotice}
       />
-    </BaseModal>
+    </>
   );
 };
 

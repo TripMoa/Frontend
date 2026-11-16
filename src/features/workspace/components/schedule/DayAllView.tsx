@@ -1,13 +1,15 @@
 //src\features\workspace\components\schedule\DayAllView.tsx
 
 import React, { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import AddPlaceModal from "../schedule/modal/AddPlaceModal";
 import AiScheduleModal from "../schedule/modal/AiScheduleModal";
 import type { TimelineNode, AiScheduleSettings } from "../schedule/modal/AiScheduleModal";
 import { useWorkspaceCore } from "../../hooks/useWorkspaceCore";
 import { useNaverMap } from "../../hooks/useNaverMap";
 import type { NaverMapObject } from "../../hooks/naverMapTypes";
-import { CATEGORY_COLOR, CATEGORY_LIST, getCategoryIcon } from "../../hooks/schedule.constants";
+import { CATEGORY_COLOR, CATEGORY_LIST } from "../../hooks/schedule.constants";
+import { PIN_SIZE, cssVar, infoHtml, infoWindowBase, pinHtml } from "./mapStyle";
 import "../../styles/center.css";
 import "../../styles/modals.css";
 import { itemMatchesPlace } from "../../hooks/placeMatch";
@@ -97,6 +99,10 @@ interface DayAllViewProps {
   onScheduleRestored?: () => Promise<void> | void;
   /** 다른 멤버의 일정 변경 알림이 올 때마다 올라간다 — 되돌리기 가능 여부를 다시 확인하는 신호 */
   scheduleRevision?: number;
+  /** DAY 탭 줄 오른쪽 끝(WorkspaceCenter) — 장소 추가·이전 일정으로·AI 일정 생성 버튼을 여기로 그린다 */
+  actionsSlot?: HTMLElement | null;
+  /** 일차별 일정 노드 — 장소가 몇 일차 몇 번째에 들어 있는지 보여주는 데 쓴다 */
+  scheduledByDay?: Record<string, { title: string; lat?: number; lng?: number }[]>;
 }
 
 
@@ -116,6 +122,8 @@ const DayAllView: React.FC<DayAllViewProps> = ({
   generationLock = null,
   onScheduleRestored,
   scheduleRevision = 0,
+  actionsSlot = null,
+  scheduledByDay = {},
 }) => {
   const { selectTab } = useWorkspaceCore();
   const { mapLoaded, mapKey } = useNaverMap();
@@ -126,6 +134,8 @@ const DayAllView: React.FC<DayAllViewProps> = ({
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
   const [category, setCategory] = useState("all");
+  const [query, setQuery] = useState("");
+  const [selectedId, setSelectedId] = useState<string | null>(null); // 펼쳐 둔 장소
   const [toast, setToast] = useState<{ message: string; onUndo?: () => void } | null>(null);
   // AI 재생성 되돌리기 — 다른 멤버의 생성이 끝나거나(generationLock 이 풀리면) 일정이 바뀌었다는 알림이 오면 상태를 다시 확인한다
   const undoState = useScheduleUndo(tripId, `${generationLock !== null}-${scheduleRevision}`);
@@ -151,7 +161,6 @@ const DayAllView: React.FC<DayAllViewProps> = ({
     if (place.category === "숙소" || place.category === "교통") return false;
     return !scheduledItems.some((item) => itemMatchesPlace(item, place));
   };
-  const unscheduledCount = visiblePlaces.filter(isUnscheduled).length;
 
   // ── 지도 초기화 ──────────────────────────────────────────
   useEffect(() => {
@@ -179,11 +188,8 @@ const DayAllView: React.FC<DayAllViewProps> = ({
     });
 
     infoWindowRef.current = new window.naver.maps.InfoWindow({
-      anchorSkew: true,
-      backgroundColor: "#fff",
-      borderColor: "#000",
-      borderWidth: 2,
-      pixelOffset: new window.naver.maps.Point(0, -10),
+      ...infoWindowBase(),
+      pixelOffset: new window.naver.maps.Point(0, -(PIN_SIZE / 2)),
     });
 
     mapInstanceRef.current = map;
@@ -209,19 +215,8 @@ const DayAllView: React.FC<DayAllViewProps> = ({
 
   // 핀 클릭 시 정보창 오픈 로직
   const openPlaceInfo = (place: Place, marker: NaverMapObject) => {
-    const color = CATEGORY_COLOR[place.category] || "#333";
-    infoWindowRef.current.setContent(`
-      <div style="padding:12px 16px;min-width:180px;max-width:240px;font-family:inherit">
-        <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
-          <span style="background:${color};color:#fff;padding:2px 7px;border-radius:3px;font-size:11px;font-weight:bold">
-            ${getCategoryIcon(place.category)} ${place.category}
-          </span>
-          ${place.rating ? `<span style="font-size:12px;color:#ff9800;font-weight:bold">⭐ ${place.rating}</span>` : ""}
-        </div>
-        <div style="font-weight:bold;font-size:14px;margin-bottom:4px">${place.name}</div>
-        <div style="font-size:11px;color:#666">${place.address || ""}</div>
-      </div>
-    `);
+    const color = CATEGORY_COLOR[place.category] || cssVar("--tm-line-strong", "#999999");
+    infoWindowRef.current.setContent(infoHtml(place, color));
     infoWindowRef.current.open(mapInstanceRef.current, marker);
   };
 
@@ -239,35 +234,14 @@ const DayAllView: React.FC<DayAllViewProps> = ({
     validPlaces.forEach((place, idx) => {
       const { lat, lng } = renderPositions[idx];
       const pos = new window.naver.maps.LatLng(lat, lng);
-      const color = CATEGORY_COLOR[place.category] || "#333";
+      const color = CATEGORY_COLOR[place.category] || cssVar("--tm-line-strong", "#999999");
 
       const marker = new window.naver.maps.Marker({
         position: pos,
         map: mapInstanceRef.current,
         icon: {
-          content: `
-            <div style="position:relative;width:30px;height:30px;">
-              <div style="
-                position:absolute;top:0;left:0;
-                background:${color};color:#fff;
-                border:1.5px solid #fff;border-radius:50% 50% 50% 0;
-                transform:rotate(-45deg);width:30px;height:30px;
-                display:flex;align-items:center;justify-content:center;
-                box-shadow:0 3px 8px rgba(0,0,0,0.25);cursor:pointer;
-                font-size:14px;">
-                <span style="transform:rotate(45deg)">${getCategoryIcon(place.category)}</span>
-              </div>
-              <div style="
-                position:absolute;top:-4px;right:-4px;
-                width:15px;height:15px;border-radius:50%;
-                background:#fff;border:1.5px solid ${color};
-                display:flex;align-items:center;justify-content:center;
-                font-size:9px;font-weight:bold;color:${color};
-                box-shadow:0 1px 3px rgba(0,0,0,0.25);">
-                ${idx + 1}
-              </div>
-            </div>`,
-          anchor: new window.naver.maps.Point(15, 30),
+          content: pinHtml(color, idx + 1),
+          anchor: new window.naver.maps.Point(PIN_SIZE / 2, PIN_SIZE / 2),
         },
         zIndex: 100,
       });
@@ -390,231 +364,216 @@ const DayAllView: React.FC<DayAllViewProps> = ({
   };
 
   // ── 필터된 장소 ────────────────────────────────────────────
-  const filteredPlaces = category === "all"
+  const q = query.trim().toLowerCase();
+  const filteredPlaces = (category === "all"
     ? visiblePlaces
-    : visiblePlaces.filter((p) => p.category === category);
+    : visiblePlaces.filter((p) => p.category === category)
+  ).filter((p) => !q || p.name.toLowerCase().includes(q) || (p.address ?? "").toLowerCase().includes(q));
 
   const mapablePlaces = filteredPlaces.filter((p) => p.lat != null && p.lng != null);
+
+  // ── 목록 묶음: 아직 일정에 안 넣은 장소를 위로 (시안과 같은 순서) ──
+  const unscheduledList = filteredPlaces.filter(isUnscheduled);
+  const scheduledList = filteredPlaces.filter((p) => !isUnscheduled(p));
+
+  // 이 장소가 몇 일차 몇 번째 일정에 들어 있는지
+  const dayOf = (place: Place): { key: string; no: number; order: number } | null => {
+    const entries = Object.entries(scheduledByDay).sort(
+      (a, b) => Number(/\d+/.exec(a[0])?.[0] ?? 0) - Number(/\d+/.exec(b[0])?.[0] ?? 0),
+    );
+    for (const [key, list] of entries) {
+      const idx = list.findIndex((item) => itemMatchesPlace(item, place));
+      if (idx >= 0) return { key, no: Number(/\d+/.exec(key)?.[0] ?? 0), order: idx + 1 };
+    }
+    return null;
+  };
+
+  const renderPlace = (place: Place) => {
+    const on = selectedId === place.id;
+    const day = dayOf(place);
+    const color = CATEGORY_COLOR[place.category] || "var(--tm-line-strong)";
+    const select = () => {
+      setSelectedId(on ? null : place.id);
+      if (!on) handleListClick(place);
+    };
+    return (
+      <div key={place.id} className="ws-all__wrap">
+        <div
+          role="button"
+          tabIndex={0}
+          aria-expanded={on}
+          className={`tm-row-card ws-all__row${on ? " is-on" : ""}`}
+          style={{ ["--tm-cat" as string]: color }}
+          onClick={select}
+          onKeyDown={(e) => {
+            if (e.target !== e.currentTarget) return;
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              select();
+            }
+          }}
+        >
+          <div className="tm-grow ws-all__main">
+            <div className="tm-row-card__title">{place.name}</div>
+            <div className="tm-row-card__sub tm-ellipsis">
+              {place.category} · {place.address || "주소 없음"}
+            </div>
+          </div>
+          {day && <span className="tm-tag tm-tag--yellow">DAY {day.no}</span>}
+        </div>
+
+        {on && (
+          <div className="ws-all__acts">
+            {day && (
+              <div className="ws-all__actrow">
+                <button
+                  type="button"
+                  className="tm-chip"
+                  onClick={() => selectTab(day.key, "timeline")}
+                >
+                  {day.key} · {day.order}번째 일정에서 보기 ▸
+                </button>
+              </div>
+            )}
+            <div className="ws-all__actrow ws-all__actrow--end">
+              <select
+                className="tm-select ws-all__cat"
+                aria-label={`${place.name} 카테고리`}
+                value={place.category}
+                onChange={(e) => updateCategory(place.id, e.target.value)}
+              >
+                {CATEGORY_LIST.map((cat) => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
+              <span className="tm-grow" />
+              <button
+                type="button"
+                className="tm-btn tm-btn--link ws-all__del"
+                onClick={() => handleDeleteClick(place)}
+              >
+                삭제
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const actions = (
+    <>
+      <button type="button" className="tm-btn tm-btn--sm" onClick={() => setIsAddModalOpen(true)}>
+        + 장소 추가
+      </button>
+      {undoState.status?.available && (
+        <button
+          type="button"
+          className="tm-btn tm-btn--sm"
+          onClick={() => setIsUndoConfirmOpen(true)}
+          disabled={generationLock !== null || undoState.isUndoing}
+          title={`${undoState.status.actorNickname ?? "누군가"}님이 AI로 다시 만들기 직전의 일정으로 되돌려요`}
+        >
+          {undoState.isUndoing ? "되돌리는 중..." : "이전 일정으로"}
+        </button>
+      )}
+      {savedPlaces.length > 0 && (
+        <button
+          type="button"
+          className="tm-btn tm-btn--sm tm-btn--primary"
+          onClick={handleOpenAiModal}
+          disabled={generationLock !== null}
+          title={generationLock ? "다른 멤버가 AI 일정을 만드는 중이에요" : undefined}
+        >
+          {generationLock ? "AI 생성 중..." : "AI 일정 생성"}
+        </button>
+      )}
+    </>
+  );
 
   // ── 렌더 ───────────────────────────────────────────────────
   return (
     <>
-      <div style={{ display: "flex", flexDirection: "column", height: "calc(100vh - 120px)", minHeight: 0 }}>
+      {actionsSlot ? createPortal(actions, actionsSlot) : <div className="ws-all-actions">{actions}</div>}
 
-        {/* ── 헤더 ── */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", flexShrink: 0 }}>
-          <div>
-            <h2 style={{ fontSize: "24px", fontWeight: 800, margin: 0 }}>MY SAVED PLACES</h2>
-            <p style={{ color: "#999", marginTop: "4px", fontFamily: "var(--font-mono)", fontSize: "12px" }}>
-              {startDate} — {endDate} · {savedPlaces.length}개
-            </p>
-          </div>
-          <div style={{ display: "flex", gap: "10px" }}>
-            <button
-              onClick={() => setIsAddModalOpen(true)}
-              style={{ padding: "10px 20px", background: "#fff", color: "#000", border: "2px solid #000", fontWeight: "bold", fontSize: "14px", cursor: "pointer", borderRadius: "4px" }}
+      <div className="ws-all">
+        {/* ── 왼쪽: 장소 목록 ── */}
+        <div className="ws-all__side">
+          <div className="ws-all__filter">
+            <input
+              className="tm-input"
+              type="search"
+              placeholder="저장한 장소 검색"
+              aria-label="저장한 장소 검색"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+            <select
+              className="tm-select"
+              aria-label="카테고리"
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
             >
-              + 새 장소 추가
-            </button>
-            {undoState.status?.available && (
-              <button
-                onClick={() => setIsUndoConfirmOpen(true)}
-                disabled={generationLock !== null || undoState.isUndoing}
-                title={`${undoState.status.actorNickname ?? "누군가"}님이 AI로 다시 만들기 직전의 일정으로 되돌려요`}
-                style={{
-                  padding: "10px 20px", background: "#fff", color: "#000", border: "2px solid #000", borderRadius: "4px",
-                  fontWeight: "bold", fontSize: "14px",
-                  cursor: generationLock || undoState.isUndoing ? "not-allowed" : "pointer",
-                  opacity: generationLock || undoState.isUndoing ? 0.45 : 1,
-                }}
-              >
-                {undoState.isUndoing ? "되돌리는 중..." : "↩ 이전 일정으로"}
-              </button>
-            )}
-            {savedPlaces.length > 0 && (
-              <button
-                onClick={handleOpenAiModal}
-                disabled={generationLock !== null}
-                title={generationLock ? "다른 멤버가 AI 일정을 만드는 중이에요" : undefined}
-                style={{
-                  padding: "10px 20px", background: "#000", color: "#fff", border: "2px solid #000", borderRadius: "4px",
-                  fontWeight: "bold", fontSize: "14px",
-                  cursor: generationLock ? "not-allowed" : "pointer",
-                  opacity: generationLock ? 0.45 : 1,
-                }}
-              >
-                {generationLock ? "⏳ AI 생성 중..." : "✨ AI 일정 생성"}
-              </button>
+              <option value="all">카테고리 전체</option>
+              {CATEGORY_LIST.map((cat) => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="ws-all__scroll">
+            {filteredPlaces.length === 0 ? (
+              <div className="tm-empty">
+                {query || category !== "all" ? "조건에 맞는 장소가 없어요" : "아직 추가된 장소가 없어요"}
+              </div>
+            ) : (
+              <>
+                {unscheduledList.length > 0 && (
+                  <div className="ws-cap ws-all__cap">
+                    아직 안 넣은 장소<b>{unscheduledList.length}</b>
+                  </div>
+                )}
+                {unscheduledList.map(renderPlace)}
+                {scheduledList.length > 0 && (
+                  <div className="ws-cap ws-all__cap">
+                    {unscheduledList.length > 0 ? "일정에 넣은 장소" : "저장한 장소"}
+                    <b>{scheduledList.length}</b>
+                  </div>
+                )}
+                {scheduledList.map(renderPlace)}
+              </>
             )}
           </div>
         </div>
 
-        {/* ── 바디: 리스트 + 지도 ── */}
-        <div style={{ display: "flex", gap: "16px", flex: 1, minHeight: 0 }}>
+        {/* ── 오른쪽: 지도 ── */}
+        <div className="tm-map ws-all__map">
+          <div ref={mapRef} className="tm-map__canvas" />
 
-          {/* ── 왼쪽: 카드 리스트 ── */}
-          <div style={{ width: "420px", flexShrink: 0, display: "flex", flexDirection: "column", minHeight: 0 }}>
-
-            {/* 카테고리 필터 — 한 줄에 다 들어가도록 압축, 넘치면 가로 스크롤 */}
-            <div style={{ display: "flex", gap: "4px", flexWrap: "nowrap", overflowX: "auto", marginBottom: "12px", flexShrink: 0, paddingBottom: "2px" }}>
-              {["all", ...CATEGORY_LIST].map((cat) => {
-                const active = category === cat;
-                const color = CATEGORY_COLOR[cat] || "#000";
-                return (
-                  <button
-                    key={cat}
-                    onClick={() => setCategory(cat)}
-                    style={{
-                      flexShrink: 0,
-                      padding: "3px 9px", borderRadius: "12px", fontSize: "11px", fontWeight: "bold",
-                      border: `1.5px solid ${active ? (cat === "all" ? "#000" : color) : "#ddd"}`,
-                      background: active ? (cat === "all" ? "#000" : color) : "#fff",
-                      color: active ? "#fff" : "#888",
-                      cursor: "pointer", transition: "all 0.15s", whiteSpace: "nowrap",
-                    }}
-                  >
-                    {cat === "all" ? "전체" : cat}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* 일정에 못 들어간 장소 안내 — 생성 직후 몇 초만 뜨는 안내를 놓쳐도 계속 보이도록 */}
-            {unscheduledCount > 0 && (
-              <div
-                style={{
-                  flexShrink: 0, marginBottom: "10px", padding: "10px 12px",
-                  background: "#fff8e1", border: "1px solid #ffd54f", borderRadius: "6px",
-                  fontSize: "12px", color: "#795548", lineHeight: 1.5,
-                }}
-              >
-                ⚠️ 일정에 들어가지 못한 장소가 {unscheduledCount}곳 있어요. 일정 화면에서 직접 추가하거나,
-                일정 스타일·일수를 바꿔 다시 생성해보세요.
-              </div>
-            )}
-
-            {/* 카드 목록 */}
-            <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: "6px" }}>
-              {filteredPlaces.length === 0 ? (
-                <div style={{ textAlign: "center", padding: "60px 20px", color: "#bbb" }}>
-                  <p style={{ fontSize: "28px", marginBottom: "8px" }}>📍</p>
-                  <p style={{ fontSize: "13px" }}>아직 추가된 장소가 없습니다</p>
-                </div>
-              ) : (
-                filteredPlaces.map((place) => {
-                  const color = CATEGORY_COLOR[place.category] || "#333";
-                  return (
-                    <div
-                      key={place.id}
-                      onClick={() => handleListClick(place)}
-                      style={{
-                        padding: "10px 12px",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "10px",
-                        border: "1px solid #000",
-                        borderLeft: `4px solid ${color}`,
-                        background: "#fff",
-                        boxShadow: "2px 2px 0px #ccc",
-                        flexShrink: 0,
-                        cursor: "pointer",
-                      }}
-                    >
-                      <span style={{ fontSize: "16px", flexShrink: 0 }}>
-                        {getCategoryIcon(place.category)}
-                      </span>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                          <h3 style={{ fontSize: "14px", fontWeight: "bold", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                            {place.name}
-                          </h3>
-                          {place.rating && (
-                            <span style={{ fontSize: "11px", color: "#ff9800", flexShrink: 0 }}>⭐ {place.rating}</span>
-                          )}
-                          {isUnscheduled(place) && (
-                            <span
-                              title="현재 일정에 포함되지 않은 장소예요"
-                              style={{
-                                flexShrink: 0, fontSize: "10px", fontWeight: "bold", color: "#795548",
-                                background: "#fff8e1", border: "1px solid #ffd54f",
-                                borderRadius: "8px", padding: "1px 6px",
-                              }}
-                            >
-                              일정 미포함
-                            </span>
-                          )}
-                        </div>
-                        <p style={{ fontSize: "12px", color: "#999", margin: "2px 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {place.address || "주소 없음"}
-                        </p>
-                      </div>
-                      <select
-                        value={place.category}
-                        onClick={(e) => e.stopPropagation()}
-                        onChange={(e) => updateCategory(place.id, e.target.value)}
-                        style={{
-                          flexShrink: 0,
-                          fontSize: "11px", fontWeight: "bold", color,
-                          border: `1.5px solid ${color}`, borderRadius: "10px",
-                          padding: "3px 6px", background: "#fff", cursor: "pointer",
-                        }}
-                      >
-                        {CATEGORY_LIST.map((cat) => (
-                          <option key={cat} value={cat}>{cat}</option>
-                        ))}
-                      </select>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleDeleteClick(place); }}
-                        title="삭제"
-                        style={{
-                          flexShrink: 0, width: "26px", height: "26px",
-                          background: "none", border: "none", cursor: "pointer",
-                          fontSize: "14px", color: "#bbb", borderRadius: "4px",
-                        }}
-                        onMouseEnter={(e) => { e.currentTarget.style.background = "#fdecea"; e.currentTarget.style.color = "#e53935"; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "#bbb"; }}
-                      >
-                        🗑
-                      </button>
-                    </div>
-                  );
-                })
-              )}
-            </div>
+          <div className="tm-map__legend">
+            {CATEGORY_LIST.map((cat) => (
+              <span key={cat}>
+                <i style={{ background: CATEGORY_COLOR[cat] }} />
+                {cat}
+              </span>
+            ))}
           </div>
 
-          {/* ── 오른쪽: 지도 ── */}
-          <div style={{
-            flex: 1,
-            position: "relative",
-            border: "2px solid #000",
-            borderRadius: "8px",
-            overflow: "hidden",
-            minHeight: 0,
-          }}>
-            <div ref={mapRef} style={{ width: "100%", height: "100%" }} />
+          {!mapLoaded && (
+            <div className="ws-all__mapmsg">
+              {mapKey ? "지도 로딩 중..." : "지도 키가 설정되지 않았어요"}
+            </div>
+          )}
 
-            {!mapLoaded && (
-              <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "#f5f5f5", color: "#999" }}>
-                <p style={{ fontSize: "28px", marginBottom: "8px" }}>🗺️</p>
-                <p style={{ fontSize: "13px" }}>{mapKey ? "지도 로딩 중..." : "지도 키가 설정되지 않았습니다"}</p>
-              </div>
-            )}
+          {mapLoaded && mapablePlaces.length < filteredPlaces.length && filteredPlaces.length > 0 && (
+            <div className="tm-tag tm-tag--dark ws-all__mapcount">
+              {mapablePlaces.length}/{filteredPlaces.length}개 표시 중
+            </div>
+          )}
 
-            {mapLoaded && mapablePlaces.length < filteredPlaces.length && filteredPlaces.length > 0 && (
-              <div style={{ position: "absolute", top: "12px", left: "50%", transform: "translateX(-50%)", background: "rgba(0,0,0,0.65)", color: "#fff", padding: "5px 14px", borderRadius: "14px", fontSize: "11px", pointerEvents: "none", whiteSpace: "nowrap" }}>
-                📍 {mapablePlaces.length}/{filteredPlaces.length}개 표시 중
-              </div>
-            )}
-
-            {mapLoaded && mapablePlaces.length === 0 && (
-              <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "rgba(255,255,255,0.9)", color: "#bbb" }}>
-                <p style={{ fontSize: "32px", marginBottom: "10px" }}>🗺️</p>
-                <p style={{ fontSize: "13px" }}>표시할 장소가 없습니다</p>
-              </div>
-            )}
-
-          </div>
+          {mapLoaded && mapablePlaces.length === 0 && (
+            <div className="ws-all__mapmsg">표시할 장소가 없어요</div>
+          )}
         </div>
       </div>
 
@@ -651,33 +610,15 @@ const DayAllView: React.FC<DayAllViewProps> = ({
       />
 
       {toast && (
-        <div style={{
-          position: "fixed", bottom: "32px", left: "50%",
-          transform: "translateX(-50%)",
-          background: "#222", color: "#fff",
-          padding: "10px 14px 10px 22px", borderRadius: "20px",
-          fontSize: "13px", fontWeight: "bold",
-          boxShadow: "0 4px 16px rgba(0,0,0,0.18)",
-          zIndex: 9999,
-          display: "flex", alignItems: "center", gap: "12px",
-          animation: "fadeInUp 0.2s ease",
-        }}>
-          <span style={{ pointerEvents: "none" }}>{toast.message}</span>
+        <div className="tm-toast" role="status">
+          <span>{toast.message}</span>
           {toast.onUndo && (
-            <button
-              onClick={toast.onUndo}
-              style={{
-                background: "none", border: "none", color: "#8ab4ff",
-                fontWeight: "bold", fontSize: "13px", cursor: "pointer", padding: 0,
-              }}
-            >
+            <button type="button" onClick={toast.onUndo}>
               실행취소
             </button>
           )}
         </div>
       )}
-
-      <style>{`@keyframes fadeInUp { from { opacity:0; transform:translateX(-50%) translateY(8px); } to { opacity:1; transform:translateX(-50%) translateY(0); } }`}</style>
     </>
   );
 };

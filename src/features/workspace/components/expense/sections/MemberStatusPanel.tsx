@@ -1,251 +1,83 @@
 // src/features/workspace/components/expense/sections/MemberStatusPanel.tsx
+//
+// 정산 상자의 "멤버별 정산" · "입금 현황" 표 — 시안: 머리 줄 + 누르면 상세 창이 열리는 줄 목록.
 import React from "react";
 import type {
   DepositStatusRow,
   ExpenseMember,
-  ExpenseSettings,
   MemberStatsRow,
 } from "../../../hooks/expense.ui.types";
-import { STATUS_PAGE_SIZE } from "../../../hooks/expense.ui.types";
 
-interface MemberStatusPanelProps {
-  settings: ExpenseSettings;
-  memberPanel: "SETTLE" | "STATUS";
-  setMemberPanel: (p: "SETTLE" | "STATUS") => void;
-
-  orderedMemberStats: MemberStatsRow[];
-
-  orderedDepositStatusRows: DepositStatusRow[];
-  pagedDepositStatusRows: DepositStatusRow[];
-
-  openDepositModal: (mem: string) => void;
-  statusPage: number;
-  setStatusPage: React.Dispatch<React.SetStateAction<number>>;
-  statusPageCount: number;
-
-  activePayer: string;
-  setActivePayer: React.Dispatch<React.SetStateAction<string>>;
+interface SettleRowsProps {
+  rows: MemberStatsRow[];
   onOpenSettleDetail: (m: ExpenseMember) => void;
-  detailsRef: React.RefObject<HTMLDivElement | null>;
 }
 
-const MemberStatusPanel: React.FC<MemberStatusPanelProps> = ({
-  settings,
-  memberPanel,
-  setMemberPanel,
-  orderedMemberStats,
-  orderedDepositStatusRows,
-  pagedDepositStatusRows,
-  openDepositModal,
-  statusPage,
-  setStatusPage,
-  statusPageCount,
-  activePayer,
-  setActivePayer,
-  onOpenSettleDetail,
-  detailsRef,
-}) => {
-  return (
-    <div className="stat-box stat-box--members">
-      <div className="stat-head stat-head-row">
-        {settings.paymentMode === "HYBRID" && (
-          <div className="seg-spacer" aria-hidden />
-        )}
-        <span>
-          {settings.paymentMode === "POOL"
-            ? "STATUS (입금 현황)"
-            : settings.paymentMode === "HYBRID"
-              ? memberPanel === "STATUS"
-                ? "STATUS (입금 현황)"
-                : "SETTLEMENT (1/N)"
-              : "SETTLEMENT (1/N)"}
-        </span>
-
-        {settings.paymentMode === "HYBRID" && (
-          <div className="seg">
-            <button
-              className={`seg-btn ${memberPanel === "SETTLE" ? "active" : ""}`}
-              onClick={() => setMemberPanel("SETTLE")}
-            >
-              정산
-            </button>
-            <button
-              className={`seg-btn ${memberPanel === "STATUS" ? "active" : ""}`}
-              onClick={() => setMemberPanel("STATUS")}
-            >
-              현황
-            </button>
-          </div>
-        )}
-      </div>
-
-      {settings.paymentMode === "POOL" ||
-      (settings.paymentMode === "HYBRID" && memberPanel === "STATUS") ? (
-        <>
-          <div className="stat-body stat-body--fill">
-            <div className="pool-chart-wrap">
-              <div
-                className="pool-chart"
-                style={
-                  {
-                    "--status-cols": Math.min(
-                      Math.max(pagedDepositStatusRows.length, 1),
-                      STATUS_PAGE_SIZE,
-                    ),
-                  } as React.CSSProperties
-                }
-              >
-                {pagedDepositStatusRows.map((m) => {
-                  const sum = m.depositedAmount;
-                  const target = m.targetAmount;
-                  const filled = target > 0 ? Math.min(1, sum / target) : 0;
-                  const shortage = m.remainingAmount;
-                  const overflow = m.overpaidAmount;
-
-                  return (
-                    <div key={m.mem} className="pool-bar-col">
-                      <button
-                        className="pool-bar-btn"
-                        onClick={() => openDepositModal(m.mem)}
-                      >
-                        <div className="pool-bar-meta">
-                          {shortage > 0 ? (
-                            <span className="pool-badge neg">
-                              부족 ₩ {shortage.toLocaleString()}
-                            </span>
-                          ) : overflow > 0 ? (
-                            <span className="pool-badge pos">
-                              초과 ₩ {overflow.toLocaleString()}
-                            </span>
-                          ) : (
-                            <span className="pool-badge ok">달성 !</span>
-                          )}
-                        </div>
-
-                        <div className="pool-bar-frame">
-                          {filled < 1 && (
-                            <div
-                              className="pool-bar-missing"
-                              style={{ height: `${(1 - filled) * 100}%` }}
-                            >
-                              <div className="pool-bar-ghost" />
-                            </div>
-                          )}
-                          <div
-                            className="pool-bar-fill"
-                            style={{ height: `${filled * 100}%` }}
-                          />
-                        </div>
-                      </button>
-
-                      <button
-                        className="pool-name"
-                        onClick={() => openDepositModal(m.mem)}
-                      >
-                        {m.mem}
-                      </button>
-
-                      <div className="pool-subline">
-                        {sum.toLocaleString()} / {target.toLocaleString()}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-
-          {orderedDepositStatusRows.length > STATUS_PAGE_SIZE && (
-            <div className="status-pagination">
-              <button
-                className="status-page-btn"
-                onClick={() => setStatusPage((p) => Math.max(p - 1, 0))}
-                disabled={statusPage === 0}
-              >
-                이전
-              </button>
-              <span className="status-page-indicator">
-                {statusPage + 1} / {statusPageCount}
-              </span>
-              <button
-                className="status-page-btn"
-                onClick={() =>
-                  setStatusPage((p) => Math.min(p + 1, statusPageCount - 1))
-                }
-                disabled={statusPage === statusPageCount - 1}
-              >
-                다음
-              </button>
-            </div>
-          )}
-        </>
-      ) : (
-        <div className="stat-body">
-          <div className="stat-scroll-area">
-            <table className="stat-table settlement-table">
-              <thead>
-                <tr>
-                  <th>MEMBER</th>
-                  <th style={{ textAlign: "right", color: "#2196F3" }}>COST</th>
-                  <th style={{ textAlign: "right", color: "#888" }}>PAID</th>
-                  <th style={{ textAlign: "right" }}>±</th>
-                  <th style={{ textAlign: "center" }}>DETAIL</th>
-                </tr>
-              </thead>
-              <tbody>
-                {orderedMemberStats.map((m) => (
-                  <tr
-                    key={m.mem}
-                    className={`settle-row ${activePayer === m.mem ? "active" : ""}`}
-                    onClick={() => {
-                      setActivePayer((p) => (p === m.mem ? "ALL" : m.mem));
-                      detailsRef.current?.scrollIntoView({
-                        behavior: "smooth",
-                      });
-                    }}
-                  >
-                    <td style={{ fontWeight: "bold" }}>{m.mem}</td>
-                    <td style={{ textAlign: "right", fontWeight: "bold" }}>
-                      {m.share.toLocaleString()}
-                    </td>
-                    <td style={{ textAlign: "right", color: "#999" }}>
-                      {m.paid.toLocaleString()}
-                    </td>
-                    <td
-                      className={`st-res ${m.diff > 0 ? "plus" : m.diff < 0 ? "minus" : "zero"}`}
-                      style={{ textAlign: "right" }}
-                    >
-                      {m.diff > 0 && "+"}
-                      {m.diff.toLocaleString()}
-                    </td>
-                    <td style={{ textAlign: "center" }}>
-                      <button
-                        className="btn-detail"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onOpenSettleDetail(m.mem);
-                        }}
-                      >
-                        VIEW
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      <div className="stat-note">
-        ※{" "}
-        {settings.paymentMode === "POOL" ||
-        (settings.paymentMode === "HYBRID" && memberPanel === "STATUS")
-          ? "승인 완료된 입금 금액만 현황에 반영됩니다. 이름을 클릭하면 입금 기록을 관리할 수 있습니다."
-          : "(+) 받을 돈 / (-) 보낼 돈 | 이름을 클릭하면 필터가 자동으로 적용됩니다."}
-      </div>
+/** 멤버별 정산 — 이름 · 부담 · 결제 · 정산(보낼 돈 / 받을 돈) */
+export const SettleRows: React.FC<SettleRowsProps> = ({ rows, onOpenSettleDetail }) => (
+  <div className="ws-sett">
+    <div className="ws-setrow is-head">
+      <span>이름</span>
+      <span>부담</span>
+      <span>결제</span>
+      <span>정산</span>
     </div>
-  );
-};
+    {rows.map((m) => (
+      <button
+        key={m.mem}
+        type="button"
+        className="ws-setrow"
+        onClick={() => onOpenSettleDetail(m.mem)}
+        aria-label={`${m.mem} 정산 상세 열기`}
+      >
+        <b>{m.mem}</b>
+        <span>{m.share.toLocaleString()}</span>
+        <span>{m.paid.toLocaleString()}</span>
+        {m.diff < 0 ? (
+          <b className="ws-neg">{Math.abs(m.diff).toLocaleString()} 보낼 돈</b>
+        ) : m.diff > 0 ? (
+          <b className="ws-pos">{m.diff.toLocaleString()} 받을 돈</b>
+        ) : (
+          <span className="tm-hint">정산 없음</span>
+        )}
+      </button>
+    ))}
+  </div>
+);
 
-export default MemberStatusPanel;
+interface DepositRowsProps {
+  rows: DepositStatusRow[];
+  openDepositModal: (mem: string) => void;
+}
+
+/** 입금 현황 — 이름 · 목표 · 입금 · 상태(달성 / 부족 / 초과) */
+export const DepositRows: React.FC<DepositRowsProps> = ({ rows, openDepositModal }) => (
+  <div className="ws-sett">
+    <div className="ws-setrow is-head">
+      <span>이름</span>
+      <span>목표</span>
+      <span>입금</span>
+      <span>상태</span>
+    </div>
+    {rows.map((m) => (
+      <button
+        key={m.mem}
+        type="button"
+        className="ws-setrow"
+        onClick={() => openDepositModal(m.mem)}
+        aria-label={`${m.mem} 입금 기록 열기`}
+      >
+        <b>{m.mem}</b>
+        <span>{m.targetAmount.toLocaleString()}</span>
+        <span>{m.depositedAmount.toLocaleString()}</span>
+        {m.remainingAmount > 0 ? (
+          <span className="tm-hint">부족 {m.remainingAmount.toLocaleString()}</span>
+        ) : m.overpaidAmount > 0 ? (
+          <b className="ws-pos">초과 {m.overpaidAmount.toLocaleString()}</b>
+        ) : (
+          <b className="ws-pos">달성</b>
+        )}
+      </button>
+    ))}
+  </div>
+);

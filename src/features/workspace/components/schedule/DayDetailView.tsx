@@ -13,7 +13,8 @@ import type { GenerationLock } from "../../hooks/tripChange";
 import type { TransitResult } from "../schedule/modal/TransitDetailModal";
 import { getTransitRoutes } from "../../../../api/schedule.api";
 import { useNaverMap } from "../../hooks/useNaverMap";
-import { CATEGORY_COLOR, getCategoryIcon } from "../../hooks/schedule.constants";
+import { CATEGORY_COLOR } from "../../hooks/schedule.constants";
+import { PIN_SIZE, cssVar, infoHtml, infoWindowBase, pinHtml } from "./mapStyle";
 import type { NaverMapObject } from "../../hooks/naverMapTypes";
 import { apiMessage } from "../../hooks/apiError";
 import type { VoucherResponse } from "../../../../types/voucher.types";
@@ -152,6 +153,8 @@ interface DayDetailViewProps {
   onAddExpenseForItem?: (scheduleItemId: number) => void;
   /** 다른 멤버가 AI 일정을 만드는 중이면 그 정보 — 끝날 때까지 일정 수정(구조 편집)을 막는다. 메모는 그대로 쓸 수 있다 */
   generationLock?: GenerationLock | null;
+  /** DAY 탭 줄 오른쪽 버튼 자리 — 있으면 거기로 보낸다 */
+  actionsSlot?: HTMLElement | null;
 }
 
 const DayDetailView: React.FC<DayDetailViewProps> = ({
@@ -180,6 +183,7 @@ const DayDetailView: React.FC<DayDetailViewProps> = ({
   expenses = [],
   onAddExpenseForItem,
   generationLock = null,
+  actionsSlot = null,
 }) => {
   // 열려 있는 정거장 상세 — 노드 id로 잡아서 순서가 바뀌어도 같은 노드를 가리키고, 다른 일차로 가면 자동으로 닫힌다
   const [sel, setSel] = useState<{ day: string; id: number } | null>(null);
@@ -218,7 +222,6 @@ const DayDetailView: React.FC<DayDetailViewProps> = ({
     if (savedPlaces.some((p) => p.category !== "숙소" && p.category !== "교통")) setIsPickerOpen(true);
     else setIsAddNodeModalOpen(true);
   };
-  const [lockTooltipIdx, setLockTooltipIdx] = useState<number | null>(null);
   const [travelPopover, setTravelPopover] = useState<{ idx: number; top: number; left: number } | null>(null);
   // 구간 실시간 대중교통 경로 패널 — 결과는 이 상태에만 두고 저장하지 않는다(닫으면 사라짐)
   const [transitView, setTransitView] = useState<{
@@ -332,11 +335,8 @@ const DayDetailView: React.FC<DayDetailViewProps> = ({
       });
 
       infoWindowRef.current = new window.naver.maps.InfoWindow({
-        anchorSkew: true,
-        backgroundColor: "#fff",
-        borderColor: "#000",
-        borderWidth: 2,
-        pixelOffset: new window.naver.maps.Point(0, -10),
+        ...infoWindowBase(),
+        pixelOffset: new window.naver.maps.Point(0, -(PIN_SIZE / 2)),
       });
 
       mapInstanceRef.current = map;
@@ -356,22 +356,8 @@ const DayDetailView: React.FC<DayDetailViewProps> = ({
   };
 
   // 핀 클릭 / "지도에서 보기" 양쪽에서 재사용하는 정보창 오픈 로직
-  const buildInfoHtml = (place: SavedPlace & { _time: string }) => {
-    const color = CATEGORY_COLOR[place.category] || "#333";
-    return `
-      <div style="padding:12px 16px;min-width:180px;max-width:240px;font-family:inherit">
-        <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
-          <span style="background:${color};color:#fff;padding:2px 7px;border-radius:3px;font-size:11px;font-weight:bold">
-            ${getCategoryIcon(place.category)} ${place.category}
-          </span>
-          ${place.rating ? `<span style="font-size:12px;color:#ff9800;font-weight:bold">⭐ ${place.rating}</span>` : ""}
-        </div>
-        <div style="font-size:11px;color:#888;margin-bottom:2px">${place._time}</div>
-        <div style="font-weight:bold;font-size:14px;margin-bottom:4px">${place.name}</div>
-        <div style="font-size:11px;color:#666">${place.address || ""}</div>
-      </div>
-    `;
-  };
+  const buildInfoHtml = (place: SavedPlace & { _time: string }) =>
+    infoHtml(place, CATEGORY_COLOR[place.category] || cssVar("--tm-line-strong", "#999999"), place._time);
 
   const openPlaceInfo = (place: SavedPlace & { _time: string }, marker: NaverMapObject) => {
     infoWindowRef.current.setContent(buildInfoHtml(place));
@@ -391,35 +377,14 @@ const DayDetailView: React.FC<DayDetailViewProps> = ({
     places.forEach((place, i) => {
       const { lat, lng } = renderPositions[i];
       const pos = new window.naver.maps.LatLng(lat, lng);
-      const color = CATEGORY_COLOR[place.category] || "#333";
+      const color = CATEGORY_COLOR[place.category] || cssVar("--tm-line-strong", "#999999");
 
       const marker = new window.naver.maps.Marker({
         position: pos,
         map: mapInstanceRef.current,
         icon: {
-          content: `
-            <div style="position:relative;width:30px;height:30px;">
-              <div style="
-                position:absolute;top:0;left:0;
-                background:${color};color:#fff;
-                border:1.5px solid #fff;border-radius:50% 50% 50% 0;
-                transform:rotate(-45deg);width:30px;height:30px;
-                display:flex;align-items:center;justify-content:center;
-                box-shadow:0 3px 8px rgba(0,0,0,0.25);cursor:pointer;
-                font-size:14px;">
-                <span style="transform:rotate(45deg)">${getCategoryIcon(place.category)}</span>
-              </div>
-              <div style="
-                position:absolute;top:-4px;right:-4px;
-                width:15px;height:15px;border-radius:50%;
-                background:#fff;border:1.5px solid ${color};
-                display:flex;align-items:center;justify-content:center;
-                font-size:9px;font-weight:bold;color:${color};
-                box-shadow:0 1px 3px rgba(0,0,0,0.25);">
-                ${i + 1}
-              </div>
-            </div>`,
-          anchor: new window.naver.maps.Point(15, 30),
+          content: pinHtml(color, i + 1),
+          anchor: new window.naver.maps.Point(PIN_SIZE / 2, PIN_SIZE / 2),
         },
         zIndex: 100,
       });
@@ -438,7 +403,7 @@ const DayDetailView: React.FC<DayDetailViewProps> = ({
     polylineRef.current = new window.naver.maps.Polyline({
       map: mapInstanceRef.current,
       path: pathCoords,
-      strokeColor: "#888",
+      strokeColor: cssVar("--tm-line-strong", "#999999"),
       strokeOpacity: 0.55,
       strokeWeight: 3,
       strokeStyle: "shortdash",
@@ -489,163 +454,146 @@ const DayDetailView: React.FC<DayDetailViewProps> = ({
       .filter(Boolean);
     if (path.length > 1) {
       focusLineRef.current = new window.naver.maps.Polyline({
-        map, path, strokeColor: "#000", strokeOpacity: 0.85, strokeWeight: 5, zIndex: 60,
+        map, path, strokeColor: cssVar("--tm-ink", "#111111"), strokeOpacity: 0.85, strokeWeight: 5, zIndex: 60,
       });
     }
     map.setCenter(marker.getPosition());
     map.setZoom(15);
   }, [selectedIdx, mapLoaded, mapPlaces]);
 
+  // 날짜 머리글 "11.09 (월)"
+  const captionDate = useMemo(() => {
+    const m = currentDate.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (!m) return currentDate;
+    const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    return `${m[2]}.${m[3]} (${"일월화수목금토"[d.getDay()]})`;
+  }, [currentDate]);
+
+  // 일정 수정하기 · 장소 추가 — DAY 탭 줄 오른쪽에 둔다
+  const actions = (
+    <>
+      {isEditing && (
+        <button
+          type="button"
+          className="tm-btn"
+          onClick={() => {
+            // 저장한 장소가 하나도 없으면 고를 게 없으니 바로 검색으로
+            const hasCandidates = savedPlaces.some((p) => p.category !== "숙소" && p.category !== "교통");
+            if (hasCandidates) setIsPickerOpen(true);
+            else setIsAddNodeModalOpen(true);
+          }}
+        >
+          + 장소 추가
+        </button>
+      )}
+      <button
+        type="button"
+        className={`tm-btn${isEditing ? " tm-btn--primary" : ""}`}
+        onClick={() => setEditRequested((v) => !v)}
+        disabled={generationLocked}
+        title={generationLocked ? "AI가 일정을 만드는 동안에는 일정을 수정할 수 없어요" : undefined}
+      >
+        {isEditing ? "완료" : "일정 수정하기"}
+      </button>
+    </>
+  );
+
   return (
     <>
-      <div style={{ display: "flex", flexDirection: "column", height: "calc(100vh - 120px)", minHeight: 0 }}>
+      {actionsSlot ? createPortal(actions, actionsSlot) : <div className="ws-all-actions">{actions}</div>}
 
-        {/* ── 저장 오류 배너 ── */}
-        {storageError && (
-          <div style={{
-            flexShrink: 0,
-            marginBottom: "12px",
-            padding: "10px 16px",
-            background: "#ffebee",
-            border: "2px solid #e53935",
-            borderRadius: "6px",
-            fontSize: "13px",
-            color: "#c62828",
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-          }}>
-            ⚠️ {storageError}
-          </div>
-        )}
+      {/* ── 저장 오류 배너 ── */}
+      {storageError && (
+        <div className="tm-notice tm-notice--danger tm-mb-3" role="alert">{storageError}</div>
+      )}
 
-        {/* ── 헤더 ── */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", flexShrink: 0 }}>
-          <div>
-            <h2 style={{ fontSize: "24px", fontWeight: 800, margin: 0 }}>{dayTitle}</h2>
-            <p style={{ color: "#999", marginTop: "4px", fontFamily: "var(--font-mono)", fontSize: "12px" }}>
-              {currentDate}
-            </p>
-          </div>
-          <div style={{ display: "flex", gap: "10px" }}>
-            {isEditing && (
-              <button
-                onClick={() => {
-                  // 저장한 장소가 하나도 없으면 고를 게 없으니 바로 검색으로
-                  const hasCandidates = savedPlaces.some((p) => p.category !== "숙소" && p.category !== "교통");
-                  if (hasCandidates) setIsPickerOpen(true);
-                  else setIsAddNodeModalOpen(true);
-                }}
-                style={{ padding: "10px 20px", background: "#fff", color: "#000", border: "2px solid #000", fontWeight: "bold", fontSize: "14px", cursor: "pointer", borderRadius: "4px" }}
-              >
-                + 노드 추가
-              </button>
-            )}
-            <button
-              onClick={() => setEditRequested((v) => !v)}
-              disabled={generationLocked}
-              title={generationLocked ? "AI가 일정을 만드는 동안에는 일정을 수정할 수 없어요" : undefined}
-              style={{
-                padding: "10px 20px",
-                background: isEditing ? "#000" : "#fff",
-                color: isEditing ? "#fff" : "#000",
-                border: "2px solid #000",
-                fontWeight: "bold", fontSize: "14px", borderRadius: "4px",
-                cursor: generationLocked ? "not-allowed" : "pointer",
-                opacity: generationLocked ? 0.45 : 1,
-              }}
-            >
-              {isEditing ? "✓ 완료" : "✏️ 일정 수정하기"}
-            </button>
-          </div>
+      {/* ── 시각 자동 계산 안내·설정 — 일정 수정 중에만 보인다 ── */}
+      {isEditing && setDayAutoCompute && updateDaySettings && (
+        <DayComputeBanner
+          dayTitle={dayTitle}
+          dayInfo={dayInfo}
+          nodes={nodes}
+          otherDays={dayKeys.filter((d) => d !== dayTitle)}
+          isEditing={isEditing}
+          onToggleAuto={setDayAutoCompute}
+          onSettings={updateDaySettings}
+          onMoveNode={moveNodeToDay}
+        />
+      )}
+
+      {/* 일반 보기에서도 종료 시간 초과는 작게 알린다 (정리는 일정 수정하기에서) */}
+      {!isEditing && overWarning && (
+        <div className="tm-notice tm-notice--warn tm-mb-3">
+          {overWarning.message} <span>— ‘일정 수정하기’에서 정리할 수 있어요</span>
         </div>
+      )}
 
-        {/* ── 시각 자동 계산 안내·설정 — 일정 수정 중에만 보인다 ── */}
-        {isEditing && setDayAutoCompute && updateDaySettings && (
-          <DayComputeBanner
-            dayTitle={dayTitle}
-            dayInfo={dayInfo}
-            nodes={nodes}
-            otherDays={dayKeys.filter((d) => d !== dayTitle)}
-            isEditing={isEditing}
-            onToggleAuto={setDayAutoCompute}
-            onSettings={updateDaySettings}
-            onMoveNode={moveNodeToDay}
-          />
-        )}
-
-        {/* 일반 보기에서도 종료 시간 초과는 작게 알린다 (정리는 일정 수정하기에서) */}
-        {!isEditing && overWarning && (
-          <div style={{ flexShrink: 0, marginBottom: "10px", padding: "6px 12px", background: "#fff3e0", border: "1px solid #ffb74d", borderRadius: "6px", fontSize: "12px", color: "#e65100" }}>
-            ⚠️ {overWarning.message} <span style={{ color: "#bf7a3a" }}>— ‘일정 수정하기’에서 정리할 수 있어요</span>
-          </div>
-        )}
-
-        {/* ── 바디: 타임라인 + 지도 ── */}
-        <div style={{ display: "flex", gap: "16px", flex: 1, minHeight: 0, overflow: "hidden" }}>
-
-          {/* ── 왼쪽: 타임라인 노드 ── */}
-          <div style={{ width: isEditing ? "640px" : "440px", flexShrink: 0, display: "flex", flexDirection: "column", minHeight: 0, transition: "width 0.25s ease" }}>
-            {selectedIdx != null && nodes[selectedIdx] && setNodeStay && setNodePin && setNodeMemo ? (
-              <StopDetailPanel
-                key={nodes[selectedIdx].id}
-                node={nodes[selectedIdx]}
-                idx={selectedIdx}
-                total={nodes.length}
-                dayTitle={dayTitle}
-                dayInfo={dayInfo}
-                isEditing={isEditing}
-                prev={nodes[selectedIdx - 1]}
-                next={nodes[selectedIdx + 1]}
-                otherDays={dayKeys.filter((d) => d !== dayTitle)}
-                vouchers={nodes[selectedIdx].id != null ? vouchers.filter((v) => v.scheduleItemId === nodes[selectedIdx].id) : []}
-                expenses={nodes[selectedIdx].id != null ? expenses.filter((e) => e.scheduleItemId === nodes[selectedIdx].id) : []}
-                canTransit={canLookupTransit}
-                onTransit={(from) => void openTransit(from)}
-                onBack={() => setSel(null)}
-                onNav={navigateStop}
-                onStay={(m) => setNodeStay(selectedIdx, m)}
-                onPin={(t) => setNodePin(selectedIdx, t)}
-                onTime={(v) => updateNode(selectedIdx, "time", v)}
-                onMemo={(m) => setNodeMemo(selectedIdx, m)}
-                onReplace={() => startReplace(selectedIdx)}
-                onMove={(day) => moveNodeToDay(selectedIdx, day)}
-                onDelete={() => deleteNode(selectedIdx)}
-                onAddVoucher={
-                  nodes[selectedIdx].id != null && onAddVoucherForItem
-                    ? () => onAddVoucherForItem(nodes[selectedIdx].id!)
-                    : undefined
-                }
-                onAddExpense={
-                  nodes[selectedIdx].id != null && onAddExpenseForItem
-                    ? () => onAddExpenseForItem(nodes[selectedIdx].id!)
-                    : undefined
-                }
-              />
-            ) : (
+      {/* ── 바디: 타임라인 + 지도 ── */}
+      <div className={`ws-day${isEditing ? " is-edit" : ""}`}>
+        {/* ── 왼쪽: 타임라인 노드 ── */}
+        <div className="ws-day__list">
+          {selectedIdx != null && nodes[selectedIdx] && setNodeStay && setNodePin && setNodeMemo ? (
+            <StopDetailPanel
+              key={nodes[selectedIdx].id}
+              node={nodes[selectedIdx]}
+              idx={selectedIdx}
+              total={nodes.length}
+              dayTitle={dayTitle}
+              dayInfo={dayInfo}
+              isEditing={isEditing}
+              prev={nodes[selectedIdx - 1]}
+              next={nodes[selectedIdx + 1]}
+              otherDays={dayKeys.filter((d) => d !== dayTitle)}
+              vouchers={nodes[selectedIdx].id != null ? vouchers.filter((v) => v.scheduleItemId === nodes[selectedIdx].id) : []}
+              expenses={nodes[selectedIdx].id != null ? expenses.filter((e) => e.scheduleItemId === nodes[selectedIdx].id) : []}
+              canTransit={canLookupTransit}
+              onTransit={(from) => void openTransit(from)}
+              onBack={() => setSel(null)}
+              onNav={navigateStop}
+              onStay={(m) => setNodeStay(selectedIdx, m)}
+              onPin={(t) => setNodePin(selectedIdx, t)}
+              onTime={(v) => updateNode(selectedIdx, "time", v)}
+              onMemo={(m) => setNodeMemo(selectedIdx, m)}
+              onReplace={() => startReplace(selectedIdx)}
+              onMove={(day) => moveNodeToDay(selectedIdx, day)}
+              onDelete={() => deleteNode(selectedIdx)}
+              onAddVoucher={
+                nodes[selectedIdx].id != null && onAddVoucherForItem
+                  ? () => onAddVoucherForItem(nodes[selectedIdx].id!)
+                  : undefined
+              }
+              onAddExpense={
+                nodes[selectedIdx].id != null && onAddExpenseForItem
+                  ? () => onAddExpenseForItem(nodes[selectedIdx].id!)
+                  : undefined
+              }
+            />
+          ) : (
             <>
-            {autoOn && nodes.length > 0 && (
-              <div style={{ display: "flex", gap: "6px", marginBottom: "8px", flexShrink: 0 }}>
-                {([["list", "☰ 목록"], ["board", "🕒 시간표"]] as const).map(([mode, label]) => (
-                  <button
-                    key={mode}
-                    onClick={() => setViewMode(mode)}
-                    style={{
-                      padding: "4px 12px", fontSize: "12px", fontWeight: 700, cursor: "pointer", borderRadius: "14px",
-                      border: "1.5px solid #000", background: viewMode === mode ? "#000" : "#fff", color: viewMode === mode ? "#fff" : "#000",
-                    }}
-                  >
-                    {label}
-                  </button>
-                ))}
-                {showBoard && isEditing && (
-                  <span style={{ alignSelf: "center", fontSize: "11px", color: "#999" }}>
-                    카드를 끌면 순서가, 아래 손잡이를 끌면 머무는 시간이 바뀌어요
-                  </span>
+              <div className="ws-day__bar">
+                <span className="ws-cap">
+                  {captionDate}
+                  <b>{nodes.length}곳</b>
+                </span>
+                {autoOn && nodes.length > 0 && (
+                  <div className="ws-day__modes" role="group" aria-label="보기 방식">
+                    {([["list", "목록"], ["board", "시간표"]] as const).map(([mode, label]) => (
+                      <button
+                        key={mode}
+                        type="button"
+                        className={`tm-pill${viewMode === mode ? " is-on" : ""}`}
+                        aria-pressed={viewMode === mode}
+                        onClick={() => setViewMode(mode)}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
                 )}
               </div>
-            )}
-            <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: "0" }}>
+              {showBoard && isEditing && (
+                <p className="tm-hint ws-day__hint">카드를 끌면 순서가, 아래 손잡이를 끌면 머무는 시간이 바뀌어요</p>
+              )}
               {showBoard && setNodeStay && setNodePin ? (
                 <TimelineBoard
                   nodes={nodes}
@@ -657,109 +605,59 @@ const DayDetailView: React.FC<DayDetailViewProps> = ({
                   onOpen={selectNode}
                 />
               ) : nodes.length === 0 ? (
-                <div style={{ textAlign: "center", padding: "60px 20px", color: "#bbb" }}>
-                  <p style={{ fontSize: "28px", marginBottom: "8px" }}>📅</p>
-                  <p style={{ fontSize: "13px" }}>아직 추가된 노드가 없습니다</p>
-                </div>
+                <div className="tm-empty">아직 추가된 장소가 없어요</div>
               ) : (
                 nodes.map((n, idx) => {
-                  const color = CATEGORY_COLOR[n.placeInfo?.category ?? ""] || "#d0d0d0";
-                  const hasCategory = !!n.placeInfo?.category;
-                  const icon = hasCategory ? getCategoryIcon(n.placeInfo!.category!) : null;
+                  const color = CATEGORY_COLOR[n.placeInfo?.category ?? ""] || "var(--tm-line-strong)";
                   const isFixed = n.placeInfo?.category === "교통" || n.placeInfo?.category === "숙소";
-
+                  const canDrag = isEditing && !isFixed;
+                  const next = nodes[idx + 1];
                   return (
-                    <div key={idx} style={{ display: "flex", alignItems: "stretch", minWidth: 0, overflow: "hidden" }}>
+                    <div key={idx} className="tm-node ws-node" data-over={dragOverIdx === idx && !isFixed ? "1" : undefined}>
                       {/* 시간 + 다음 장소까지 이동시간 */}
-                      <div style={{
-                        width: "54px",
-                        flexShrink: 0,
-                        paddingTop: "15px",
-                        textAlign: "right",
-                        paddingRight: "12px",
-                        fontSize: "11px",
-                        fontFamily: "var(--font-mono)",
-                        color: "#aaa",
-                        lineHeight: 1,
-                      }}>
-                        {autoOn && n.pinnedTime && <span title="이 시각에 고정" style={{ marginRight: "2px" }}>📌</span>}
+                      <div className="tm-node__time">
+                        {autoOn && n.pinnedTime && <span className="ws-pin" title="이 시각에 고정" aria-label="이 시각에 고정">고정 </span>}
                         {n.time}
-                        {autoOn && n.endTime && (n.stayMinutes ?? 0) > 0 && (
-                          <div style={{ marginTop: "3px", fontSize: "10px", color: "#ccc" }}>~{n.endTime}</div>
-                        )}
-
+                        {autoOn && n.endTime && (n.stayMinutes ?? 0) > 0 && <small>~{n.endTime}</small>}
                         {n.travelMinutes != null && n.travelMinutes > 0 && (
-                          <div style={{ marginTop: "5px" }}>
-                            {idx < nodes.length - 1 ? (
-                              <span
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  const rect = e.currentTarget.getBoundingClientRect();
-                                  setTravelPopover((prev) =>
-                                    prev?.idx === idx
-                                      ? null
-                                      : { idx, top: rect.bottom + 6, left: rect.left }
-                                  );
-                                }}
-                                style={{
-                                  display: "inline-flex",
-                                  alignItems: "center",
-                                  gap: "2px",
-                                  fontSize: "10px",
-                                  fontWeight: 600,
-                                  color: "#1976d2",
-                                  cursor: "pointer",
-                                  textDecoration: "underline dotted",
-                                  textDecorationColor: "#90caf9",
-                                }}
-                              >
-                                {n.travelPayment != null || n.travelTransfer != null ? "🚇" : "+"}{n.travelMinutes}분
-                              </span>
-                            ) : (
-                              <span style={{ fontSize: "10px", color: "#bbb" }}>
-                                +{n.travelMinutes}분
-                              </span>
-                            )}
-                          </div>
+                          idx < nodes.length - 1 ? (
+                            <button
+                              type="button"
+                              className="tm-linkbtn"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const rect = e.currentTarget.getBoundingClientRect();
+                                setTravelPopover((prev) =>
+                                  prev?.idx === idx ? null : { idx, top: rect.bottom + 6, left: rect.left }
+                                );
+                              }}
+                            >
+                              {n.travelPayment != null || n.travelTransfer != null ? "지하철 " : "+"}
+                              {n.travelMinutes}분
+                            </button>
+                          ) : (
+                            <small>+{n.travelMinutes}분</small>
+                          )
                         )}
                       </div>
 
                       {/* 타임라인 축 */}
-                      <div style={{
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
-                        width: "20px",
-                        flexShrink: 0,
-                      }}>
-                        <div style={{
-                          width: "12px",
-                          height: "12px",
-                          borderRadius: "50%",
-                          background: hasCategory ? color : "#ddd",
-                          border: `2px solid ${hasCategory ? color : "#ccc"}`,
-                          marginTop: "14px",
-                          flexShrink: 0,
-                          zIndex: 1,
-                          boxShadow: hasCategory ? `0 0 0 3px ${color}22` : "none",
-                        }} />
-                        {idx < nodes.length - 1 && (
-                          <div style={{
-                            width: "2px",
-                            flex: 1,
-                            minHeight: "24px",
-                            background: "linear-gradient(to bottom, #e0e0e0, #efefef)",
-                            marginTop: "4px",
-                          }} />
-                        )}
+                      <div className="tm-node__axis" aria-hidden="true">
+                        <i style={{ background: color }} />
+                        {next && <s />}
                       </div>
 
-                      {/* 카드 */}
+                      {/* 카드 — 누르면 정거장 상세가 열린다. 시각·머무는 시간·장소 바꾸기·이동·삭제·메모는 거기서 한다 */}
                       <div
-                        className="tl-box"
-                        draggable={isEditing && !isFixed}
-                        onDragStart={() => { if (isEditing && !isFixed) dragFromIdx.current = idx; }}
-                        onDragOver={(e) => { if (isEditing && !isFixed) { e.preventDefault(); setDragOverIdx(idx); } }}
+                        className="tm-row-card ws-row"
+                        role="button"
+                        tabIndex={0}
+                        aria-label={`${n.title} 상세 열기`}
+                        style={{ ["--tm-cat" as string]: color }}
+                        draggable={canDrag}
+                        onClick={() => selectNode(n)}
+                        onDragStart={() => { if (canDrag) dragFromIdx.current = idx; }}
+                        onDragOver={(e) => { if (canDrag) { e.preventDefault(); setDragOverIdx(idx); } }}
                         onDragLeave={() => setDragOverIdx(null)}
                         onDrop={() => {
                           if (dragFromIdx.current !== null && dragFromIdx.current !== idx) {
@@ -769,205 +667,119 @@ const DayDetailView: React.FC<DayDetailViewProps> = ({
                           setDragOverIdx(null);
                         }}
                         onDragEnd={() => { dragFromIdx.current = null; setDragOverIdx(null); }}
-                        style={{
-                          flex: 1,
-                          minWidth: 0,
-                          marginLeft: "12px",
-                          marginBottom: "12px",
-                          padding: "13px 16px",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "12px",
-                          cursor: (isEditing && !isFixed) ? "grab" : "default",
-                          background: (dragOverIdx === idx && !isFixed) ? "#f0f0f0" : "#fff",
-                          borderTop: (dragOverIdx === idx && !isFixed) ? "2px dashed #000" : "1px solid #eee",
-                          borderRight: (dragOverIdx === idx && !isFixed) ? "2px dashed #000" : "1px solid #eee",
-                          borderBottom: (dragOverIdx === idx && !isFixed) ? "2px dashed #000" : "1px solid #eee",
-                          borderLeft: `4px solid ${hasCategory ? color : "#e0e0e0"}`,
-                          borderRadius: "0 6px 6px 0",
-                          transition: "background 0.1s, border 0.1s",
-                          userSelect: "none",
-                        }}
                       >
-                        {/* 드래그 핸들 — 편집 모드 + 고정 아닐 때만 */}
-                        {isEditing && !isFixed && (
-                          <span style={{ fontSize: "14px", color: "#ccc", flexShrink: 0, cursor: "grab" }}>⠿</span>
-                        )}
-                        {/* 고정 노드 표시 */}
+                        {canDrag && <span className="tm-grip" aria-hidden="true">⠿</span>}
                         {isEditing && isFixed && (
                           <span
-                            style={{ position: "relative", fontSize: "11px", color: "#bbb", flexShrink: 0, cursor: "help" }}
-                            onMouseEnter={() => setLockTooltipIdx(idx)}
-                            onMouseLeave={() => setLockTooltipIdx(null)}
+                            className="tm-tip ws-lock"
+                            data-tip={`${n.placeInfo?.category === "숙소" ? "숙소" : "출발지"}는 순서 변경이 불가해요`}
+                            tabIndex={0}
+                            aria-label={`${n.placeInfo?.category === "숙소" ? "숙소" : "출발지"}는 순서 변경이 불가해요`}
+                            onClick={(e) => e.stopPropagation()}
                           >
-                            🔒
-                            {lockTooltipIdx === idx && (
-                              <span style={{
-                                position: "absolute", bottom: "calc(100% + 6px)", left: "50%",
-                                transform: "translateX(-50%)",
-                                background: "#333", color: "#fff",
-                                padding: "5px 10px", borderRadius: "4px",
-                                fontSize: "11px", whiteSpace: "nowrap",
-                                pointerEvents: "none", zIndex: 100,
-                              }}>
-                                {n.placeInfo?.category === "숙소" ? "숙소" : "출발지"}는 순서 변경이 불가합니다
-                              </span>
-                            )}
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                              <rect x="5" y="11" width="14" height="9" />
+                              <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+                            </svg>
                           </span>
                         )}
-
-                        {icon && (
-                          <span style={{ fontSize: "18px", flexShrink: 0, lineHeight: 1 }}>{icon}</span>
-                        )}
-
-                        {/* 카드를 누르면 정거장 상세가 열린다 — 시각·머무는 시간·장소 바꾸기·이동·삭제·메모는 거기서 한다 */}
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ cursor: "pointer" }} onClick={() => selectNode(n)}>
-                            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "3px" }}>
-                              <h3 style={{ fontSize: "14px", fontWeight: "700", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "#111" }}>
-                                {n.title}
-                              </h3>
-                              {n.memo && <span title="메모가 있어요" style={{ fontSize: "11px", flexShrink: 0 }}>📝</span>}
-                            </div>
-                            <p style={{ fontSize: "12px", color: "#aaa", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", lineHeight: 1.5 }}>
-                              {n.desc}
-                            </p>
-                            {autoOn && (n.warnings ?? []).map((w, wi) => (
-                              <p key={wi} style={{ fontSize: "11px", color: "#e65100", margin: "3px 0 0", lineHeight: 1.4 }}>
-                                ⚠️ {w.message}
-                              </p>
-                            ))}
+                        <div className="tm-grow ws-row__main">
+                          <div className="tm-row-card__title ws-row__title">
+                            {n.title}
+                            {n.memo && (
+                              <span className="ws-memo-ic" title="메모가 있어요" aria-label="메모가 있어요">
+                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                  <path d="M5 3h14v13l-5 5H5z" />
+                                  <path d="M14 21v-5h5" />
+                                </svg>
+                              </span>
+                            )}
                           </div>
+                          {n.desc && <div className="tm-row-card__sub tm-ellipsis">{n.desc}</div>}
+                          {autoOn && (n.warnings ?? []).map((w, wi) => (
+                            <span key={wi} className="tm-node-warn">{w.message}</span>
+                          ))}
                         </div>
-
                         {n.placeInfo?.category && (
-                          <span style={{ fontSize: "11px", fontWeight: "600", flexShrink: 0, color, padding: "3px 10px", border: `1.5px solid ${color}`, borderRadius: "20px", background: `${color}10` }}>
+                          <span className="tm-tag tm-cat ws-row__cat" style={{ ["--tm-cat" as string]: color }}>
                             {n.placeInfo.category}
                           </span>
                         )}
-
-                        <span style={{ color: "#ccc", fontSize: "16px", flexShrink: 0 }}>›</span>
                       </div>
                     </div>
                   );
                 })
               )}
-            </div>
             </>
-            )}
-          </div>
+          )}
+        </div>
 
-          {/* ── 오른쪽: 지도 ── */}
-          <div style={{
-            flex: 1,
-            position: "relative",
-            border: "2px solid #000",
-            borderRadius: "8px",
-            overflow: "hidden",
-            minHeight: 0,
-          }}>
-            <div ref={mapRef} style={{ width: "100%", height: "100%" }} />
+        {/* ── 오른쪽: 지도 ── */}
+        <div className="tm-map ws-day__map">
+          <div ref={mapRef} className="tm-map__canvas" />
 
-            {!mapLoaded && (
-              <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "#f5f5f5", color: "#999" }}>
-                <p style={{ fontSize: "28px", marginBottom: "8px" }}>🗺️</p>
-                <p style={{ fontSize: "13px" }}>{mapKey ? "지도 로딩 중..." : "지도 키가 설정되지 않았습니다"}</p>
-              </div>
-            )}
+          {!mapLoaded && (
+            <div className="ws-all__mapmsg">{mapKey ? "지도 불러오는 중…" : "지도 키가 설정되지 않았어요"}</div>
+          )}
 
-            {mapLoaded && mapPlaces.length === 0 && (
-              <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "rgba(255,255,255,0.9)", color: "#bbb" }}>
-                <p style={{ fontSize: "32px", marginBottom: "10px" }}>🗺️</p>
-                <p style={{ fontSize: "13px" }}>표시할 장소가 없습니다</p>
-              </div>
-            )}
+          {mapLoaded && mapPlaces.length === 0 && (
+            <div className="ws-all__mapmsg">표시할 장소가 없어요</div>
+          )}
 
-            {/* 좌표 없는 장소 안내 */}
-            {mapLoaded && mapPlaces.length > 0 && mapPlaces.length < nodes.filter(n => n.placeInfo?.name).length && (
-              <div style={{ position: "absolute", top: "12px", left: "50%", transform: "translateX(-50%)", background: "rgba(0,0,0,0.65)", color: "#fff", padding: "5px 14px", borderRadius: "14px", fontSize: "11px", pointerEvents: "none", whiteSpace: "nowrap" }}>
-                📍 {mapPlaces.length}/{nodes.filter(n => n.placeInfo?.name).length}개 표시 중 (좌표 없는 장소 제외)
-              </div>
-            )}
+          {/* 좌표 없는 장소 안내 */}
+          {mapLoaded && mapPlaces.length > 0 && mapPlaces.length < nodes.filter((n) => n.placeInfo?.name).length && (
+            <div className="tm-tag tm-tag--dark ws-all__mapcount">
+              {mapPlaces.length}/{nodes.filter((n) => n.placeInfo?.name).length}곳 표시 중 · 좌표 없는 장소는 제외
+            </div>
+          )}
 
-            {/* 카테고리 색상 범례 — 오늘 등장하는 카테고리만 표시 */}
-            {mapLoaded && presentCategories.length > 0 && (
-              <div style={{
-                position: "absolute", left: "12px", bottom: "12px",
-                background: "#fff", border: "1px solid #ddd", borderRadius: "8px",
-                padding: "8px 12px", boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
-                display: "flex", flexDirection: "column", gap: "5px",
-              }}>
-                {presentCategories.map((cat) => (
-                  <div key={cat} style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "11px", color: "#555" }}>
-                    <span style={{ width: "9px", height: "9px", borderRadius: "50%", background: CATEGORY_COLOR[cat], flexShrink: 0 }} />
-                    {cat}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          {/* 카테고리 색상 범례 — 오늘 등장하는 카테고리만 표시 */}
+          {mapLoaded && presentCategories.length > 0 && (
+            <div className="tm-map__legend">
+              {presentCategories.map((cat) => (
+                <span key={cat}>
+                  <i style={{ background: CATEGORY_COLOR[cat] }} />
+                  {cat}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
       {/* 이동시간 요금/환승 팝오버 — 스크롤 컨테이너의 overflow 클리핑을 피하려고 body에 포탈로 렌더 */}
       {travelPopover && nodes[travelPopover.idx] && createPortal(
         <>
+          <div className="ws-pop__back" onClick={() => setTravelPopover(null)} />
           <div
-            onClick={() => setTravelPopover(null)}
-            style={{ position: "fixed", inset: 0, zIndex: 9998 }}
-          />
-          <div
+            className="ws-pop"
+            role="dialog"
+            aria-label="이동 정보"
+            style={{ top: travelPopover.top, left: travelPopover.left }}
             onClick={(e) => e.stopPropagation()}
-            style={{
-              position: "fixed",
-              top: travelPopover.top,
-              left: travelPopover.left,
-              background: "#fff",
-              border: "1.5px solid #333",
-              borderRadius: "6px",
-              padding: "8px 12px",
-              fontSize: "12px",
-              whiteSpace: "nowrap",
-              textAlign: "left",
-              zIndex: 9999,
-              boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
-            }}
           >
-            <div style={{ color: "#333", fontWeight: 600, marginBottom: "6px" }}>
-              이동 약 {nodes[travelPopover.idx].travelMinutes}분 <span style={{ fontWeight: 400, color: "#999" }}>(추정)</span>
+            <div className="ws-pop__title">
+              이동 약 {nodes[travelPopover.idx].travelMinutes}분 <span className="tm-hint">(추정)</span>
             </div>
             {nodes[travelPopover.idx].travelPayment != null && (
-              <div style={{
-                display: "flex", alignItems: "center", gap: "6px", color: "#555",
-                marginBottom: nodes[travelPopover.idx].travelTransfer != null ? "4px" : 0,
-              }}>
-                💰 {nodes[travelPopover.idx].travelPayment!.toLocaleString()}원
-              </div>
+              <div>요금 {nodes[travelPopover.idx].travelPayment!.toLocaleString()}원</div>
             )}
             {nodes[travelPopover.idx].travelTransfer != null && (
-              <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "#555" }}>
-                🔁 환승 {nodes[travelPopover.idx].travelTransfer}회
-              </div>
+              <div>환승 {nodes[travelPopover.idx].travelTransfer}회</div>
             )}
             {canLookupTransit(travelPopover.idx) ? (
               <>
                 <button
+                  type="button"
+                  className="tm-btn tm-btn--sm ws-pop__btn"
                   onClick={() => void openTransit(travelPopover.idx)}
-                  style={{
-                    marginTop: "8px", width: "100%", padding: "6px 10px", background: "#000", color: "#fff",
-                    border: "none", borderRadius: "4px", fontSize: "12px", fontWeight: "bold", cursor: "pointer",
-                  }}
                 >
                   실제 대중교통 경로 확인
                 </button>
-                <div style={{ marginTop: "4px", fontSize: "10px", color: "#aaa" }}>
-                  하루 조회 횟수에 한도가 있어요
-                </div>
+                <div className="tm-hint">하루 조회 횟수에 한도가 있어요</div>
               </>
             ) : (
-              <div style={{ marginTop: "6px", fontSize: "11px", color: "#aaa" }}>
-                좌표가 없는 장소가 있어 경로를 조회할 수 없어요
-              </div>
+              <div className="tm-hint">좌표가 없는 장소가 있어 경로를 조회할 수 없어요</div>
             )}
           </div>
         </>,

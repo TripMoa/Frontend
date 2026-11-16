@@ -53,6 +53,10 @@ interface WorkspaceCoreState {
   addNoticeGroup: () => Promise<void>;
   renameNoticeGroup: (groupId: number) => Promise<void>;
   deleteNoticeGroup: (groupId: number) => Promise<void>;
+  /** "공지 그룹 관리" 창용 — 브라우저 prompt/confirm 없이 이름을 받아 처리하고, 실패하면 안내 문장을, 성공하면 null 을 돌려준다 */
+  createNoticeGroupNamed: (name: string) => Promise<string | null>;
+  renameNoticeGroupNamed: (groupId: number, name: string) => Promise<string | null>;
+  deleteNoticeGroupById: (groupId: number) => Promise<string | null>;
 
   renameItem: (type: "notice", index: number) => void;
   deleteItem: (type: "notice", index: number) => void;
@@ -315,6 +319,55 @@ const useWorkspaceCoreInternal = (): WorkspaceCoreState => {
     }
   };
 
+  const createNoticeGroupNamed = async (name: string): Promise<string | null> => {
+    if (!Number.isFinite(tripId) || tripId <= 0) return "여행 정보를 찾을 수 없어요.";
+    const trimmed = name.trim();
+    if (!trimmed) return "그룹 이름을 입력해주세요.";
+    if (noticeGroups.some((g) => normalizeName(g.name) === normalizeName(trimmed))) {
+      return "이미 존재하는 이름입니다.";
+    }
+    try {
+      const response = await createNoticeGroupApi(tripId, { name: trimmed });
+      await reloadNoticeGroups();
+      setCurrentNoticeGroupId(response.data.groupId);
+      return null;
+    } catch {
+      return "공지 그룹 생성에 실패했습니다.";
+    }
+  };
+
+  const renameNoticeGroupNamed = async (groupId: number, name: string): Promise<string | null> => {
+    if (!Number.isFinite(tripId) || tripId <= 0) return "여행 정보를 찾을 수 없어요.";
+    const target = noticeGroups.find((g) => g.groupId === groupId);
+    if (!target || target.isDefault) return "기본 그룹은 이름을 바꿀 수 없어요.";
+    const trimmed = name.trim();
+    if (!trimmed) return "그룹 이름을 입력해주세요.";
+    if (trimmed === target.name) return null;
+    if (noticeGroups.some((g) => g.groupId !== groupId && normalizeName(g.name) === normalizeName(trimmed))) {
+      return "이미 존재하는 이름입니다.";
+    }
+    try {
+      await renameNoticeGroupApi(tripId, groupId, { name: trimmed });
+      await reloadNoticeGroups();
+      return null;
+    } catch {
+      return "공지 그룹 이름 수정에 실패했습니다.";
+    }
+  };
+
+  const deleteNoticeGroupById = async (groupId: number): Promise<string | null> => {
+    if (!Number.isFinite(tripId) || tripId <= 0) return "여행 정보를 찾을 수 없어요.";
+    const target = noticeGroups.find((g) => g.groupId === groupId);
+    if (!target || target.isDefault) return "기본 그룹은 삭제할 수 없어요.";
+    try {
+      await deleteNoticeGroupApi(tripId, groupId);
+      await reloadNoticeGroups();
+      return null;
+    } catch {
+      return "공지 그룹 삭제에 실패했습니다.";
+    }
+  };
+
   const renameItem = (_type: "notice", index: number) => {
     const target = noticeGroups[index];
     if (target) void renameNoticeGroup(target.groupId);
@@ -345,6 +398,9 @@ const useWorkspaceCoreInternal = (): WorkspaceCoreState => {
     addNoticeGroup,
     renameNoticeGroup,
     deleteNoticeGroup,
+    createNoticeGroupNamed,
+    renameNoticeGroupNamed,
+    deleteNoticeGroupById,
     renameItem,
     deleteItem,
     setHideRight,

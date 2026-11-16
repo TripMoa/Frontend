@@ -1,10 +1,10 @@
 //src\features\workspace\components\schedule\modal\AddPlaceModal.tsx
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import "../../../styles/modals.css";
 import { useNaverMap } from "../../../hooks/useNaverMap";
 import { searchPlaces } from "../../../../../api/place.api";
 import type { PlaceSearchItem } from "../../../../../api/place.api";
-import { CATEGORY_COLOR, CATEGORY_LIST, getCategoryIcon } from "../../../hooks/schedule.constants";
+import { CATEGORY_COLOR, CATEGORY_LIST } from "../../../hooks/schedule.constants";
+import { PIN_SIZE, TEMP_PIN_SIZE, cssVar, infoHtml, infoWindowBase, pinHtml, tempPinHtml } from "../mapStyle";
 import type { NaverMapObject } from "../../../hooks/naverMapTypes";
 import { apiMessage } from "../../../hooks/apiError";
 
@@ -87,12 +87,9 @@ const AddPlaceModal: React.FC<AddPlaceModalProps> = ({
     });
 
     infoWindowRef.current = new window.naver.maps.InfoWindow({
-      anchorSkew: true,
-      backgroundColor: "#fff",
-      borderColor: "#000",
-      borderWidth: 2,
+      ...infoWindowBase(),
       disableAnchor: false,
-      pixelOffset: new window.naver.maps.Point(0, -10),
+      pixelOffset: new window.naver.maps.Point(0, -(PIN_SIZE / 2)),
     });
 
     // 지도 클릭 → 해당 위치에서 검색
@@ -126,47 +123,20 @@ const AddPlaceModal: React.FC<AddPlaceModalProps> = ({
       if (place.lat == null || place.lng == null) return;
 
       const pos = new window.naver.maps.LatLng(place.lat, place.lng);
-      const color = CATEGORY_COLOR[place.category] || "#333";
+      const color = CATEGORY_COLOR[place.category] || cssVar("--tm-line-strong", "#999999");
 
       const marker = new window.naver.maps.Marker({
         position: pos,
         map: mapInstanceRef.current,
         icon: {
-          content: `
-            <div style="position:relative;width:30px;height:30px;">
-              <div style="
-                position:absolute;top:0;left:0;
-                background:${color};color:#fff;
-                border:1.5px solid #fff;border-radius:50% 50% 50% 0;
-                transform:rotate(-45deg);width:30px;height:30px;
-                display:flex;align-items:center;justify-content:center;
-                box-shadow:0 3px 8px rgba(0,0,0,0.25);cursor:pointer;
-                font-size:14px;">
-                <span style="transform:rotate(45deg)">${getCategoryIcon(place.category)}</span>
-              </div>
-              <div style="
-                position:absolute;top:-4px;right:-4px;
-                width:15px;height:15px;border-radius:50%;
-                background:#fff;border:1.5px solid ${color};
-                display:flex;align-items:center;justify-content:center;
-                font-size:9px;font-weight:bold;color:${color};
-                box-shadow:0 1px 3px rgba(0,0,0,0.25);">
-                ${idx + 1}
-              </div>
-            </div>`,
-          anchor: new window.naver.maps.Point(15, 30),
+          content: pinHtml(color, idx + 1),
+          anchor: new window.naver.maps.Point(PIN_SIZE / 2, PIN_SIZE / 2),
         },
         zIndex: 100,
       });
 
       window.naver.maps.Event.addListener(marker, "click", () => {
-        infoWindowRef.current.setContent(`
-          <div style="padding:10px 14px;min-width:160px;font-family:inherit">
-            <div style="font-weight:bold;font-size:13px;margin-bottom:4px">${place.name}</div>
-            <div style="font-size:11px;color:#666;margin-bottom:6px">${place.address || ""}</div>
-            <span style="background:${color};color:#fff;padding:2px 7px;border-radius:3px;font-size:11px;font-weight:bold">${getCategoryIcon(place.category)} ${place.category}</span>
-          </div>
-        `);
+        infoWindowRef.current.setContent(infoHtml(place, color));
         infoWindowRef.current.open(mapInstanceRef.current, marker);
         onMarkerClick(place);
       });
@@ -228,9 +198,6 @@ const AddPlaceModal: React.FC<AddPlaceModalProps> = ({
   }, [drawMarkers]);
 
   const handleSearch = () => doSearch(searchQuery);
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") handleSearch();
-  };
 
   // ── 지도 클릭 → 임시 핀 + 네이버 SDK reverseGeocode 후 검색 ──
   const handleMapClick = (lat: number, lng: number, map: NaverMapObject) => {
@@ -242,11 +209,8 @@ const AddPlaceModal: React.FC<AddPlaceModalProps> = ({
       position: new window.naver.maps.LatLng(lat, lng),
       map,
       icon: {
-        content: `<div style="
-          width:16px;height:16px;border-radius:50%;
-          background:#000;border:3px solid #fff;
-          box-shadow:0 2px 6px rgba(0,0,0,0.5)"></div>`,
-        anchor: new window.naver.maps.Point(8, 8),
+        content: tempPinHtml(),
+        anchor: new window.naver.maps.Point(TEMP_PIN_SIZE / 2, TEMP_PIN_SIZE / 2),
       },
       zIndex: 200,
     });
@@ -330,301 +294,155 @@ const AddPlaceModal: React.FC<AddPlaceModalProps> = ({
   };
 
   return (
-    <div
-      className="modal-overlay active"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-    >
+    <div className="tm-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div
-        className="modal-window"
-        style={{
-          width: "95%", maxWidth: "1400px", height: "88vh",
-          display: "flex", flexDirection: "column",
-        }}
+        className="tm-modal tm-modal--wide ws-search"
+        role="dialog"
+        aria-modal="true"
+        aria-label="장소 검색"
         onClick={(e) => e.stopPropagation()}
       >
-
         {/* ── 헤더 ── */}
-        <div className="modal-header">
-          <span className="mh-title">&gt;&gt; ADD NEW PLACE</span>
-          {onBackToSaved && (
-            <button
-              onClick={onBackToSaved}
-              style={{ marginLeft: "auto", marginRight: "12px", background: "none", border: "1px solid #fff", color: "#fff", borderRadius: "4px", padding: "4px 10px", fontSize: "12px", cursor: "pointer" }}
-            >
-              ← 저장한 장소에서 고르기
-            </button>
-          )}
-          <button className="mh-close" onClick={onClose}>CLOSE [X]</button>
+        <div className="tm-modal__head">
+          <h3 className="tm-modal__title">장소 검색</h3>
+          <button type="button" className="tm-btn tm-btn--sm" onClick={onClose}>닫기</button>
         </div>
 
         {/* ── 검색바 ── */}
-        <div style={{
-          padding: "14px 20px", borderBottom: "2px solid #eee",
-          background: "#fff", flexShrink: 0,
-        }}>
-          <div style={{ display: "flex", gap: "10px" }}>
-            <input
-              type="text"
-              placeholder="🔍 장소, 지역을 검색하세요... (예: 오사카 라멘, 도톤보리) · 지도 클릭으로도 검색 가능"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyPress={handleKeyPress}
-              style={{
-                flex: 1, height: "44px", padding: "0 18px",
-                border: "2px solid #ddd", borderRadius: "8px", fontSize: "14px",
-              }}
-            />
-            <button
-              onClick={handleSearch}
-              disabled={isSearching}
-              style={{
-                width: "90px", height: "44px",
-                background: "#000", color: "#fff",
-                border: "2px solid #000", borderRadius: "8px",
-                fontWeight: "bold", cursor: isSearching ? "not-allowed" : "pointer",
-                opacity: isSearching ? 0.7 : 1,
-              }}
-            >
-              {isSearching ? "검색중" : "검색"}
-            </button>
-          </div>
+        <div className="tm-input-group ws-search__bar">
+          <input
+            type="text"
+            className="tm-input tm-grow"
+            aria-label="장소 검색"
+            placeholder="장소, 지역 검색 (예: 오사카 라멘) · 지도를 눌러도 검색돼요"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") handleSearch(); }}
+          />
+          <button type="button" className="tm-btn tm-btn--sm tm-btn--primary" onClick={handleSearch} disabled={isSearching}>
+            {isSearching ? "검색 중…" : "검색"}
+          </button>
         </div>
 
-        {/* ── 바디: 왼쪽 리스트 + 오른쪽 지도 ── */}
-        <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-
-          {/* 왼쪽: 결과 리스트 */}
-          <div style={{
-            width: "370px", flexShrink: 0,
-            overflowY: "auto", borderRight: "2px solid #eee",
-            background: "#fafafa",
-          }}>
-            {/* 스티키 헤더 */}
-            <div style={{
-              padding: "10px 16px",
-              borderBottom: "1px solid #eee", background: "#fff",
-              position: "sticky", top: 0, zIndex: 1,
-            }}>
-              <div style={{ fontFamily: "var(--font-mono)", fontWeight: "bold", fontSize: "12px", color: "#666" }}>
-                검색결과 {searchResults.length}개
-              </div>
-              {searchResults.length > 0 && (
-                <div style={{ fontSize: "11px", color: "#aaa", marginTop: "2px" }}>
-                  카테고리를 클릭하면 수정할 수 있어요
-                </div>
-              )}
+        {/* ── 바디: 왼쪽 결과 + 오른쪽 지도 ── */}
+        <div className="ws-search__body">
+          <div className="ws-search__list">
+            <div className="ws-search__count">
+              검색결과 <b>{searchResults.length}개</b>
+              {searchResults.length > 0 && <span className="tm-hint"> · 카테고리를 눌러 바꿀 수 있어요</span>}
             </div>
 
-            {/* 에러 */}
-            {errorMsg && (
-              <div style={{ padding: "20px 16px", fontSize: "13px", color: "#e53935" }}>
-                ⚠️ {errorMsg}
-              </div>
-            )}
+            {errorMsg && <div className="tm-notice tm-notice--warn ws-search__msg" role="alert">{errorMsg}</div>}
 
-            {/* 빈 상태 */}
             {!errorMsg && searchResults.length === 0 && !isSearching && (
-              <div style={{ padding: "50px 16px", textAlign: "center", color: "#bbb" }}>
-                <div style={{ fontSize: "36px", marginBottom: "14px" }}>🗺️</div>
-                <p style={{ fontSize: "13px", lineHeight: 1.8, margin: 0 }}>
-                  검색어를 입력하거나<br />지도를 클릭해보세요
-                </p>
-              </div>
+              <p className="tm-empty">검색어를 입력하거나 지도를 눌러 보세요</p>
             )}
 
-            {/* 장소 카드 */}
             {searchResults.map((place, idx) => {
               const added = isAdded(place);
               const selected = selectedPlace?.id === place.id;
-              const color = CATEGORY_COLOR[place.category] || "#333";
-
+              const color = CATEGORY_COLOR[place.category] || "var(--tm-line-strong)";
+              const pickerKey = `list:${place.id}`;
               return (
                 <div
                   key={place.id}
+                  className={`tm-list__item ws-search__row${selected ? " is-on" : ""}`}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`${idx + 1}. ${place.name} 지도에서 보기`}
                   onClick={() => handleListClick(place)}
-                  style={{
-                    padding: "14px 16px",
-                    borderBottom: "1px solid #eee",
-                    background: selected ? "#f0f0f0" : "#fff",
-                    borderLeft: selected ? "4px solid #000" : "4px solid transparent",
-                    cursor: "pointer",
-                    transition: "background 0.1s",
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!selected) e.currentTarget.style.background = "#f8f8f8";
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!selected) e.currentTarget.style.background = "#fff";
+                  onKeyDown={(e) => {
+                    if (e.target !== e.currentTarget) return;
+                    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleListClick(place); }
                   }}
                 >
-                  <div style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
-                    {/* 번호 뱃지 */}
-                    <div style={{
-                      width: "22px", height: "22px", borderRadius: "50%",
-                      background: color, color: "#fff", flexShrink: 0,
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      fontSize: "11px", fontWeight: "bold", marginTop: "2px",
-                    }}>
-                      {idx + 1}
-                    </div>
-
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "4px", flexWrap: "wrap", minWidth: 0, position: "relative" }}>
-                        <span
+                  <span className="ws-search__no">{idx + 1}</span>
+                  <div className="ws-search__main">
+                    <div className="tm-row tm-row--wrap tm-gap-2 ws-search__titlerow">
+                      <b className="tm-list__title">{place.name}</b>
+                      <span className="ws-menuwrap">
+                        <button
+                          type="button"
+                          className="tm-tag tm-cat ws-search__cat"
+                          style={{ ["--tm-cat" as string]: color }}
+                          aria-haspopup="menu"
+                          aria-expanded={categoryPickerFor === pickerKey}
                           onClick={(e) => {
                             e.stopPropagation();
-                            setCategoryPickerFor((prev) => (prev === `list:${place.id}` ? null : `list:${place.id}`));
-                          }}
-                          style={{
-                            background: color, color: "#fff",
-                            padding: "1px 6px", fontSize: "10px", fontWeight: "bold",
-                            borderRadius: "3px", cursor: "pointer",
-                            display: "inline-flex", alignItems: "center", gap: "2px",
+                            setCategoryPickerFor((prev) => (prev === pickerKey ? null : pickerKey));
                           }}
                         >
-                          {place.category} <span style={{ fontSize: "8px" }}>▾</span>
-                        </span>
-
-                        {categoryPickerFor === `list:${place.id}` && (
+                          {place.category} ▾
+                        </button>
+                        {categoryPickerFor === pickerKey && (
                           <>
                             <div
+                              className="tm-backdrop"
                               onClick={(e) => { e.stopPropagation(); setCategoryPickerFor(null); }}
-                              style={{ position: "fixed", inset: 0, zIndex: 299 }}
                             />
-                            <div
-                              onClick={(e) => e.stopPropagation()}
-                              style={{
-                                position: "absolute", top: "calc(100% + 4px)", left: 0,
-                                background: "#fff", border: "1px solid #ddd", borderRadius: "6px",
-                                boxShadow: "0 4px 12px rgba(0,0,0,0.15)", overflow: "hidden",
-                                zIndex: 300, minWidth: "90px",
-                              }}
-                            >
+                            <div className="tm-dropdown__menu ws-menu" role="menu" onClick={(e) => e.stopPropagation()}>
                               {CATEGORY_LIST.map((cat) => (
-                                <div
+                                <button
                                   key={cat}
+                                  type="button"
+                                  role="menuitem"
+                                  className="tm-dropdown__item"
                                   onClick={() => updateResultCategory(place.id, cat)}
-                                  style={{
-                                    padding: "6px 12px", fontSize: "12px", cursor: "pointer",
-                                    color: cat === place.category ? CATEGORY_COLOR[cat] : "#555",
-                                    fontWeight: cat === place.category ? "bold" : "normal",
-                                    background: cat === place.category ? `${CATEGORY_COLOR[cat]}15` : "#fff",
-                                  }}
-                                  onMouseEnter={(e) => { if (cat !== place.category) e.currentTarget.style.background = "#f5f5f5"; }}
-                                  onMouseLeave={(e) => { if (cat !== place.category) e.currentTarget.style.background = "#fff"; }}
                                 >
                                   {cat}{cat === place.category ? " ✓" : ""}
-                                </div>
+                                </button>
                               ))}
                             </div>
                           </>
                         )}
-                        <span style={{
-                          fontSize: "14px", fontWeight: "bold",
-                          flex: 1,
-                          minWidth: 0,
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                        }}>
-                          {place.name}
-                        </span>
-                      </div>
-
-                      {place.address && (
-                        <p style={{ fontSize: "11px", color: "#888", margin: "0 0 6px", lineHeight: 1.4 }}>
-                          📍 {place.address}
-                        </p>
-                      )}
-                      {place.description && (
-                        <p style={{
-                          fontSize: "11px", color: "#aaa", margin: 0,
-                          lineHeight: 1.4,
-                          overflow: "hidden", textOverflow: "ellipsis",
-                          display: "-webkit-box", WebkitLineClamp: 2,
-                          WebkitBoxOrient: "vertical" as React.CSSProperties["WebkitBoxOrient"],
-                        }}>
-                          {place.description}
-                        </p>
-                      )}
+                      </span>
                     </div>
-
-                    {/* 빠른 추가 버튼 — 지도 확인 없이 바로 추가하고 싶을 때 */}
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handleAdd(place); }}
-                      disabled={added || addingId === place.id}
-                      title={added ? "추가됨" : "바로 추가"}
-                      style={{
-                        width: "28px", height: "28px", borderRadius: "50%",
-                        flexShrink: 0, alignSelf: "center",
-                        background: added ? "#4caf50" : "#000",
-                        color: "#fff", border: "none",
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                        fontSize: "15px", fontWeight: "bold", lineHeight: 1, padding: 0,
-                        cursor: added || addingId === place.id ? "not-allowed" : "pointer",
-                        opacity: addingId === place.id ? 0.5 : 1,
-                      }}
-                    >
-                      {added ? "✓" : "+"}
-                    </button>
+                    <div className="tm-list__sub">{place.address || "주소 없음"}</div>
+                    
                   </div>
+                  {/* 빠른 추가 — 지도 확인 없이 바로 추가하고 싶을 때 */}
+                  <button
+                    type="button"
+                    className="tm-btn tm-btn--sm"
+                    onClick={(e) => { e.stopPropagation(); void handleAdd(place); }}
+                    disabled={added || addingId === place.id}
+                    title={added ? "이미 추가했어요" : "바로 추가"}
+                  >
+                    {added ? "추가됨" : addingId === place.id ? "추가 중…" : "추가"}
+                  </button>
                 </div>
               );
             })}
           </div>
 
           {/* 오른쪽: 지도 */}
-          <div style={{ flex: 1, position: "relative", background: "#e8e8e8", overflow: "hidden" }}>
-            <div ref={mapRef} style={{ width: "100%", height: "100%" }} />
-
-            {/* 지도 미로드 */}
+          <div className="tm-map ws-search__map">
+            <div ref={mapRef} className="tm-map__canvas" />
             {!mapLoaded && (
-              <div style={{
-                position: "absolute", inset: 0,
-                display: "flex", flexDirection: "column",
-                alignItems: "center", justifyContent: "center",
-                background: "#f0f0f0", color: "#999",
-              }}>
-                <div style={{ fontSize: "36px", marginBottom: "12px" }}>🗺️</div>
-                <p style={{ fontSize: "13px" }}>
-                  {mapKey ? "지도 로딩 중..." : "VITE_NAVER_MAP_CLIENT_ID가 설정되지 않았습니다"}
-                </p>
+              <div className="ws-all__mapmsg">
+                {mapKey ? "지도 불러오는 중…" : "지도 키(VITE_NAVER_MAP_CLIENT_ID)가 설정되지 않았어요"}
               </div>
             )}
-
-            {/* 지도 클릭 힌트 — 한 번 써보면 사라짐 */}
             {mapLoaded && !hasClickedMap && (
-              <div style={{
-                position: "absolute", top: "12px", left: "50%",
-                transform: "translateX(-50%)",
-                background: "rgba(0,0,0,0.62)", color: "#fff",
-                padding: "5px 14px", borderRadius: "20px",
-                fontSize: "12px", pointerEvents: "none", whiteSpace: "nowrap",
-              }}>
-                지도를 클릭하면 주변 장소를 검색합니다
-              </div>
+              <div className="tm-tag tm-tag--dark ws-all__mapcount">지도를 누르면 주변 장소를 검색해요</div>
             )}
-
           </div>
         </div>
+        {onBackToSaved && (
+          <div className="tm-modal__foot">
+            <button type="button" className="tm-btn tm-btn--link ws-ulink tm-mr-auto" onClick={onBackToSaved}>
+              ← 저장한 장소로
+            </button>
+          </div>
+        )}
       </div>
-      {/* 토스트 */}
+
+      {/* 추가 알림 */}
       {addedName && (
-        <div style={{
-          position: "absolute", bottom: "24px", left: "50%",
-          transform: "translateX(-50%)",
-          background: "#222", color: "#fff",
-          padding: "10px 22px", borderRadius: "20px",
-          fontSize: "13px", fontWeight: "bold",
-          boxShadow: "0 4px 16px rgba(0,0,0,0.18)",
-          zIndex: 200, pointerEvents: "none",
-          whiteSpace: "nowrap",
-          animation: "fadeInUp 0.2s ease",
-        }}>
-          ✓ {addedName} 추가됨
+        <div className="tm-toast" role="status">
+          {addedName}을(를) 추가했어요
         </div>
       )}
-      <style>{`@keyframes fadeInUp { from { opacity:0; transform:translateX(-50%) translateY(8px); } to { opacity:1; transform:translateX(-50%) translateY(0); } }`}</style>
     </div>
   );
 };

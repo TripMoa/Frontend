@@ -1,28 +1,16 @@
 // src/features/workspace/components/expense/ExpenseView.tsx
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import "../../styles/center.css";
 
 import type { UseExpensesStore } from "../../hooks/useExpenses";
-import type {
-  CategoryDisplayItem,
-  DepositStatusRow,
-  ExpenseMember,
-  ExpenseSettings,
-  MemberStatsRow,
-  ShareType,
-} from "../../hooks/expense.ui.types";
-import {
-  PERSONAL_REFERENCE_KEY,
-  STATUS_PAGE_SIZE,
-} from "../../hooks/expense.ui.types";
+import type { ExpenseMember, ExpenseSettings } from "../../hooks/expense.ui.types";
+import { PERSONAL_REFERENCE_KEY } from "../../hooks/expense.ui.types";
 import { isSharedItem } from "../../hooks/expense.calc";
 
 import PoolDepositModal from "./modal/PoolDepositModal";
-import CalendarPopover from "./CalendarPopover";
 import TripSettings from "./sections/TripSettings";
 import ExpenseSummary from "./sections/ExpenseSummary";
-import MemberStatusPanel from "./sections/MemberStatusPanel";
+import { SettleRows, DepositRows } from "./sections/MemberStatusPanel";
 import CategoryStatsPanel from "./sections/CategoryStatsPanel";
 import ExpenseList from "./sections/ExpenseList";
 import { API_BASE_URL } from "../../../../shared/config/env";
@@ -79,9 +67,7 @@ const ExpenseView: React.FC<Props> = ({
     ETC: "기타",
   };
 
-  const [dayOpen, setDayOpen] = useState(false);
-  const [calMonth, setCalMonth] = useState(() => new Date());
-  const [daySelectedDates, setDaySelectedDates] = useState<string[]>([]);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const [sharedBudgetInput, setSharedBudgetInput] = useState<string>(() => {
     const n = settings?.sharedBudget ?? 0;
@@ -94,26 +80,15 @@ const ExpenseView: React.FC<Props> = ({
   const [shareType, setShareType] = useState<"ALL" | "SHARED" | "PERSONAL">(
     "ALL",
   );
-  const [memberPanel, setMemberPanel] = useState<"SETTLE" | "STATUS">("SETTLE");
+  // 정산 상자의 탭 — 멤버별 정산 / 입금 현황 / 카테고리별 지출
+  const [boxTab, setBoxTab] = useState<"SETTLE" | "STATUS" | "CAT">("SETTLE");
 
-  const dayFilterRef = useRef<HTMLDivElement | null>(null);
-  const inputRef = useRef<HTMLInputElement | null>(null);
   const detailsRef = useRef<HTMLDivElement | null>(null);
 
   const [depositOpen, setDepositOpen] = useState(false);
   const [depositMember, setDepositMember] = useState<string | null>(null);
 
   const allDates = Array.from(new Set(expenses.map((e) => e.date))).sort();
-  const recentDates = [...allDates]
-    .sort((a, b) => b.localeCompare(a))
-    .slice(0, 3);
-
-  const isDayFilterActive =
-    String(filterDate).startsWith("CAL:") ||
-    String(filterDate).startsWith("CALRANGE:");
-
-  const isRecentDateActive = (date: string) => filterDate === `DATE:${date}`;
-
   const myMemberNickname =
     members.find((member) => member.userId === currentUserId)?.nickname ?? null;
   const ownerMemberNickname =
@@ -200,12 +175,6 @@ const ExpenseView: React.FC<Props> = ({
     await applySettings(nextSettings);
   };
 
-  const onClickCurrent = () => {
-    const n = settings?.sharedBudget ?? 0;
-    setSharedBudgetInput(n ? formatWon(n) : "");
-    requestAnimationFrame(() => inputRef.current?.focus());
-  };
-
   const detailsList =
     activeCat === "ALL"
       ? filteredList
@@ -267,30 +236,11 @@ const ExpenseView: React.FC<Props> = ({
     prevPaymentModeRef.current = currentMode;
 
     setFilter("ALL");
-    setDaySelectedDates([]);
-    setDayOpen(false);
     setActiveCat("ALL");
     setActivePayer("ALL");
     setShareType("ALL");
     setVisibleCount(10);
   }, [settings?.paymentMode, setFilter]);
-
-  useEffect(() => {
-    if (!dayOpen) return;
-
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as Node;
-
-      if (dayFilterRef.current && !dayFilterRef.current.contains(target)) {
-        setDayOpen(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [dayOpen]);
 
   useEffect(() => {
     const n = settings?.sharedBudget ?? 0;
@@ -338,13 +288,12 @@ const ExpenseView: React.FC<Props> = ({
     }));
   }, [categoryStats, personalCategoryReference]);
 
-  const resetDetailsFilters = () => {
+  const clearAllFilters = () => {
     setActiveCat("ALL");
     setActivePayer("ALL");
     setShareType("ALL");
+    setFilter("ALL");
   };
-
-  const STATUS_PAGE_SIZE = 3;
 
   const memberOrder = useMemo(
     () => new Map(members.map((member, index) => [member.nickname, index])),
@@ -396,8 +345,6 @@ const ExpenseView: React.FC<Props> = ({
     ownerMemberNickname,
   ]);
 
-  const [statusPage, setStatusPage] = useState(0);
-
   const orderedDepositStatusRows = useMemo(() => {
     const statusMap = new Map(depositStatusRows.map((row) => [row.mem, row]));
 
@@ -432,190 +379,101 @@ const ExpenseView: React.FC<Props> = ({
     ownerMemberNickname,
   ]);
 
-  const statusPageCount = Math.max(
-    1,
-    Math.ceil(orderedDepositStatusRows.length / STATUS_PAGE_SIZE),
-  );
-
-  const pagedDepositStatusRows = useMemo(() => {
-    const start = statusPage * STATUS_PAGE_SIZE;
-    return orderedDepositStatusRows.slice(start, start + STATUS_PAGE_SIZE);
-  }, [orderedDepositStatusRows, statusPage]);
-
+  // 적용하지 않은 설정 변경이 있는지 — "정산 설정 ●" 표시와 창의 [변경사항 적용]에 쓴다
+  const appliedSettingsRef = useRef<ExpenseSettings | null>(settings);
   useEffect(() => {
-    if (statusPage > statusPageCount - 1) {
-      setStatusPage(0);
-    }
-  }, [statusPage, statusPageCount]);
-
-  useEffect(() => {
-    setStatusPage(0);
-  }, [settings?.paymentMode, memberPanel]);
+    appliedSettingsRef.current = settings;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isApplyLoading]);
 
   if (isBootstrapLoading || !settings) {
     return (
-      <div className="content-view-inner">
-        <div className="details-empty">불러오는 중.</div>
+      <div className="ws-ex">
+        <div className="tm-empty">불러오는 중이에요.</div>
       </div>
     );
   }
 
   if (bootstrapError) {
     return (
-      <div className="content-view-inner">
-        <div className="details-empty">
+      <div className="ws-ex">
+        <div className="tm-empty">
           {bootstrapError}
-          <small>※ 잠시 후 다시 시도해 주세요.</small>
+          <p className="tm-hint">잠시 후 다시 시도해 주세요.</p>
         </div>
       </div>
     );
   }
 
+  const appliedSettings = appliedSettingsRef.current ?? settings;
+  const hasPendingSettingsChange =
+    parseWon(sharedBudgetInput) !== appliedSettings.sharedBudget ||
+    settings.paymentMode !== appliedSettings.paymentMode ||
+    settings.roundingRule !== appliedSettings.roundingRule ||
+    settings.remainingRule !== appliedSettings.remainingRule;
+
+  const isPool = settings.paymentMode === "POOL";
+  const isHybrid = settings.paymentMode === "HYBRID";
+  const tabs: { key: "SETTLE" | "STATUS" | "CAT"; label: string }[] = [
+    ...(isPool ? [] : [{ key: "SETTLE" as const, label: "멤버별 정산" }]),
+    ...(isPool || isHybrid ? [{ key: "STATUS" as const, label: "입금 현황" }] : []),
+    { key: "CAT" as const, label: "카테고리별 지출" },
+  ];
+  const curTab = tabs.some((t) => t.key === boxTab) ? boxTab : tabs[0].key;
+
+  const anyFilter =
+    activePayer !== "ALL" ||
+    activeCat !== "ALL" ||
+    (!isPool && shareType !== "ALL") ||
+    String(filterDate) !== "ALL";
+
   return (
     <>
-      <div className="content-view-inner">
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-end",
-            marginBottom: "20px",
-          }}
-        >
-          <h2 style={{ fontSize: 24, fontWeight: 800, margin: 0 }}>
-            TRAVEL LOG
-          </h2>
-
-          <div className="filter-group">
-            <button
-              type="button"
-              className={`filter-tag ${filterDate === "ALL" ? "active" : ""}`}
-              onClick={() => {
-                setFilter("ALL");
-                setDaySelectedDates([]);
-                setDayOpen(false);
-              }}
-            >
-              ALL
-            </button>
-
-            <div className="filter-day" ref={dayFilterRef}>
-              <button
-                type="button"
-                className={`filter-tag ${isDayFilterActive ? "active" : ""}`}
-                onClick={() => setDayOpen((prev) => !prev)}
-              >
-                DAY
-              </button>
-
-              {dayOpen && (
-                <CalendarPopover
-                  month={calMonth}
-                  onMonthChange={setCalMonth}
-                  availableDates={new Set(allDates)}
-                  selectedDates={daySelectedDates}
-                  onPick={(pickedYmd) => {
-                    setDaySelectedDates((prev) => {
-                      let next: string[];
-
-                      if (prev.includes(pickedYmd)) {
-                        next = prev.filter((d) => d !== pickedYmd);
-                      } else if (prev.length === 0) {
-                        next = [pickedYmd];
-                      } else if (prev.length === 1) {
-                        next = [...prev, pickedYmd].sort();
-                      } else {
-                        next = [pickedYmd];
-                      }
-
-                      if (next.length === 0) {
-                        setFilter("ALL");
-                      } else if (next.length === 1) {
-                        setFilter(`CAL:${next[0]}`);
-                      } else {
-                        const [start, end] = [...next].sort();
-                        setFilter(`CALRANGE:${start}~${end}`);
-                      }
-
-                      return next;
-                    });
-                  }}
-                  onClose={() => setDayOpen(false)}
-                />
-              )}
-            </div>
-
-            {recentDates.map((date) => (
-              <button
-                key={date}
-                type="button"
-                className={`filter-tag ${
-                  isRecentDateActive(date) ? "active" : ""
-                }`}
-                onClick={() => {
-                  setFilter(`DATE:${date}`);
-                  setDaySelectedDates([]);
-                  setDayOpen(false);
-                }}
-              >
-                {date.substring(5)}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <TripSettings
-          settings={settings}
-          isApplyLoading={isApplyLoading}
-          isPreviewLoading={isPreviewLoading}
-          isBootstrapLoading={isBootstrapLoading}
-          setPaymentMode={setPaymentMode}
-          setRoundingRule={setRoundingRule}
-          setRemainingRule={setRemainingRule}
-          sharedBudgetInput={sharedBudgetInput}
-          memberCount={members.length || 1}
-          isOwner={isOwner}
-          setSharedBudgetInput={setSharedBudgetInput}
-          onPreviewSettings={handlePreviewSettings}
-          onApplySettings={handleApplySettings}
-          openAddModal={openAddModal}
-          formatWon={formatWon}
-          parseWon={parseWon}
-          inputRef={inputRef}
-        />
-
+      <div className="ws-ex">
         <ExpenseSummary
           summary={summary}
           settings={settings}
-          onClickCurrent={onClickCurrent}
+          isOwner={isOwner}
+          hasPendingSettingsChange={hasPendingSettingsChange}
+          isBusy={isBootstrapLoading || isApplyLoading}
+          onOpenSettings={() => setSettingsOpen(true)}
+          onAddExpense={openAddModal}
         />
 
-        <div className="stats-panel">
-          <MemberStatusPanel
-            settings={settings}
-            memberPanel={memberPanel}
-            setMemberPanel={setMemberPanel}
-            orderedMemberStats={orderedMemberStats}
-            orderedDepositStatusRows={orderedDepositStatusRows}
-            pagedDepositStatusRows={pagedDepositStatusRows}
-            openDepositModal={openDepositModal}
-            statusPage={statusPage}
-            setStatusPage={setStatusPage}
-            statusPageCount={statusPageCount}
-            activePayer={activePayer}
-            setActivePayer={setActivePayer}
-            onOpenSettleDetail={onOpenSettleDetail}
-            detailsRef={detailsRef}
-          />
-          <CategoryStatsPanel
-            categoryDisplayList={categoryDisplayList}
-            activeCat={activeCat}
-            onClickCategory={onClickCategory}
-            CAT_LABEL={CAT_LABEL}
-            personalPercent={personalPercent}
-            sharedPercent={sharedPercent}
-            paymentMode={settings?.paymentMode}
-          />
+        <div className="ws-exbox">
+          <div className="tm-seg ws-extabs" role="tablist" aria-label="정산 보기">
+            {tabs.map((t) => (
+              <button
+                key={t.key}
+                type="button"
+                role="tab"
+                aria-selected={curTab === t.key}
+                className={curTab === t.key ? "is-on" : ""}
+                onClick={() => setBoxTab(t.key)}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+          <div className="ws-exbody">
+            {curTab === "SETTLE" && (
+              <SettleRows rows={orderedMemberStats} onOpenSettleDetail={onOpenSettleDetail} />
+            )}
+            {curTab === "STATUS" && (
+              <DepositRows rows={orderedDepositStatusRows} openDepositModal={openDepositModal} />
+            )}
+            {curTab === "CAT" && (
+              <CategoryStatsPanel
+                categoryDisplayList={categoryDisplayList}
+                activeCat={activeCat}
+                onClickCategory={onClickCategory}
+                CAT_LABEL={CAT_LABEL}
+                personalPercent={personalPercent}
+                sharedPercent={sharedPercent}
+                paymentMode={settings?.paymentMode}
+              />
+            )}
+          </div>
         </div>
 
         <ExpenseList
@@ -628,7 +486,11 @@ const ExpenseView: React.FC<Props> = ({
           setActivePayer={setActivePayer}
           activeCat={activeCat}
           setActiveCat={setActiveCat}
-          resetDetailsFilters={resetDetailsFilters}
+          filterDate={String(filterDate)}
+          setFilter={setFilter}
+          allDates={allDates}
+          anyFilter={anyFilter}
+          clearAllFilters={clearAllFilters}
           visibleCount={visibleCount}
           setVisibleCount={setVisibleCount}
           detailsSum={detailsSum}
@@ -636,11 +498,31 @@ const ExpenseView: React.FC<Props> = ({
           members={members}
           openEditModal={openEditModal}
           viewReceipt={viewReceipt}
-          openAddModal={openAddModal}
           detailsRef={detailsRef}
           scheduleItemOptions={scheduleItemOptions}
         />
       </div>
+
+      <TripSettings
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        settings={settings}
+        isApplyLoading={isApplyLoading}
+        isPreviewLoading={isPreviewLoading}
+        isBootstrapLoading={isBootstrapLoading}
+        setPaymentMode={setPaymentMode}
+        setRoundingRule={setRoundingRule}
+        setRemainingRule={setRemainingRule}
+        sharedBudgetInput={sharedBudgetInput}
+        setSharedBudgetInput={setSharedBudgetInput}
+        memberCount={members.length || 1}
+        isOwner={isOwner}
+        hasPendingSettingsChange={hasPendingSettingsChange}
+        onPreviewSettings={handlePreviewSettings}
+        onApplySettings={handleApplySettings}
+        formatWon={formatWon}
+        parseWon={parseWon}
+      />
 
       <PoolDepositModal
         open={depositOpen}
