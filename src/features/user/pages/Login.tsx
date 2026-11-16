@@ -2,8 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { TicketLayout } from "../components/common/TicketLayout";
-import { TicketInfo } from "../components/common/TicketInfo";
+import styles from "../styles/Login.module.css";
 import { LoginForm } from "../components/LoginForm";
 import { AccountSuspendedNotice } from "../components/AccountSuspendedNotice";
 import { ActionPromptModal } from "../../../shared/components/ActionPromptModal";
@@ -38,18 +37,11 @@ const Login: React.FC = () => {
 
   return (
     <>
-      <TicketLayout
-        leftContent={
-          <TicketInfo
-            fromCode="OUT"
-            fromName="Offline"
-            toCode="IN"
-            toName="Online"
-            tagline="Social login only"
-          />
-        }
-        rightContent={
-          showSuspendedNotice ? (
+      <main className={`tm-grid-bg ${styles.page}`}>
+        <section className={styles.card}>
+          <span className="tm-logo">TRIPMOA</span>
+
+          {showSuspendedNotice ? (
             <AccountSuspendedNotice
               onBack={() => {
                 setShowSuspendedNotice(false);
@@ -57,10 +49,19 @@ const Login: React.FC = () => {
               }}
             />
           ) : (
-            <LoginForm />
-          )
-        }
-      />
+            <>
+              <h1 className={styles.title}>
+                <mark>같이</mark> 떠나볼까요?
+              </h1>
+              <p className={styles.hint}>소셜 계정으로 간편하게 시작하세요</p>
+              <LoginForm />
+              <button type="button" className={styles.home} onClick={() => navigate("/")}>
+                홈으로 돌아가기
+              </button>
+            </>
+          )}
+        </section>
+      </main>
 
       <ActionPromptModal
         open={showLoginFailModal}

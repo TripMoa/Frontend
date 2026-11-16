@@ -4,7 +4,6 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "./AuthContext";
 import { readPendingInvite } from "../../invite/inviteStorage";
-import styles from "../styles/Login.module.css";
 
 /**
  * OAuthSuccess 컴포넌트.
@@ -47,9 +46,8 @@ export default function OAuthSuccess() {
   }, [navigate, refreshAuth]);
 
   return (
-    <div className={styles.oauthLoading}>
-      <div className={styles.spinner}></div>
-      <p>로그인 처리 중입니다...</p>
+    <div className="tm-center tm-grid-bg" style={{ minHeight: "100vh" }}>
+      <div className="tm-loading">로그인 처리 중입니다...</div>
     </div>
   );
 }
