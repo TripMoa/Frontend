@@ -3,6 +3,7 @@
   --tm-paper: #ffffff;
   --tm-yellow: #ffe94a;
   --tm-red: #ff4b2b;
+  --tm-red-strong: #d93a1a;   /* 글자가 올라가는 빨강(흰 글씨 대비 4.59:1). 주 버튼·빨간 글씨·빨간 아바타 */
   --tm-soft: #f5f5f3;
   --tm-line: #cfcfcf;
   --tm-line-strong: #999999;
