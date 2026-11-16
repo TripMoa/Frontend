@@ -4,8 +4,6 @@
 // (AI가 시간이 모자라 뺀 "일정 미포함" 장소를 검색 없이 바로 되살릴 수 있다)
 
 import React, { useMemo, useState } from "react";
-import "../../../styles/modals.css";
-import { CATEGORY_COLOR, getCategoryIcon } from "../../../hooks/schedule.constants";
 import { itemMatchesPlace } from "../../../hooks/placeMatch";
 import type { ItemRef } from "../../../hooks/placeMatch";
 
@@ -102,144 +100,107 @@ const SavedPlacePickerModal: React.FC<Props> = ({
     }
   };
 
-  const chip = (value: string, label: string, count?: number) => (
+  const chip = (value: string, label: string) => (
     <button
       key={value}
+      type="button"
+      className={`tm-pill${category === value ? " is-on" : ""}`}
+      aria-pressed={category === value}
       onClick={() => setCategory(value)}
-      style={{
-        padding: "5px 12px", borderRadius: "16px", fontSize: "12px", fontWeight: 600, cursor: "pointer",
-        border: "1.5px solid #000", background: category === value ? "#000" : "#fff",
-        color: category === value ? "#fff" : "#000",
-      }}
     >
-      {label}{count != null ? ` ${count}` : ""}
+      {label}
     </button>
   );
 
   return (
-    <div className="modal-overlay active" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+    <div className="tm-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div
-        className="modal-window"
-        style={{ width: "92%", maxWidth: "640px", maxHeight: "86vh", display: "flex", flexDirection: "column" }}
+        className="tm-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-label={replacing ? "장소 바꾸기" : "장소 추가"}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="modal-header">
-          <span className="mh-title">
-            {replacing ? `>> '${replacing.title}' 대신 넣을 장소` : `>> ${dayTitle}에 장소 추가`}
-          </span>
-          <button className="mh-close" onClick={onClose}>CLOSE [X]</button>
+        <div className="tm-modal__head">
+          <h3 className="tm-modal__title">
+            {replacing ? `‘${replacing.title}’을(를) 대신 넣을 장소` : "저장한 장소에서 고르기"}
+          </h3>
+          <button type="button" className="tm-btn tm-btn--sm" onClick={onClose}>닫기</button>
         </div>
 
-        <div style={{ padding: "14px 20px 10px", borderBottom: "2px solid #eee", flexShrink: 0 }}>
-          <p style={{ margin: "0 0 10px", fontSize: "12px", color: "#666", lineHeight: 1.5 }}>
-            {replacing ? "고른 장소로 바뀌어요. 순서와 머무는 시간은 그대로예요. " : ""}저장해 둔 장소에서 먼저 골라 보세요.
-            {unscheduledCount > 0 && (
-              <> <b style={{ color: "#e65100" }}>일정 미포함 {unscheduledCount}곳</b>이 위에 있어요.</>
-            )}
-          </p>
-          <input
-            type="text" value={query} onChange={(e) => setQuery(e.target.value)}
-            placeholder="🔍 저장한 장소에서 이름·주소로 찾기"
-            style={{
-              width: "100%", boxSizing: "border-box", height: "36px", padding: "0 12px",
-              border: "1.5px solid #ddd", borderRadius: "6px", fontSize: "13px", marginBottom: "8px",
-            }}
-          />
-          <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-            {chip("all", "전체", rows.length)}
-            {FILTER_CATEGORIES.map((c) => chip(c, c, rows.filter((r) => r.place.category === c).length))}
+        <div className="tm-modal__body">
+          {replacing && <p className="tm-hint">고른 장소로 바뀌어요. 순서와 머무는 시간은 그대로예요.</p>}
+          {unscheduledCount > 0 && (
+            <p className="tm-hint">일정 미포함 {unscheduledCount}곳이 위에 있어요.</p>
+          )}
+          <div className="ws-fld">
+            <input
+              type="text"
+              className="tm-input"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              aria-label="저장한 장소 검색"
+              placeholder="저장한 장소에서 이름·주소로 찾기"
+            />
           </div>
-        </div>
+          <div className="tm-row tm-row--wrap tm-gap-2 tm-mb-2">
+            {chip("all", "전체")}
+            {FILTER_CATEGORIES.map((c) => chip(c, c))}
+          </div>
 
-        <div style={{ overflowY: "auto", padding: "10px 20px", flex: 1, minHeight: "160px" }}>
-          {visible.length === 0 && (
-            <p style={{ fontSize: "13px", color: "#999", textAlign: "center", padding: "32px 0", lineHeight: 1.7, whiteSpace: "pre-line" }}>
+          {message && (
+            <div className={`tm-notice tm-mb-2${message.error ? " tm-notice--danger" : " tm-notice--ok"}`} role="status">
+              {message.text}
+            </div>
+          )}
+
+          {visible.length === 0 ? (
+            <p className="tm-empty">
               {rows.length === 0
-                ? "저장한 장소가 없어요.\n아래에서 새로 검색해 추가해 보세요."
+                ? "저장한 장소가 없어요. 아래에서 새로 검색해 추가해 보세요."
                 : "조건에 맞는 저장 장소가 없어요."}
             </p>
+          ) : (
+            <ul className="tm-list">
+              {visible.map(({ place, inThisDay, otherDays, noCoords, unscheduled }) => {
+                const disabled = inThisDay || noCoords || addingId != null;
+                const sub = [
+                  place.category,
+                  place.address || null,
+                  unscheduled ? "일정 미포함" : null,
+                  !inThisDay && otherDays.length > 0 ? `${otherDays.join(", ")}에 있어요` : null,
+                  noCoords ? "좌표 없음" : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ");
+                return (
+                  <li key={place.id} className="tm-list__item">
+                    <div className="tm-list__main">
+                      <div className="tm-list__title">{place.name}</div>
+                      <div className="tm-list__sub">{sub}</div>
+                    </div>
+                    <button
+                      type="button"
+                      className="tm-btn tm-btn--sm"
+                      onClick={() => void handleAdd(place)}
+                      disabled={disabled}
+                      title={noCoords ? "좌표가 없는 장소는 일정에 넣을 수 없어요" : inThisDay ? "이미 이 날 일정에 있어요" : undefined}
+                    >
+                      {addingId === place.id
+                        ? (replacing ? "바꾸는 중…" : "추가 중…")
+                        : inThisDay ? "일정에 있음" : (replacing ? "이 장소로 바꾸기" : "이 날에 추가")}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
           )}
-
-          {visible.map(({ place, inThisDay, otherDays, noCoords, unscheduled }) => {
-            const color = CATEGORY_COLOR[place.category] || "#999";
-            const disabled = inThisDay || noCoords || addingId != null;
-            return (
-              <div
-                key={place.id}
-                style={{
-                  display: "flex", alignItems: "center", gap: "10px", padding: "10px 12px", marginBottom: "6px",
-                  border: "1px solid #eee", borderLeft: `4px solid ${color}`, borderRadius: "0 6px 6px 0",
-                  background: unscheduled ? "#fffaf0" : "#fff",
-                }}
-              >
-                <span style={{ fontSize: "18px", flexShrink: 0 }}>{getCategoryIcon(place.category)}</span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
-                    <span style={{ fontSize: "13px", fontWeight: 700, color: "#111" }}>{place.name}</span>
-                    {unscheduled && (
-                      <span style={{ fontSize: "10px", fontWeight: 700, color: "#e65100", border: "1px solid #ffcc80", background: "#fff3e0", borderRadius: "10px", padding: "1px 7px" }}>
-                        일정 미포함
-                      </span>
-                    )}
-                    {inThisDay && (
-                      <span style={{ fontSize: "10px", fontWeight: 700, color: "#2e7d32", border: "1px solid #a5d6a7", background: "#e8f5e9", borderRadius: "10px", padding: "1px 7px" }}>
-                        이 날에 있어요
-                      </span>
-                    )}
-                    {!inThisDay && otherDays.length > 0 && (
-                      <span style={{ fontSize: "10px", fontWeight: 600, color: "#1565c0", border: "1px solid #90caf9", background: "#e3f2fd", borderRadius: "10px", padding: "1px 7px" }}>
-                        {otherDays.join(", ")}에 있어요
-                      </span>
-                    )}
-                    {noCoords && (
-                      <span style={{ fontSize: "10px", fontWeight: 600, color: "#757575", border: "1px solid #ddd", background: "#f5f5f5", borderRadius: "10px", padding: "1px 7px" }}>
-                        좌표 없음
-                      </span>
-                    )}
-                  </div>
-                  <div style={{ fontSize: "11px", color: "#999", marginTop: "2px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {place.category}{place.address ? ` · ${place.address}` : ""}
-                  </div>
-                </div>
-                <button
-                  onClick={() => void handleAdd(place)}
-                  disabled={disabled}
-                  title={noCoords ? "좌표가 없는 장소는 일정에 넣을 수 없어요" : inThisDay ? "이미 이 날 일정에 있어요" : undefined}
-                  style={{
-                    flexShrink: 0, padding: "6px 12px", borderRadius: "5px", border: "none", fontSize: "12px", fontWeight: 700,
-                    background: disabled ? "#ddd" : "#000", color: disabled ? "#888" : "#fff",
-                    cursor: disabled ? "not-allowed" : "pointer",
-                  }}
-                >
-                  {addingId === place.id
-                    ? (replacing ? "바꾸는 중…" : "추가 중…")
-                    : inThisDay ? (replacing ? "이미 있어요" : "추가됨") : (replacing ? "이 장소로 바꾸기" : "이 날에 추가")}
-                </button>
-              </div>
-            );
-          })}
         </div>
 
-        <div style={{ padding: "12px 20px", borderTop: "2px solid #eee", flexShrink: 0 }}>
-          {message && (
-            <p style={{ margin: "0 0 8px", fontSize: "12px", color: message.error ? "#e53935" : "#2e7d32", fontWeight: 600 }}>
-              {message.error ? "⚠️ " : "✅ "}{message.text}
-            </p>
-          )}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-            <button
-              onClick={onSearchNew}
-              style={{ background: "none", border: "1.5px dashed #999", borderRadius: "6px", padding: "8px 14px", fontSize: "13px", cursor: "pointer", color: "#333" }}
-            >
-              🔍 찾는 장소가 없나요? 새로 검색하기
-            </button>
-            <button
-              onClick={onClose}
-              style={{ background: "#000", color: "#fff", border: "none", borderRadius: "6px", padding: "8px 18px", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}
-            >
-              닫기
-            </button>
-          </div>
+        <div className="tm-modal__foot">
+          <button type="button" className="tm-btn tm-btn--link ws-ulink tm-mr-auto" onClick={onSearchNew}>
+            + 새로 검색해서 추가
+          </button>
         </div>
       </div>
     </div>

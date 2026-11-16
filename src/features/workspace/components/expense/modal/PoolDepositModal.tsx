@@ -1,12 +1,13 @@
 // src/features/workspace/components/expense/PoolDepositModal.tsx
-
+//
+// 입금 기록 — 시안(pool): 좁은 모달 · 목표/입금/부족 요약 + 막대 · 입금 내역 줄(승인/반려 링크 + 상태 태그) · [닫기][+ 입금 기록 추가]
+// 입금 등록 · 삭제 · 승인 · 반려 동작은 예전 창 그대로이고, 모양과 확인창만 바꿨다.
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import "./../../../styles/poolModal.css";
-import BaseModal from "../../../../../shared/components/BaseModal";
-import { ActionPromptModal } from "../../../../../shared/components/ActionPromptModal";
+import WsConfirm from "../../layout/WsConfirm";
 import type { UseExpensesStore } from "../../../hooks/useExpenses";
 import type { ExpenseMember } from "../../../hooks/expense.ui.types";
 import { useTripContext } from "../../../hooks/useTripContext";
+import { apiMessage } from "../../../hooks/apiError";
 
 type Props = {
   open: boolean;
@@ -27,10 +28,7 @@ const todayYmd = () => {
 
 // 숫자 → ₩ + 콤마 문자열
 const formatWonInput = (value: number | string) => {
-  const num =
-    typeof value === "number"
-      ? value
-      : Number(String(value).replace(/[^\d]/g, ""));
+  const num = typeof value === "number" ? value : Number(String(value).replace(/[^\d]/g, ""));
   if (Number.isNaN(num)) return "";
   return `₩ ${num.toLocaleString("ko-KR")}`;
 };
@@ -43,13 +41,7 @@ const parseWonInput = (value: string) => {
 
 const formatWon = (n: number) => `₩ ${Math.max(0, n).toLocaleString("ko-KR")}`;
 
-const PoolDepositModal: React.FC<Props> = ({
-  open,
-  member,
-  targetPerMember,
-  store,
-  onClose,
-}) => {
+const PoolDepositModal: React.FC<Props> = ({ open, member, targetPerMember, store, onClose }) => {
   const {
     depositLogs,
     depositLoading,
@@ -66,28 +58,11 @@ const PoolDepositModal: React.FC<Props> = ({
   const [date, setDate] = useState<string>(todayYmd());
   const [memo, setMemo] = useState<string>("");
 
-  const [notice, setNotice] = useState({
-    open: false,
-    headline: "",
-    description: "",
-  });
+  const [notice, setNotice] = useState({ open: false, headline: "", description: "" });
+  const showNotice = (headline: string, description = "") => setNotice({ open: true, headline, description });
+  const closeNotice = () => setNotice((prev) => ({ ...prev, open: false }));
 
-  const showNotice = (headline: string, description = "") => {
-    setNotice({
-      open: true,
-      headline,
-      description,
-    });
-  };
-
-  const closeNotice = () => {
-    setNotice((prev) => ({ ...prev, open: false }));
-  };
-
-  const [deletePrompt, setDeletePrompt] = useState<{
-    open: boolean;
-    depositId: number | null;
-  }>({
+  const [deletePrompt, setDeletePrompt] = useState<{ open: boolean; depositId: number | null }>({
     open: false,
     depositId: null,
   });
@@ -116,10 +91,7 @@ const PoolDepositModal: React.FC<Props> = ({
   }, [depositLogs, member]);
 
   const confirmedSum = useMemo(
-    () =>
-      logs
-        .filter((it) => it.depositStatus === "CONFIRMED")
-        .reduce((acc, it) => acc + (it.amount ?? 0), 0),
+    () => logs.filter((it) => it.depositStatus === "CONFIRMED").reduce((acc, it) => acc + (it.amount ?? 0), 0),
     [logs],
   );
 
@@ -155,39 +127,23 @@ const PoolDepositModal: React.FC<Props> = ({
 
       requestAnimationFrame(() => amountRef.current?.focus());
       return true;
-    } catch (error: any) {
-      showNotice(
-        "입금 등록 실패",
-        error?.response?.data?.message ??
-          error?.message ??
-          "입금 등록에 실패했습니다.",
-      );
+    } catch (error) {
+      showNotice("입금 등록 실패", apiMessage(error, "입금 등록에 실패했습니다."));
       return false;
     }
   };
 
-  const closeDeletePrompt = () => {
-    setDeletePrompt({
-      open: false,
-      depositId: null,
-    });
-  };
+  const closeDeletePrompt = () => setDeletePrompt({ open: false, depositId: null });
 
   const requestDeleteDeposit = (depositId: number, status: string) => {
     const ownerOnlyStatuses = ["CONFIRMED", "REJECTED"];
 
     if (ownerOnlyStatuses.includes(status) && !isOwner) {
-      showNotice(
-        "삭제 권한이 없습니다.",
-        "승인 또는 거절된 입금 내역은 여행 소유주만 삭제할 수 있습니다.",
-      );
+      showNotice("삭제 권한이 없습니다.", "승인 또는 거절된 입금 내역은 여행 소유주만 삭제할 수 있습니다.");
       return;
     }
 
-    setDeletePrompt({
-      open: true,
-      depositId,
-    });
+    setDeletePrompt({ open: true, depositId });
   };
 
   const confirmDeleteDeposit = async () => {
@@ -198,10 +154,7 @@ const PoolDepositModal: React.FC<Props> = ({
   };
 
   const onEnterNext =
-    (
-      next?: React.RefObject<HTMLInputElement | null>,
-      submitIfLast?: boolean,
-    ): React.KeyboardEventHandler<HTMLInputElement> =>
+    (next?: React.RefObject<HTMLInputElement | null>, submitIfLast?: boolean): React.KeyboardEventHandler<HTMLInputElement> =>
     async (e) => {
       if (e.key !== "Enter") return;
       e.preventDefault();
@@ -214,180 +167,156 @@ const PoolDepositModal: React.FC<Props> = ({
       next?.current?.focus();
     };
 
+  const pct = targetPerMember > 0 ? Math.min(100, Math.round((confirmedSum / targetPerMember) * 100)) : 0;
+  const cell = (label: string, value: number) => (
+    <div className="ws-sumcell">
+      <span className="ws-when__l">{label}</span>
+      <b className="ws-sumv">{formatWon(value)}</b>
+    </div>
+  );
+
   return (
     <>
-      <BaseModal
-        open={open}
-        title="DEPOSIT LOG"
-        onClose={onClose}
-        className="pdm-modal"
-        width="min(980px, 92vw)"
-      >
-        <div className="pdm-body">
-          <div className="pdm-form">
-            <div className="pdm-field">
-              <div className="pdm-panel-title">입금액</div>
+      <div className="tm-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+        <div
+          className="tm-modal tm-modal--narrow"
+          role="dialog"
+          aria-modal="true"
+          aria-label={`입금 기록 ${member}`}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="tm-modal__head">
+            <h3 className="tm-modal__title">입금 기록 · {member}</h3>
+            <button type="button" className="tm-btn tm-btn--sm" onClick={onClose}>닫기</button>
+          </div>
+
+          <div className="tm-modal__body">
+            <div className="ws-sumline ws-poolsum">
+              {cell("목표", targetPerMember)}
+              {cell("입금", confirmedSum)}
+              {cell(diff < 0 ? "부족" : diff > 0 ? "초과" : "달성", Math.abs(diff))}
+            </div>
+            <div className="tm-progress ws-pool__bar"><i style={{ width: `${pct}%` }} /></div>
+
+            <span className="ws-when__l">입금 추가</span>
+            <div className="ws-fld ws-pool__form">
               <input
                 ref={amountRef}
-                className={amountError ? "is-error" : ""}
+                className={`tm-input${amountError ? " tm-input--error" : ""}`}
+                aria-label="입금액"
                 value={amountError ? "" : amount}
-                placeholder={
-                  amountError
-                    ? "입금액은 0원보다 커야 합니다."
-                    : "예: ₩ 300,000"
-                }
+                placeholder={amountError ? "입금액은 0원보다 커야 합니다." : "입금액 (예: ₩ 300,000)"}
                 onChange={(e) => {
                   setSubmitted(false);
-
-                  const raw = e.target.value;
-                  const parsed = parseWonInput(raw);
-
+                  const parsed = parseWonInput(e.target.value);
                   setAmount(parsed ? formatWonInput(parsed) : "");
                 }}
                 onKeyDown={onEnterNext(dateRef)}
                 inputMode="numeric"
                 disabled={depositLoading}
               />
-            </div>
-
-            <div className="pdm-field">
-              <div className="pdm-panel-title">날짜</div>
-              <input
-                ref={dateRef}
-                type="date"
-                value={date}
-                min="1900-01-01"
-                max="9999-12-31"
-                onChange={(e) => setDate(e.target.value)}
-                onKeyDown={onEnterNext(memoRef)}
-                disabled={depositLoading}
-              />
-            </div>
-
-            <div className="pdm-field pdm-memo">
-              <div className="pdm-panel-title">메모</div>
-              <input
-                ref={memoRef}
-                value={memo}
-                onChange={(e) => setMemo(e.target.value)}
-                onKeyDown={onEnterNext(undefined, true)}
-                placeholder="선택"
-                disabled={depositLoading}
-              />
-            </div>
-
-            <button
-              className="pdm-add"
-              onClick={() => void submit()}
-              disabled={depositLoading}
-            >
-              {depositLoading ? "처리 중..." : "+ ADD"}
-            </button>
-          </div>
-
-          <div className="pdm-list">
-            <div className="pdm-summary">
-              <span className="pdm-summary-main">
-                {member} · 목표 {formatWon(targetPerMember)} · 현재{" "}
-                {formatWon(confirmedSum)}
-              </span>
-
-              <span
-                className={`pdm-summary-gap ${
-                  diff < 0 ? "pdm-neg" : diff > 0 ? "pdm-pos" : ""
-                }`}
-              >
-                ({diff < 0 ? "부족 " : diff > 0 ? "초과 " : "달성 "}
-                {formatWon(Math.abs(diff))})
-              </span>
-            </div>
-
-            <div className="pdm-list-head">
-              <span>입금 기록</span>
-              <span className="pdm-count"> {logs.length}건</span>
-            </div>
-
-            {logs.length === 0 ? (
-              <div className="pdm-empty">
-                {depositLoading
-                  ? "불러오는 중..."
-                  : "아직 입금 내역이 없습니다."}
+              <div className="ws-when ws-when--2">
+                <input
+                  ref={dateRef}
+                  type="date"
+                  className="tm-input ws-when__in"
+                  aria-label="입금 날짜"
+                  value={date}
+                  min="1900-01-01"
+                  max="9999-12-31"
+                  onChange={(e) => setDate(e.target.value)}
+                  onKeyDown={onEnterNext(memoRef)}
+                  disabled={depositLoading}
+                />
+                <input
+                  ref={memoRef}
+                  className="tm-input ws-when__in"
+                  aria-label="메모"
+                  value={memo}
+                  onChange={(e) => setMemo(e.target.value)}
+                  onKeyDown={onEnterNext(undefined, true)}
+                  placeholder="메모 (선택)"
+                  disabled={depositLoading}
+                />
               </div>
+            </div>
+
+            <span className="ws-when__l">입금 내역 {logs.length}건</span>
+            {logs.length === 0 ? (
+              <p className="tm-empty">{depositLoading ? "불러오는 중..." : "아직 입금 내역이 없습니다."}</p>
             ) : (
-              <ul>
+              <div className="ws-sett ws-sett--tight">
                 {logs
                   .slice()
                   .sort((a, b) => (a.depositDate < b.depositDate ? 1 : -1))
                   .map((it) => (
-                    <li key={it.id} className="pdm-item">
-                      <div className="pdm-item-left">
-                        <div className="pdm-date">{it.depositDate}</div>
-                        {it.memo && (
-                          <div className="pdm-memo-txt">{it.memo}</div>
-                        )}
+                    <div key={it.id} className="ws-airow ws-airow--pool">
+                      <div>
+                        <b>{formatWon(it.amount)}</b>
+                        <div className="tm-hint">
+                          {it.depositDate}
+                          {it.memo ? ` · ${it.memo}` : ""}
+                        </div>
                       </div>
-
-                      <div className="pdm-amt">{formatWon(it.amount)}</div>
-
-                      {(!["CONFIRMED", "REJECTED"].includes(it.depositStatus) ||
-                        isOwner) && (
-                        <button
-                          className="pdm-del"
-                          onClick={() =>
-                            requestDeleteDeposit(it.id, it.depositStatus)
-                          }
-                          disabled={depositLoading}
-                        >
-                          ✕
-                        </button>
-                      )}
-
-                      <div className="pdm-actions">
-                        <span
-                          className={`pdm-status-badge ${
-                            it.depositStatus === "CONFIRMED"
-                              ? "is-confirmed"
-                              : it.depositStatus === "REJECTED"
-                                ? "is-rejected"
-                                : "is-pending"
-                          }`}
-                        >
-                          {it.depositStatusLabel}
-                        </span>
-
+                      <div className="tm-row tm-gap-2">
                         {isOwner && it.depositStatus === "PENDING" && (
                           <>
                             <button
-                              className="pdm-approve"
-                              onClick={() =>
-                                void confirmDepositById(member, it.id)
-                              }
+                              type="button"
+                              className="tm-btn tm-btn--link tm-btn--sm ws-ulink"
+                              onClick={() => void confirmDepositById(member, it.id)}
                               disabled={depositLoading}
                             >
                               승인
                             </button>
-
                             <button
-                              className="pdm-reject"
-                              onClick={() =>
-                                void rejectDepositById(member, it.id)
-                              }
+                              type="button"
+                              className="tm-btn tm-btn--link tm-btn--sm ws-ulink ws-ulink--danger"
+                              onClick={() => void rejectDepositById(member, it.id)}
                               disabled={depositLoading}
                             >
-                              거절
+                              반려
                             </button>
                           </>
                         )}
+                        {(!["CONFIRMED", "REJECTED"].includes(it.depositStatus) || isOwner) && (
+                          <button
+                            type="button"
+                            className="tm-btn tm-btn--link tm-btn--sm ws-ulink ws-ulink--danger"
+                            onClick={() => requestDeleteDeposit(it.id, it.depositStatus)}
+                            disabled={depositLoading}
+                          >
+                            삭제
+                          </button>
+                        )}
+                        <span
+                          className={`tm-tag ${
+                            it.depositStatus === "CONFIRMED"
+                              ? "tm-tag--mint"
+                              : it.depositStatus === "REJECTED"
+                              ? "tm-tag--danger"
+                              : "tm-tag--yellow"
+                          }`}
+                        >
+                          {it.depositStatusLabel}
+                        </span>
                       </div>
-                    </li>
+                    </div>
                   ))}
-              </ul>
+              </div>
             )}
           </div>
-        </div>
-      </BaseModal>
 
-      <ActionPromptModal
+          <div className="tm-modal__foot">
+            <button type="button" className="tm-btn" onClick={onClose}>닫기</button>
+            <button type="button" className="tm-btn tm-btn--primary" onClick={() => void submit()} disabled={depositLoading}>
+              {depositLoading ? "처리 중..." : "+ 입금 기록 추가"}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <WsConfirm
         open={notice.open}
         title="안내"
         headline={notice.headline}
@@ -398,13 +327,14 @@ const PoolDepositModal: React.FC<Props> = ({
         onConfirm={closeNotice}
       />
 
-      <ActionPromptModal
+      <WsConfirm
         open={deletePrompt.open}
         title="입금 내역 삭제"
-        headline="승인된 입금 내역을 삭제할까요?"
+        headline="입금 내역을 삭제할까요?"
         description="삭제한 입금 내역은 다시 복구할 수 없습니다."
         cancelText="취소"
         confirmText="삭제"
+        danger
         onClose={closeDeletePrompt}
         onConfirm={() => void confirmDeleteDeposit()}
       />

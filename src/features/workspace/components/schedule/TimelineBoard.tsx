@@ -8,12 +8,11 @@
 
 import React, { useMemo, useRef, useState } from "react";
 import type { DayInfo, TimelineNode } from "../../hooks/useTimeline";
-import { CATEGORY_COLOR, getCategoryIcon } from "../../hooks/schedule.constants";
+import { CATEGORY_COLOR } from "../../hooks/schedule.constants";
 
 const PX_PER_MIN = 1.3;       // 1분당 세로 픽셀
 const MIN_BLOCK_H = 34;       // 짧은 카드(숙소·출발지 등)도 글자가 보이게
 const BLOCK_GAP = 3;
-const AXIS_W = 46;
 const STAY_STEP = 10;
 const STAY_MIN = 10;
 const STAY_MAX = 720;
@@ -142,22 +141,20 @@ const TimelineBoard: React.FC<Props> = ({ nodes, dayInfo, isEditing, onReorder, 
   const resizing = gesture?.kind === "resize" ? gesture : null;
 
   return (
-    <div style={{ position: "relative", height: totalH, marginRight: "6px", userSelect: "none", touchAction: "none" }}>
+    <div className="tm-board ws-board" style={{ height: totalH, touchAction: "none" }}>
       {/* 시간 눈금 */}
       {hours.map((m) => (
-        <div key={m} style={{ position: "absolute", left: 0, right: 0, top: (m - axisStart) * PX_PER_MIN, borderTop: "1px solid #f0f0f0" }}>
-          <span style={{ position: "absolute", left: 0, top: "-7px", width: AXIS_W - 8, textAlign: "right", fontSize: "10px", fontFamily: "var(--font-mono)", color: "#bbb", background: "#fff" }}>
-            {clock(m % (24 * 60))}
-          </span>
+        <div key={m} className="tm-board__hour" style={{ top: (m - axisStart) * PX_PER_MIN }}>
+          <span>{clock(m % (24 * 60))}</span>
         </div>
       ))}
 
       {/* 종료 시각 — 이 선 아래는 하루 계획 밖 */}
       {dayEnd != null && (
         <>
-          <div style={{ position: "absolute", left: AXIS_W, right: 0, top: (dayEnd - axisStart) * PX_PER_MIN, bottom: 0, background: "repeating-linear-gradient(135deg, #fafafa, #fafafa 6px, #f3f3f3 6px, #f3f3f3 12px)", opacity: 0.8, pointerEvents: "none" }} />
-          <div style={{ position: "absolute", left: AXIS_W, right: 0, top: (dayEnd - axisStart) * PX_PER_MIN, borderTop: "2px dashed #e53935", pointerEvents: "none" }}>
-            <span style={{ position: "absolute", right: 0, top: "-16px", fontSize: "10px", color: "#e53935", fontWeight: 700 }}>종료 {clock(dayEnd)}</span>
+          <div className="ws-board__off" style={{ top: (dayEnd - axisStart) * PX_PER_MIN }} />
+          <div className="ws-board__end" style={{ top: (dayEnd - axisStart) * PX_PER_MIN }}>
+            <span>종료 {clock(dayEnd)}</span>
           </div>
         </>
       )}
@@ -171,8 +168,8 @@ const TimelineBoard: React.FC<Props> = ({ nodes, dayInfo, isEditing, onReorder, 
         const travel = n.travelMinutes ?? 0;
         if (gapH < 12) return null;
         return (
-          <div key={`gap-${i}`} style={{ position: "absolute", left: AXIS_W + 14, top: gapTop, height: gapH, borderLeft: "2px dashed #d5d5d5", paddingLeft: "8px", display: "flex", alignItems: "center", fontSize: "10px", color: "#9e9e9e", pointerEvents: "none" }}>
-            {travel > 0 ? `이동 ${travel}분` : "대기"}
+          <div key={`gap-${i}`} className="ws-board__gap" style={{ top: gapTop, height: gapH }}>
+            <span>{travel > 0 ? `이동 ${travel}분` : "대기"}</span>
           </div>
         );
       })}
@@ -181,7 +178,7 @@ const TimelineBoard: React.FC<Props> = ({ nodes, dayInfo, isEditing, onReorder, 
       {nodes.map((n, i) => {
         const l = layouts[i];
         const cat = n.placeInfo?.category ?? "";
-        const color = CATEGORY_COLOR[cat] || "#9e9e9e";
+        const color = CATEGORY_COLOR[cat] || "var(--tm-line-strong)";
         const fixed = FIXED_CATEGORIES.includes(cat);
         const canDrag = isEditing && !fixed;
         const isMoving = dragging?.idx === i;
@@ -193,72 +190,66 @@ const TimelineBoard: React.FC<Props> = ({ nodes, dayInfo, isEditing, onReorder, 
         const warns = n.warnings ?? [];
         const pinned = !!n.pinnedTime;
         const tight = height < 52;
+        const timeText = `${n.time}${endLabel && (isResizing || (n.stayMinutes ?? 0) > 0) ? ` ~ ${endLabel}` : ""}`;
 
         return (
           <div
             key={n.id ?? i}
+            className={`tm-block ws-block${tight ? " is-compact" : ""}${isMoving ? " is-moving" : ""}${warns.length ? " is-warn" : ""}`}
+            role="button"
+            tabIndex={0}
+            aria-label={`${i + 1}. ${n.title}, ${timeText}`}
             onPointerDown={(e) => { if (canDrag) begin(e, { kind: "move", idx: i, startY: e.clientY, dy: 0, moved: false }); }}
             onPointerMove={move}
             onPointerUp={end}
             onPointerCancel={() => setG(null)}
             onClick={() => { if (!canDrag) onOpen(n); }}
+            onKeyDown={(e) => {
+              if (e.target !== e.currentTarget) return;
+              if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen(n); }
+            }}
             style={{
-              position: "absolute", left: AXIS_W + 34, right: 0, top: l.top, height,
+              ["--tm-cat" as string]: color,
+              top: l.top, height,
               transform: isMoving ? `translateY(${dragging!.dy}px)` : undefined,
-              zIndex: isMoving ? 20 : 1,
-              boxSizing: "border-box", padding: tight ? "4px 10px" : "8px 10px 14px",
-              background: isMoving ? "#fffde7" : "#fff",
-              borderTop: `1px solid ${warns.length ? "#ffb74d" : "#e6e6e6"}`,
-              borderRight: `1px solid ${warns.length ? "#ffb74d" : "#e6e6e6"}`,
-              borderBottom: `1px solid ${warns.length ? "#ffb74d" : "#e6e6e6"}`,
-              borderLeft: `4px solid ${color}`, borderRadius: "0 6px 6px 0",
-              boxShadow: isMoving ? "0 6px 16px rgba(0,0,0,0.2)" : "none",
               cursor: canDrag ? (isMoving ? "grabbing" : "grab") : "pointer",
-              overflow: "hidden",
               transition: isMoving || isResizing ? "none" : "top 0.15s, height 0.15s",
             }}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: "6px", minWidth: 0 }}>
-              <span style={{ fontSize: "14px", flexShrink: 0 }}>{cat ? getCategoryIcon(cat) : ""}</span>
-              <span style={{ fontSize: "13px", fontWeight: 700, color: "#111", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{n.title}</span>
-              {pinned && <span title={`${n.pinnedTime}에 고정`} style={{ fontSize: "11px", flexShrink: 0 }}>📌</span>}
-              {warns.length > 0 && <span title={warns.map((w) => w.message).join("\n")} style={{ fontSize: "11px", flexShrink: 0 }}>⚠️</span>}
-              <span style={{ marginLeft: "auto", fontSize: "11px", fontFamily: "var(--font-mono)", color: "#777", flexShrink: 0 }}>
-                {n.time}{endLabel && (isResizing || (n.stayMinutes ?? 0) > 0) ? ` ~ ${endLabel}` : ""}
-              </span>
-            </div>
-
-            {!tight && (
-              <div style={{ marginTop: "3px", fontSize: "11px", color: "#999", display: "flex", gap: "8px", alignItems: "center" }}>
-                <span>{isResizing ? resizedStay : l.stay}분</span>
-                {warns[0] && <span style={{ color: "#e65100", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{warns[0].message}</span>}
-              </div>
-            )}
+            <b>
+              {i + 1}. {n.title}
+              {pinned && <span className="ws-block__pin" title={`${n.pinnedTime}에 고정`}> · 고정</span>}
+            </b>
+            <small>
+              {timeText}
+              {!tight && ` · ${isResizing ? resizedStay : l.stay}분`}
+            </small>
+            {!tight && warns[0] && <span className="tm-node-warn">{warns[0].message}</span>}
 
             {/* 고정 토글 — 편집 모드 */}
             {canDrag && !tight && (
               <button
+                type="button"
+                className="tm-btn tm-btn--sm ws-block__pinbtn"
                 onPointerDown={(e) => e.stopPropagation()}
                 onClick={(e) => { e.stopPropagation(); void onPin(i, pinned ? null : n.time); }}
                 title={pinned ? "고정 해제" : "지금 시작 시각으로 고정"}
-                style={{ position: "absolute", right: 8, bottom: 16, padding: "1px 7px", fontSize: "10px", border: `1px ${pinned ? "solid #e65100" : "dashed #bbb"}`, borderRadius: "3px", background: "#fff", color: pinned ? "#e65100" : "#888", cursor: "pointer" }}
               >
-                {pinned ? "📌 해제" : "📌 고정"}
+                {pinned ? "고정 해제" : "시각 고정"}
               </button>
             )}
 
             {/* 머무는 시간 손잡이 — 편집 모드 */}
             {canDrag && (n.stayMinutes ?? 0) > 0 && (
               <div
+                className="tm-block__handle"
                 onPointerDown={(e) => begin(e, { kind: "resize", idx: i, startY: e.clientY, dy: 0 })}
                 onPointerMove={move}
                 onPointerUp={end}
                 onPointerCancel={() => setG(null)}
                 title="아래로 끌면 오래 머물러요"
-                style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: "10px", cursor: "ns-resize", display: "flex", alignItems: "center", justifyContent: "center", background: "linear-gradient(to bottom, transparent, rgba(0,0,0,0.05))" }}
-              >
-                <span style={{ width: "26px", height: "3px", borderRadius: "2px", background: "#bbb" }} />
-              </div>
+                style={{ cursor: "ns-resize" }}
+              />
             )}
           </div>
         );

@@ -1,6 +1,4 @@
-import "./../../../styles/detailModal.css";
-import BaseModal from "../../../../../shared/components/BaseModal";
-
+// 정산 상세 — 시안(settle): 좁은 모달 · 보낼 돈/받을 돈 줄 목록 · [닫기]
 import type { UseExpensesStore } from "../../../hooks/useExpenses";
 import type { ExpenseMember } from "../../../hooks/expense.ui.types";
 
@@ -18,80 +16,53 @@ const SettleDetailModal: React.FC<Props> = ({ store, target, onClose }) => {
 
   if (!stat) return null;
 
-  const isPlus = stat.diff > 0;
-  const isMinus = stat.diff < 0;
-
   return (
-    <BaseModal
-      open={!!stat}
-      title={`${target}'s DETAIL`}
-      onClose={onClose}
-      className="sdm-modal"
-      width="400px"
-    >
-      <div className="sdm-body">
-        {/* SUMMARY */}
-        <div className="sdm-summary">
-          {isPlus && (
-            <>
-              <div className="sdm-plus">+{stat.diff.toLocaleString()}</div>
-              <div className="sdm-label">총 받을 돈</div>
-            </>
-          )}
+    <div className="tm-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div
+        className="tm-modal tm-modal--narrow"
+        role="dialog"
+        aria-modal="true"
+        aria-label={`정산 상세 ${target}`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="tm-modal__head">
+          <h3 className="tm-modal__title">정산 상세 · {target}</h3>
+          <button type="button" className="tm-btn tm-btn--sm" onClick={onClose}>닫기</button>
+        </div>
 
-          {isMinus && (
-            <>
-              <div className="sdm-minus">{stat.diff.toLocaleString()}</div>
-              <div className="sdm-label">총 보낼 돈</div>
-            </>
-          )}
+        <div className="tm-modal__body">
+          <p className="tm-hint">
+            {stat.diff > 0
+              ? `총 받을 돈 ₩ ${stat.diff.toLocaleString()}`
+              : stat.diff < 0
+              ? `총 보낼 돈 ₩ ${Math.abs(stat.diff).toLocaleString()}`
+              : "정산할 돈이 없어요"}
+          </p>
 
-          {!isPlus && !isMinus && (
-            <>
-              <div className="sdm-zero">0</div>
-              <div className="sdm-label">정산 완료</div>
-            </>
+          {details.length === 0 ? (
+            <p className="tm-empty">정산할 내역이 없습니다.</p>
+          ) : (
+            <ul className="tm-list">
+              {details.map((d) => (
+                <li key={`${d.type}-${d.other}-${d.amount}`} className="tm-list__item">
+                  <span className={`tm-tag ${d.type === "send" ? "tm-tag--danger" : "tm-tag--ok"}`}>
+                    {d.type === "send" ? "보낼 돈" : "받을 돈"}
+                  </span>
+                  <div className="tm-list__main">
+                    <div className="tm-list__title">{d.type === "send" ? `${d.other}에게` : `${d.other}에게서`}</div>
+                  </div>
+                  <b>₩ {d.amount.toLocaleString()}</b>
+                </li>
+              ))}
+            </ul>
           )}
         </div>
 
-        {/* DETAIL LIST */}
-        <div id="sd-list">
-          {details.length === 0 && (
-            <div className="sdm-empty">정산할 내역이 없습니다.</div>
-          )}
-
-          {details.map((d) => (
-            <div
-              key={`${d.type}-${d.other}-${d.amount}`}
-              className="settle-log-item"
-            >
-              <div style={{ display: "flex", alignItems: "center" }}>
-                <span
-                  className={`settle-badge ${
-                    d.type === "send" ? "badge-send" : "badge-receive"
-                  }`}
-                >
-                  {d.type === "send" ? "TO. SEND" : "FROM. GET"}
-                </span>
-                <span style={{ fontWeight: "bold", marginLeft: 8 }}>
-                  {d.other}
-                </span>
-              </div>
-
-              <div
-                className="settle-amt"
-                style={{
-                  color: d.type === "send" ? "#F44336" : "#4CAF50",
-                }}
-              >
-                {d.type === "send" ? "-" : "+"}
-                {d.amount.toLocaleString()} ₩
-              </div>
-            </div>
-          ))}
+        <div className="tm-modal__foot">
+          <button type="button" className="tm-btn" onClick={onClose}>닫기</button>
         </div>
       </div>
-    </BaseModal>
+    </div>
   );
 };
 

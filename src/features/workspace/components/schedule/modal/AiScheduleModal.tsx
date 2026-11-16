@@ -7,7 +7,6 @@ import { searchPlaces } from "../../../../../api/place.api";
 import type { PlaceSearchItem } from "../../../../../api/place.api";
 import { apiMessage } from "../../../hooks/apiError";
 import type { GenerationLock } from "../../../hooks/tripChange";
-import "../../../styles/modals.css";
 import {
   CATEGORY_TO_BACKEND,
   CATEGORY_FROM_BACKEND,
@@ -120,11 +119,80 @@ function calcNDays(start: string, end: string): number {
 }
 
 const LOADING_STEPS = [
-  { icon: "🗺️", text: "장소 데이터 분석 중...", duration: 1200 },
-  { icon: "📐", text: "최적 경로 계산 중...", duration: 1500 },
-  { icon: "⏰", text: "시간표 배분 중...", duration: 1200 },
-  { icon: "✨", text: "일정 마무리 중...", duration: 800 },
+  { text: "장소 데이터 분석 중...", duration: 1200 },
+  { text: "최적 경로 계산 중...", duration: 1500 },
+  { text: "시간표 배분 중...", duration: 1200 },
+  { text: "일정 마무리 중...", duration: 800 },
 ];
+
+/** 숙소·출발지 검색 상자 — 검색어 입력, 결과 목록, 바로 추가 */
+const InlineSearch: React.FC<{
+  title: string;
+  placeholder: string;
+  emptyHint: string;
+  addedSuffix: string;
+  query: string;
+  onQuery: (v: string) => void;
+  onSearch: () => void;
+  searching: boolean;
+  error: string | null;
+  addedName: string | null;
+  results: Place[];
+  savedPlaces: Place[];
+  onAdd: (p: Place) => void;
+}> = ({ title, placeholder, emptyHint, addedSuffix, query, onQuery, onSearch, searching, error, addedName, results, savedPlaces, onAdd }) => (
+  <div className="ws-ai__search">
+    <p className="ws-ai__searchtitle">{title}</p>
+    <div className="ws-ai__searchbar">
+      <input
+        type="text"
+        className="tm-input"
+        aria-label={title}
+        value={query}
+        onChange={(e) => onQuery(e.target.value)}
+        onKeyDown={(e) => { if (e.key === "Enter") onSearch(); }}
+        placeholder={placeholder}
+      />
+      <button type="button" className="tm-btn tm-btn--sm" onClick={onSearch} disabled={searching || !query.trim()}>
+        {searching ? "검색 중…" : "검색"}
+      </button>
+    </div>
+    {error && <p className="ws-ai__err" role="alert">{error}</p>}
+    {addedName && <p className="ws-ai__ok" role="status">‘{addedName}’ {addedSuffix}</p>}
+    {results.length > 0 && (
+      <div className="ws-ai__results">
+        {results.map((place) => {
+          const alreadyAdded = savedPlaces.some((p) => p.name === place.name && p.lat === place.lat);
+          return (
+            <div key={place.id} className="ws-ai__result">
+              <div className="ws-ai__resultmain">
+                <b>{place.name}</b>
+                <span className="ws-all__sub">{place.address || "주소 없음"}</span>
+              </div>
+              <button type="button" className="tm-btn tm-btn--sm" onClick={() => onAdd(place)} disabled={alreadyAdded}>
+                {alreadyAdded ? "추가됨" : "+ 추가"}
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    )}
+    {results.length === 0 && !error && !searching && <p className="tm-hint">{emptyHint}</p>}
+  </div>
+);
+
+/** 라벨 옆 ⓘ 설명 — 누르면 아래로 펼친다 */
+const InfoToggle: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button type="button" className="ws-info" aria-label={label} aria-expanded={open} onClick={() => setOpen((v) => !v)}>
+        i
+      </button>
+      {open && <p className="tm-hint ws-ai__tip" role="note">{children}</p>}
+    </>
+  );
+};
 
 const AiScheduleModal: React.FC<AiScheduleModalProps> = ({
   onClose,
@@ -153,10 +221,12 @@ const AiScheduleModal: React.FC<AiScheduleModalProps> = ({
   // 숙소 배정 행은 사용자가 직접 만든 것만 쓴다(저장한 숙소를 대신 배정하지 않는다).
   const [showHotelSearch, setShowHotelSearch] = useState(false);
   const [showDeptSearch, setShowDeptSearch] = useState(false);
+  const [advOpen, setAdvOpen] = useState(false); // 자세한 설정(숙소·출발지·장소 고정) 펼침
+  const [aiInfo, setAiInfo] = useState(false); // "지금 일정이 바뀌어요" 자세히 펼침
 
   const [isLoading, setIsLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState(0);
-  const [loadingProgress, setLoadingProgress] = useState(0);
+  const [, setLoadingProgress] = useState(0);
   const [loadingStartedAt, setLoadingStartedAt] = useState<number | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   // pin 시간 충돌 경고 (생성 후 표시)
@@ -443,18 +513,6 @@ const AiScheduleModal: React.FC<AiScheduleModalProps> = ({
       return;
     }
 
-    if (
-      hasExistingSchedule &&
-      !window.confirm(
-        "이미 만들어 둔 일정이 있어요. 새로 만들면 지금 일정이 새 일정으로 바뀌어요.\n\n" +
-          "· 새 일정에도 있는 장소: 메모와 지출·바우처 연결이 그대로 남아요\n" +
-          "· 새 일정에서 빠지는 장소, 직접 넣은 장소: 메모와 연결이 사라져요\n" +
-          "· 시각·순서·머무는 시간은 새로 계산돼요\n\n계속할까요?",
-      )
-    ) {
-      return;
-    }
-
     const body = buildRequestBody();
 
     setIsLoading(true);
@@ -695,149 +753,66 @@ const AiScheduleModal: React.FC<AiScheduleModalProps> = ({
     setTimeout(() => setDeptAddedName(null), 2500);
   };
 
+  const badTime = settings.startTime >= settings.endTime;
+  const missingCoords = savedPlaces.filter((p) => p.lat == null).length;
+
   return (
     <div
-      className="modal-overlay active"
+      className="tm-overlay"
       onClick={(e) => {
         if (e.target === e.currentTarget && !isLoading) onClose();
       }}
     >
       <div
-        className="modal-window"
-        style={{ width: "90%", maxWidth: "700px", maxHeight: "90vh" }}
+        className="tm-modal ws-ai"
+        role="dialog"
+        aria-modal="true"
+        aria-label="AI 일정 생성"
         onClick={(e) => e.stopPropagation()}
       >
         {/* 헤더 */}
-        <div className="modal-header">
-          <span className="mh-title">&gt;&gt; AI 일정 생성 설정</span>
-          <button className="mh-close" onClick={onClose} disabled={isLoading}>
-            CLOSE [X]
+        <div className="tm-modal__head">
+          <h2 className="tm-modal__title">AI 일정 생성</h2>
+          <button type="button" className="tm-btn tm-btn--sm" onClick={onClose} disabled={isLoading}>
+            닫기
           </button>
         </div>
 
-        {/* ── 로딩 오버레이 ── */}
+        {/* ── 생성 중 · 생성 결과 ── (시안: 단계 목록 → 완료 안내) */}
         {isLoading && (
-          <div
-            style={{
-              position: "absolute", inset: 0,
-              background: "rgba(255,255,255,0.96)",
-              display: "flex", flexDirection: "column",
-              alignItems: "center", justifyContent: "center",
-              zIndex: 10, borderRadius: "inherit", gap: "28px",
-            }}
-          >
-            <div style={{ position: "relative", width: "72px", height: "72px" }}>
-              <div
-                style={{
-                  width: "72px", height: "72px",
-                  border: "4px solid #eee",
-                  borderTop: "4px solid #000",
-                  borderRadius: "50%",
-                  animation: "spin 0.8s linear infinite",
-                }}
-              />
-              <div
-                style={{
-                  position: "absolute", inset: 0,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: "22px",
-                }}
-              >
-                {LOADING_STEPS[loadingStep]?.icon}
-              </div>
-            </div>
+          <div className="ws-ai__loading" role="status" aria-live="polite">
+            <h3 className="ws-ai__loadtitle">
+              {pinWarnings.length > 0 || excludedPlaces.length > 0 ? "AI 일정 생성 완료" : "AI 일정 생성 중..."}
+            </h3>
 
-            <div style={{ textAlign: "center" }}>
-              <p style={{ fontSize: "18px", fontWeight: 800, margin: "0 0 6px" }}>
-                AI 일정 생성 중
-              </p>
-              <p style={{ fontSize: "14px", color: "#666", margin: "0 0 4px" }}>
-                {LOADING_STEPS[loadingStep]?.text}
-              </p>
-              {/* 실제 경과 시간 표시 (가짜 퍼센트 아님) */}
-              <p style={{ fontSize: "12px", color: "#bbb", margin: 0 }}>
-                {elapsed}초 경과
-              </p>
-            </div>
-
-            <div style={{ width: "260px" }}>
-              <div
-                style={{
-                  width: "100%", height: "6px",
-                  background: "#eee", borderRadius: "3px", overflow: "hidden",
-                }}
-              >
-                <div
-                  style={{
-                    width: `${loadingProgress}%`,
-                    height: "100%",
-                    background: "#000",
-                    borderRadius: "3px",
-                    transition: "width 0.3s ease",
-                  }}
-                />
-              </div>
-              <p style={{ fontSize: "11px", color: "#bbb", textAlign: "right", margin: "4px 0 0" }}>
-                예상 진행률 (UI 표시용)
-              </p>
-            </div>
-
-            <div style={{ display: "flex", gap: "8px" }}>
-              {LOADING_STEPS.map((_, i) => (
-                <div
-                  key={i}
-                  style={{
-                    width: "8px", height: "8px", borderRadius: "50%",
-                    background: i <= loadingStep ? "#000" : "#ddd",
-                    transition: "background 0.3s",
-                  }}
-                />
+            <ul className="tm-progress-steps">
+              {LOADING_STEPS.map((step, i) => (
+                <li key={step.text} className={loadingStep > i ? "ok" : loadingStep === i ? "on" : ""}>
+                  {loadingStep > i ? "✓ " : ""}
+                  {step.text}
+                </li>
               ))}
-            </div>
+            </ul>
+            {/* 실제 경과 시간 (가짜 퍼센트 아님) */}
+            <p className="tm-hint">{elapsed}초 경과</p>
 
             {/* pin 경고 표시 (로딩 완료 후) */}
             {pinWarnings.length > 0 && (
-              <div
-                style={{
-                  maxWidth: "380px",
-                  padding: "12px 16px",
-                  background: "#fff8e1",
-                  border: "2px solid #ffd54f",
-                  borderRadius: "8px",
-                  fontSize: "13px",
-                  color: "#795548",
-                }}
-              >
-                <p style={{ fontWeight: "bold", margin: "0 0 8px" }}>
-                  📌 고정 장소 시간 경고
-                </p>
+              <div className="tm-notice tm-notice--warn">
+                <b>고정 장소 시간 경고</b>
                 {pinWarnings.map((w, i) => (
-                  <p key={i} style={{ margin: "0 0 4px", lineHeight: 1.5 }}>
-                    ⚠️ {w}
-                  </p>
+                  <div key={i}>· {w}</div>
                 ))}
               </div>
             )}
 
             {/* 제외된 장소 표시 (로딩 완료 후) */}
             {excludedPlaces.length > 0 && (
-              <div
-                style={{
-                  maxWidth: "380px",
-                  padding: "12px 16px",
-                  background: "#f5f5f5",
-                  border: "2px solid #ccc",
-                  borderRadius: "8px",
-                  fontSize: "13px",
-                  color: "#555",
-                }}
-              >
-                <p style={{ fontWeight: "bold", margin: "0 0 8px" }}>
-                  📍 이번 일정에 넣지 못한 장소
-                </p>
+              <div className="tm-notice tm-notice--warn">
+                <b>이번 일정에 넣지 못했어요</b>
                 {excludedPlaces.map((e, i) => (
-                  <p key={i} style={{ margin: "0 0 4px", lineHeight: 1.5 }}>
-                    · DAY {e.day} — {e.name} (
+                  <div key={i}>
+                    · DAY {e.day} — {e.name} —{" "}
                     {e.reason === "meal_slot_limit"
                       ? "식사 시간대에 넣을 수 있는 맛집 수를 넘었어요"
                       : e.reason === "cafe_limit"
@@ -846,190 +821,180 @@ const AiScheduleModal: React.FC<AiScheduleModalProps> = ({
                       ? "하루 시간 안에 다 들어가지 않아요"
                       : e.reason === "over_time"
                       ? "설정한 종료 시간을 넘겨서 뺐어요"
-                      : "이번 일정에 넣지 못했어요"})
-                  </p>
+                      : "이번 일정에 넣지 못했어요"}
+                  </div>
                 ))}
-                <p style={{ fontSize: "11px", color: "#999", margin: "8px 0 0", lineHeight: 1.5 }}>
-                  장소 목록에 '일정 미포함'으로 남아 있어요. 직접 추가하거나,
-                  <br />일정 스타일·일수를 바꿔 다시 생성해보세요.
-                </p>
+                <div className="tm-hint tm-mt-1">
+                  일정 미포함으로 남아 있어요. 직접 추가하거나, 일정 스타일·일수를 바꿔 다시 생성해보세요.
+                </div>
               </div>
             )}
 
             {/* 경고/안내가 있을 때만 — 4초 기다리지 않고 바로 넘어가는 버튼 */}
             {(pinWarnings.length > 0 || excludedPlaces.length > 0) && (
-              <button
-                onClick={finishGeneration}
-                style={{
-                  padding: "10px 24px", background: "#000", color: "#fff",
-                  border: "2px solid #000", borderRadius: "6px",
-                  fontWeight: "bold", fontSize: "13px", cursor: "pointer",
-                }}
-              >
-                확인하고 계속하기
-              </button>
+              <div className="ws-ai__loadfoot">
+                <button type="button" className="tm-btn tm-btn--primary" onClick={finishGeneration}>
+                  확인하고 계속하기
+                </button>
+              </div>
             )}
           </div>
         )}
 
         {/* ── 바디 ── */}
-        <div
-          className="modal-body"
-          style={{
-            background: "#fff",
-            padding: "30px",
-            overflowY: "auto",
-            maxHeight: "calc(90vh - 140px)",
-          }}
-        >
-          {/* ── 장소 현황 요약 ── */}
-          <div
-            style={{
-              background: "#f5f5f5", padding: "15px", borderRadius: "8px",
-              marginBottom: "25px", border: "2px solid #ddd",
-            }}
-          >
-            <p style={{ margin: 0, fontWeight: "bold", fontSize: "14px", color: "#333" }}>
-              📍 저장된 장소: {savedPlaces.length}개
-            </p>
-            <p style={{ margin: "5px 0 0", fontSize: "13px", color: "#666" }}>
-              {startDate} ~ {endDate} ({nDays}일) ·{" "}
-              방문 대상: {visitPlaces.length}개
-              {savedPlaces.filter((p) => p.lat == null).length > 0 && (
-                <span style={{ color: "#e53935", marginLeft: "8px", fontSize: "12px" }}>
-                  (좌표 없는 장소 {savedPlaces.filter((p) => p.lat == null).length}개 제외)
-                </span>
-              )}
-            </p>
+        <div className="tm-modal__body ws-ai__body">
+          <p className="tm-hint ws-ai__count">
+            저장된 장소 {savedPlaces.length}곳 · 방문 대상 {visitPlaces.length}곳 · {startDate} ~ {endDate} ({nDays}일)
+            {missingCoords > 0 && ` · 좌표 없는 장소 ${missingCoords}곳 제외`}
+          </p>
 
-            {/* 실시간 준비 상태 */}
-            {readinessIssues.length > 0 ? (
-              <div style={{ marginTop: "10px" }}>
-                {readinessIssues.map((issue, i) => (
-                  <p key={i} style={{ margin: "4px 0 0", fontSize: "12px", color: "#e53935" }}>
-                    ⚠️ {issue}
-                  </p>
-                ))}
+          {/* 이미 만든 일정이 있으면 바뀐다는 안내 (시안의 경고 줄) */}
+          {hasExistingSchedule && (
+            <>
+              <div className="ws-warnline">
+                <span className="tm-grow">지금 일정이 새 일정으로 바뀌어요.</span>
+                <button
+                  type="button"
+                  className="tm-btn tm-btn--link tm-btn--sm"
+                  aria-expanded={aiInfo}
+                  onClick={() => setAiInfo((v) => !v)}
+                >
+                  {aiInfo ? "접기" : "자세히"}
+                </button>
               </div>
-            ) : (
-              <p style={{ margin: "6px 0 0", fontSize: "12px", color: "#2e7d32", fontWeight: "bold" }}>
-                ✅ 일정 생성 준비 완료
-              </p>
-            )}
-          </div>
-
-          {/* 에러 메시지 */}
-          {errorMsg && (
-            <div
-              style={{
-                padding: "12px 15px", background: "#ffebee",
-                border: "2px solid #e53935", borderRadius: "8px",
-                marginBottom: "20px", fontSize: "13px", color: "#c62828",
-              }}
-            >
-              ⚠️ {errorMsg}
-            </div>
+              {aiInfo && (
+                <ul className="ws-ailist">
+                  <li>새 일정에도 있는 장소는 메모와 지출·바우처 연결이 남아요</li>
+                  <li>새 일정에서 빠지는 장소와 직접 넣은 장소는 메모와 연결이 사라져요</li>
+                  <li>시각·순서·머무는 시간은 새로 계산돼요</li>
+                </ul>
+              )}
+            </>
           )}
 
-          <div style={{ display: "flex", flexDirection: "column", gap: "25px" }}>
-            {/* ── 시간 설정 ── */}
-            <div>
-              <label style={{ display: "block", fontWeight: "bold", fontSize: "14px", marginBottom: "10px", color: "#333" }}>
-                ⏰ 여행 시간대
-              </label>
-              <div style={{ display: "flex", gap: "15px", alignItems: "center" }}>
-                <div style={{ flex: 1 }}>
-                  <label style={{ fontSize: "12px", color: "#666", display: "block", marginBottom: "5px" }}>시작 시간</label>
-                  <input
-                    type="time"
-                    value={settings.startTime}
-                    onChange={(e) => updateSetting("startTime", e.target.value)}
-                    style={{
-                      width: "100%", padding: "10px",
-                      border: `2px solid ${settings.startTime >= settings.endTime ? "#e53935" : "#ddd"}`,
-                      borderRadius: "6px", fontSize: "14px",
-                    }}
-                  />
-                </div>
-                <span style={{ fontWeight: "bold", color: "#999" }}>~</span>
-                <div style={{ flex: 1 }}>
-                  <label style={{ fontSize: "12px", color: "#666", display: "block", marginBottom: "5px" }}>종료 시간</label>
-                  <input
-                    type="time"
-                    value={settings.endTime}
-                    onChange={(e) => updateSetting("endTime", e.target.value)}
-                    style={{
-                      width: "100%", padding: "10px",
-                      border: `2px solid ${settings.startTime >= settings.endTime ? "#e53935" : "#ddd"}`,
-                      borderRadius: "6px", fontSize: "14px",
-                    }}
-                  />
-                </div>
-              </div>
-              {settings.startTime >= settings.endTime && (
-                <p style={{ fontSize: "12px", color: "#e53935", margin: "6px 0 0" }}>
-                  ⚠️ 종료 시간은 시작 시간보다 늦어야 합니다
-                </p>
-              )}
-            </div>
+          {/* 에러 메시지 */}
+          {errorMsg && <div className="tm-notice tm-notice--danger tm-mb-3" role="alert">{errorMsg}</div>}
 
-            {/* ── 이동 수단 ── */}
-            <div>
-              <label style={{ display: "block", fontWeight: "bold", fontSize: "14px", marginBottom: "10px", color: "#333" }}>
-                🚗 이동 수단
-              </label>
-              {/* 이동시간 추정 안내 */}
-              <p style={{ fontSize: "12px", color: "#999", margin: "0 0 10px", lineHeight: 1.5 }}>
-                💡 이동 시간은 직선 거리 기반 추정치입니다. 실제 소요 시간과 다를 수 있습니다.
-              </p>
-              <div style={{ display: "flex", gap: "10px" }}>
-                {[
-                  { value: "walk", label: "도보 🚶", desc: "가까운 거리 위주" },
-                  { value: "public", label: "대중교통 🚇", desc: "지하철/버스" },
-                  { value: "car", label: "자동차 🚗", desc: "렌터카/택시" },
-                ].map((mode) => (
-                  <button
-                    key={mode.value}
-                    onClick={() => updateSetting("transportMode", mode.value as AiScheduleSettings["transportMode"])}
-                    style={{
-                      flex: 1, padding: "12px",
-                      background: settings.transportMode === mode.value ? "#000" : "#fff",
-                      color: settings.transportMode === mode.value ? "#fff" : "#000",
-                      border: "2px solid #000", borderRadius: "6px",
-                      fontWeight: "bold", fontSize: "13px", cursor: "pointer",
-                      transition: "0.2s", textAlign: "center",
-                    }}
-                  >
-                    <div>{mode.label}</div>
-                    <div style={{ fontSize: "11px", marginTop: "3px", opacity: 0.8 }}>{mode.desc}</div>
-                  </button>
-                ))}
-              </div>
+          {/* ── 시간 ── */}
+          <div className="ws-when ws-when--2">
+            <div className="ws-when__cell">
+              <label className="ws-when__l" htmlFor="ws-ai-start">시작 시간</label>
+              <input
+                id="ws-ai-start"
+                type="time"
+                className={`tm-input ws-when__in${badTime ? " tm-input--error" : ""}`}
+                value={settings.startTime}
+                onChange={(e) => updateSetting("startTime", e.target.value)}
+              />
             </div>
+            <div className="ws-when__cell">
+              <label className="ws-when__l" htmlFor="ws-ai-end">종료 시간</label>
+              <input
+                id="ws-ai-end"
+                type="time"
+                className={`tm-input ws-when__in${badTime ? " tm-input--error" : ""}`}
+                value={settings.endTime}
+                onChange={(e) => updateSetting("endTime", e.target.value)}
+              />
+            </div>
+          </div>
+          {badTime && <p className="ws-ai__err">종료 시간은 시작 시간보다 늦어야 해요</p>}
 
+          {/* ── 이동수단 ── */}
+          <label className="tm-label">이동수단</label>
+          <div className="tm-seg ws-aiseg" role="group" aria-label="이동수단">
+            {[
+              { value: "walk", label: "도보", desc: "가까운 거리 위주로 이동해요" },
+              { value: "public", label: "대중교통", desc: "지하철·버스로 이동해요" },
+              { value: "car", label: "자동차", desc: "렌터카·택시로 이동해요" },
+            ].map((mode) => (
+              <button
+                key={mode.value}
+                type="button"
+                className={settings.transportMode === mode.value ? "is-on" : ""}
+                aria-pressed={settings.transportMode === mode.value}
+                onClick={() => updateSetting("transportMode", mode.value as AiScheduleSettings["transportMode"])}
+              >
+                {mode.label}
+              </button>
+            ))}
+          </div>
+          <p className="ws-aidesc">
+            {settings.transportMode === "walk"
+              ? "가까운 거리 위주로 이동해요"
+              : settings.transportMode === "public"
+              ? "지하철·버스로 이동해요"
+              : "렌터카·택시로 이동해요"}
+            {" · 이동 시간은 직선 거리 기반 추정이에요"}
+          </p>
+
+          {/* ── 일정 스타일 ── */}
+          <label className="tm-label">일정 스타일</label>
+          <div className="tm-seg ws-aiseg" role="group" aria-label="일정 스타일">
+            {[
+              { value: "efficiency", label: "효율적" },
+              { value: "balanced", label: "균형 잡힌" },
+              { value: "relaxed", label: "여유로운" },
+            ].map((mode) => (
+              <button
+                key={mode.value}
+                type="button"
+                className={settings.priority === mode.value ? "is-on" : ""}
+                aria-pressed={settings.priority === mode.value}
+                onClick={() => updateSetting("priority", mode.value as AiScheduleSettings["priority"])}
+              >
+                {mode.label}
+              </button>
+            ))}
+          </div>
+          <p className="ws-aidesc">
+            {settings.priority === "efficiency"
+              ? "많은 곳을 방문해요"
+              : settings.priority === "balanced"
+              ? "적당한 페이스로 돌아요"
+              : "느긋하게 즐겨요"}
+          </p>
+
+          {/* ── 자세한 설정 (식사 · 숙소 · 출발지 · 장소 고정) ── */}
+          <button
+            type="button"
+            className="ws-morebar"
+            aria-expanded={advOpen}
+            aria-controls="ws-ai-adv"
+            onClick={() => setAdvOpen((v) => !v)}
+          >
+            <b>자세한 설정</b>
+            <span className="tm-hint tm-ellipsis">
+              {advOpen
+                ? "접기 ▴"
+                : `${settings.includeMeals ? "식사 포함" : "식사 없음"} · 숙소 ${settings.hotels.length}곳 · 출발지 ${settings.departurePoints.length}곳 ▾`}
+            </span>
+          </button>
+
+          {advOpen && (
+            <div id="ws-ai-adv" className="ws-aimore">
             {/* ── 식사 시간 ── */}
-            <div>
-              <label style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer" }}>
+            <section className="ws-ai__sec">
+              <label className="tm-check">
                 <input
                   type="checkbox"
                   checked={settings.includeMeals}
                   onChange={(e) => updateSetting("includeMeals", e.target.checked)}
-                  style={{ width: "18px", height: "18px", cursor: "pointer" }}
                 />
-                <span style={{ fontWeight: "bold", fontSize: "14px", color: "#333" }}>🍽️ 식사 시간 포함</span>
+                <span>식사 시간 포함</span>
               </label>
               {settings.includeMeals && (
-                <div style={{ display: "flex", gap: "10px", margin: "10px 0 0 28px", alignItems: "center", flexWrap: "wrap" }}>
+                <div className="ws-ai__meals">
                   {[
                     { key: "lunchTime" as const, label: "점심", options: MEAL_TIME_OPTIONS.lunch },
                     { key: "dinnerTime" as const, label: "저녁", options: MEAL_TIME_OPTIONS.dinner },
                   ].map(({ key, label, options }) => (
-                    <label key={key} style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "13px", color: "#555" }}>
+                    <label key={key} className="ws-ai__meal">
                       {label}
                       <select
+                        className="tm-select"
                         value={settings[key]}
                         onChange={(e) => updateSetting(key, e.target.value)}
-                        style={{ padding: "6px 8px", border: "1px solid #ddd", borderRadius: "6px", fontSize: "13px" }}
                       >
                         {options.map((t) => (
                           <option key={t} value={t}>{t}</option>
@@ -1037,602 +1002,279 @@ const AiScheduleModal: React.FC<AiScheduleModalProps> = ({
                       </select>
                     </label>
                   ))}
-                  <span style={{ fontSize: "11px", color: "#999" }}>
-                    이 시각 전후로 맛집이 배치돼요 (30분 전 ~ 1시간 30분 후)
-                  </span>
+                  <span className="tm-hint">이 시각 전후로 맛집이 배치돼요 (30분 전 ~ 1시간 30분 후)</span>
                 </div>
               )}
-              {mealCapacityWarning && (
-                <p style={{
-                  fontSize: "12px", color: "#795548", background: "#fff8e1",
-                  border: "1px solid #ffd54f", borderRadius: "6px",
-                  padding: "8px 10px", margin: "8px 0 0", lineHeight: 1.5,
-                }}>
-                  ⚠️ {mealCapacityWarning}
-                </p>
-              )}
-            </div>
+              {mealCapacityWarning && <div className="tm-notice tm-notice--warn tm-mt-2">{mealCapacityWarning}</div>}
+            </section>
 
-            {/* ── 일정 스타일 ── */}
-            <div>
-              <label style={{ display: "block", fontWeight: "bold", fontSize: "14px", marginBottom: "10px", color: "#333" }}>
-                🎯 일정 스타일
-              </label>
-              <div style={{ display: "flex", gap: "10px" }}>
-                {[
-                  { value: "efficiency", label: "효율적", desc: "많은 곳을 방문" },
-                  { value: "balanced", label: "균형잡힌", desc: "적당한 페이스" },
-                  { value: "relaxed", label: "여유로운", desc: "느긋하게 즐기기" },
-                ].map((mode) => (
-                  <button
-                    key={mode.value}
-                    onClick={() => updateSetting("priority", mode.value as AiScheduleSettings["priority"])}
-                    style={{
-                      flex: 1, padding: "12px",
-                      background: settings.priority === mode.value ? "#000" : "#fff",
-                      color: settings.priority === mode.value ? "#fff" : "#000",
-                      border: "2px solid #000", borderRadius: "6px",
-                      fontWeight: "bold", fontSize: "13px", cursor: "pointer",
-                      transition: "0.2s", textAlign: "center",
-                    }}
-                  >
-                    <div>{mode.label}</div>
-                    <div style={{ fontSize: "11px", marginTop: "3px", opacity: 0.8 }}>{mode.desc}</div>
+              {/* ── 숙소 설정 ── */}
+              <section className="ws-ai__sec">
+                <h3 className="ws-ai__h">
+                  숙소 <span className="tm-hint">(선택)</span>
+                  <InfoToggle label="숙소 설정 설명">
+                    체크인 DAY 1 → 체크아웃 DAY 3은 1·2일차 밤(2박)을 그 숙소에서 잔다는 뜻이에요. 체크아웃하는 날 아침엔 그 숙소에서 출발하고, 밤마다 그 숙소로 돌아가요. 체크한 숙소만 일정에 들어가요.
+                  </InfoToggle>
+                </h3>
+                <p className="tm-hint ws-ai__note">이번 여행에서 묵는 숙소를 체크하세요. 체크한 숙소만 일정에 들어가요.</p>
+                {nDays <= 1 && <div className="tm-notice tm-notice--warn">당일치기 여행에는 숙소 배정이 필요 없어요.</div>}
+                {nDays > 1 && (
+                  <>
+                    {(hotelPlaces.length === 0 || showHotelSearch) && (
+                      <InlineSearch
+                        title="숙소를 검색해서 바로 추가하세요"
+                        placeholder="숙소명 검색 (예: 신라호텔, 도톤보리 호텔)"
+                        emptyHint="검색 후 숙소를 선택하면 장소 목록에 자동으로 추가돼요."
+                        addedSuffix="숙소로 추가했어요"
+                        query={hotelSearchQuery}
+                        onQuery={setHotelSearchQuery}
+                        onSearch={handleHotelSearch}
+                        searching={isHotelSearching}
+                        error={hotelSearchError}
+                        addedName={hotelAddedName}
+                        results={hotelSearchResults}
+                        savedPlaces={savedPlaces}
+                        onAdd={handleHotelAdd}
+                      />
+                    )}
+
+                    {hotelPlaces.map((place) => {
+                      const idx = settings.hotels.findIndex((h) => h.name === place.name);
+                      const row = idx >= 0 ? settings.hotels[idx] : null;
+                      const overlap = !!row && overlappingHotelIndices.has(idx);
+                      return (
+                        <div key={place.id} className={`ws-ai__item${overlap ? " is-bad" : ""}`}>
+                          <label className="tm-check ws-ai__itemhead">
+                            <input
+                              type="checkbox"
+                              checked={!!row}
+                              onChange={(e) => (e.target.checked ? assignHotel(place) : unassignHotel(place.name))}
+                            />
+                            <span className="tm-ellipsis">{place.name}</span>
+                            {!row && <span className="tm-hint ws-ai__off">일정에 포함 안 됨</span>}
+                          </label>
+                          {row && (
+                            <div className="ws-ai__itemopts">
+                              <label>
+                                체크인
+                                <select
+                                  className="tm-select"
+                                  value={row.checkInDay}
+                                  onChange={(e) => {
+                                    const newIn = Number(e.target.value);
+                                    patchHotel(place.name, {
+                                      checkInDay: newIn,
+                                      checkOutDay: row.checkOutDay <= newIn ? newIn + 1 : row.checkOutDay,
+                                    });
+                                  }}
+                                >
+                                  {Array.from({ length: nDays - 1 }, (_, d) => (
+                                    <option key={d + 1} value={d + 1}>DAY {d + 1}</option>
+                                  ))}
+                                </select>
+                              </label>
+                              <label>
+                                체크아웃
+                                <select
+                                  className="tm-select"
+                                  value={row.checkOutDay}
+                                  onChange={(e) => patchHotel(place.name, { checkOutDay: Number(e.target.value) })}
+                                >
+                                  {Array.from({ length: nDays }, (_, d) => d + 1)
+                                    .filter((day) => day > row.checkInDay)
+                                    .map((day) => (
+                                      <option key={day} value={day}>DAY {day}</option>
+                                    ))}
+                                </select>
+                              </label>
+                              <b>{row.checkOutDay - row.checkInDay}박</b>
+                              {overlap && <span className="ws-ai__err ws-ai__full">다른 숙소와 숙박 기간이 겹쳐요</span>}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                    {hotelPlaces.length > 0 && (
+                      <button type="button" className="ws-link ws-ai__linkbtn" onClick={() => setShowHotelSearch((v) => !v)}>
+                        {showHotelSearch ? "숙소 검색 닫기" : "+ 다른 숙소 검색해서 저장"}
+                      </button>
+                    )}
+                  </>
+                )}
+              </section>
+
+              {/* ── 출발지 설정 ── */}
+              <section className="ws-ai__sec">
+                <h3 className="ws-ai__h">
+                  출발지 <span className="tm-hint">(선택)</span>
+                  <InfoToggle label="출발지 설정 설명">
+                    1일차 출발지는 도착 지점으로, 2일차 이후 출발지는 그날의 시작 지점으로 일정에 들어가요. ‘마지막 날 복귀 기준’은 하나만 고를 수 있고, 아무것도 고르지 않으면 1일차 출발지로 돌아가요. 체크한 교통 장소만 일정에 들어가요.
+                  </InfoToggle>
+                </h3>
+                <p className="tm-hint ws-ai__note">공항, 기차역 등 출발·도착 기준점을 체크하세요. 체크한 곳만 일정에 들어가요.</p>
+
+                {(transitPlaces.length === 0 || showDeptSearch) && (
+                  <InlineSearch
+                    title="출발지를 검색해서 바로 추가하세요"
+                    placeholder="출발지 검색 (예: 인천공항, 오사카역)"
+                    emptyHint="검색 후 선택하면 장소 목록에 자동으로 추가돼요."
+                    addedSuffix="장소로 추가했어요"
+                    query={deptSearchQuery}
+                    onQuery={setDeptSearchQuery}
+                    onSearch={handleDeptSearch}
+                    searching={isDeptSearching}
+                    error={deptSearchError}
+                    addedName={deptAddedName}
+                    results={deptSearchResults}
+                    savedPlaces={savedPlaces}
+                    onAdd={handleDeptAdd}
+                  />
+                )}
+
+                {transitPlaces.map((place) => {
+                  const idx = settings.departurePoints.findIndex((d) => d.name === place.name);
+                  const row = idx >= 0 ? settings.departurePoints[idx] : null;
+                  const sameDay =
+                    row != null && settings.departurePoints.some((o, oi) => oi !== idx && o.day === row.day);
+                  return (
+                    <div key={place.id} className={`ws-ai__item${sameDay ? " is-bad" : ""}`}>
+                      <label className="tm-check ws-ai__itemhead">
+                        <input
+                          type="checkbox"
+                          checked={!!row}
+                          onChange={(e) => (e.target.checked ? assignDeparture(place) : unassignDeparture(place.name))}
+                        />
+                        <span className="tm-ellipsis">{place.name}</span>
+                        {!row && <span className="tm-hint ws-ai__off">일정에 포함 안 됨</span>}
+                      </label>
+                      {row && (
+                        <div className="ws-ai__itemopts">
+                          <label>
+                            적용 일차
+                            <select
+                              className="tm-select"
+                              value={row.day}
+                              onChange={(e) => patchDeparture(place.name, { day: Number(e.target.value) })}
+                            >
+                              {Array.from({ length: nDays }, (_, d) => (
+                                <option key={d + 1} value={d + 1}>DAY {d + 1}</option>
+                              ))}
+                            </select>
+                          </label>
+                          <label className="tm-check">
+                            <input
+                              type="checkbox"
+                              checked={row.isReturnPoint}
+                              onChange={(e) => setReturnPoint(idx, e.target.checked)}
+                            />
+                            <span>마지막 날 복귀 기준</span>
+                          </label>
+                          {sameDay && <span className="ws-ai__err ws-ai__full">같은 일차에 다른 출발지가 이미 있어요</span>}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+                {transitPlaces.length > 0 && (
+                  <button type="button" className="ws-link ws-ai__linkbtn" onClick={() => setShowDeptSearch((v) => !v)}>
+                    {showDeptSearch ? "출발지 검색 닫기" : "+ 공항·기차역 검색해서 저장"}
                   </button>
-                ))}
-              </div>
-            </div>
+                )}
+              </section>
 
-            {/* ── 숙소 설정 ── */}
-            <div>
-              <label style={{ display: "block", fontWeight: "bold", fontSize: "14px", marginBottom: "6px", color: "#333" }}>
-                🏨 숙소 설정 (선택){" "}
-                <span
-                  title="체크인 DAY 1 → 체크아웃 DAY 3은 1·2일차 밤(2박)을 그 숙소에서 잔다는 뜻이에요. 체크아웃하는 날 아침엔 그 숙소에서 출발하고, 밤마다 그 숙소로 돌아가요. 체크한 숙소만 일정에 들어가요."
-                  style={{ cursor: "help", color: "#1976d2", fontWeight: "normal", fontSize: "12px" }}
-                >
-                  ?
-                </span>
-              </label>
-              <p style={{ fontSize: "12px", color: "#999", margin: "0 0 12px" }}>
-                이번 여행에서 묵는 숙소를 체크하세요. 체크한 숙소만 일정에 들어가요.
-              </p>
-              {nDays <= 1 && (
-                <p style={{ fontSize: "12px", color: "#795548", background: "#fff8e1", border: "1px solid #ffd54f", borderRadius: "6px", padding: "8px 10px", margin: 0, lineHeight: 1.5 }}>
-                  당일치기 여행에는 숙소 배정이 필요 없어요.
+              {/* ── 장소 고정 ── */}
+              <section className="ws-ai__sec">
+                <h3 className="ws-ai__h">
+                  특정 날짜에 장소 고정 <span className="tm-hint">(선택)</span>
+                </h3>
+                <p className="tm-hint ws-ai__note">
+                  반드시 특정 날에 방문해야 하는 장소를 지정해요. 시간을 비워두면 AI가 가장 알맞은 위치에 배치해요.
                 </p>
-              )}
-              {nDays > 1 && (
-              <>
-              {(hotelPlaces.length === 0 || showHotelSearch) && (
-                <div style={{
-                  padding: "16px",
-                  background: "#f8f9ff",
-                  border: "2px solid #e3e8ff",
-                  borderRadius: "8px",
-                  marginBottom: "12px",
-                }}>
-                  <p style={{ fontSize: "13px", fontWeight: "bold", color: "#333", margin: "0 0 10px" }}>
-                    🏨 숙소를 검색해서 바로 추가하세요
-                  </p>
-
-                  {/* 검색 입력 */}
-                  <div style={{ display: "flex", gap: "8px", marginBottom: "8px" }}>
-                    <input
-                      type="text"
-                      value={hotelSearchQuery}
-                      onChange={(e) => setHotelSearchQuery(e.target.value)}
-                      onKeyDown={(e) => e.key === "Enter" && handleHotelSearch()}
-                      placeholder="숙소명 검색... (예: 신라호텔, 도톤보리 호텔)"
-                      style={{
-                        flex: 1, height: "38px", padding: "0 12px",
-                        border: "1.5px solid #ddd", borderRadius: "6px",
-                        fontSize: "13px", outline: "none",
-                      }}
-                    />
-                    <button
-                      onClick={handleHotelSearch}
-                      disabled={isHotelSearching || !hotelSearchQuery.trim()}
-                      style={{
-                        padding: "0 16px", height: "38px",
-                        background: "#000", color: "#fff",
-                        border: "none", borderRadius: "6px",
-                        fontSize: "13px", fontWeight: "bold",
-                        cursor: isHotelSearching || !hotelSearchQuery.trim() ? "not-allowed" : "pointer",
-                        opacity: isHotelSearching || !hotelSearchQuery.trim() ? 0.5 : 1,
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {isHotelSearching ? "검색중..." : "검색"}
-                    </button>
-                  </div>
-
-                  {/* 에러 */}
-                  {hotelSearchError && (
-                    <p style={{ fontSize: "12px", color: "#e53935", margin: "0 0 8px" }}>
-                      ⚠️ {hotelSearchError}
-                    </p>
-                  )}
-
-                  {/* 추가 완료 토스트 */}
-                  {hotelAddedName && (
-                    <p style={{ fontSize: "12px", color: "#2e7d32", fontWeight: "bold", margin: "0 0 8px" }}>
-                      ✅ '{hotelAddedName}' 숙소로 추가됨
-                    </p>
-                  )}
-
-                  {/* 검색 결과 */}
-                  {hotelSearchResults.length > 0 && (
-                    <div style={{
-                      border: "1.5px solid #e0e0e0",
-                      borderRadius: "6px",
-                      overflow: "hidden",
-                      maxHeight: "220px",
-                      overflowY: "auto",
-                    }}>
-                      {hotelSearchResults.map((place) => {
-                        const alreadyAdded = savedPlaces.some(
-                          (p) => p.name === place.name && p.lat === place.lat
-                        );
-                        return (
-                          <div
-                            key={place.id}
-                            style={{
-                              padding: "10px 12px",
-                              borderBottom: "1px solid #f0f0f0",
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "10px",
-                              background: "#fff",
-                            }}
-                          >
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <p style={{ fontSize: "13px", fontWeight: "bold", margin: "0 0 2px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                🏨 {place.name}
-                              </p>
-                              <p style={{ fontSize: "11px", color: "#999", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                📍 {place.address || "주소 없음"}
-                              </p>
-                            </div>
-                            <button
-                              onClick={() => handleHotelAdd(place)}
-                              disabled={alreadyAdded}
-                              style={{
-                                padding: "5px 12px", flexShrink: 0,
-                                background: alreadyAdded ? "#4caf50" : "#000",
-                                color: "#fff", border: "none",
-                                borderRadius: "5px", fontSize: "12px",
-                                fontWeight: "bold",
-                                cursor: alreadyAdded ? "default" : "pointer",
-                                whiteSpace: "nowrap",
-                              }}
-                            >
-                              {alreadyAdded ? "✓ 추가됨" : "+ 추가"}
-                            </button>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-
-                  {/* 검색 결과 없고 에러도 없는 초기 상태 */}
-                  {hotelSearchResults.length === 0 && !hotelSearchError && !isHotelSearching && (
-                    <p style={{ fontSize: "12px", color: "#bbb", margin: 0 }}>
-                      검색 후 숙소를 선택하면 장소 목록에 자동으로 추가됩니다.
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {hotelPlaces.map((place) => {
-                const idx = settings.hotels.findIndex((h) => h.name === place.name);
-                const row = idx >= 0 ? settings.hotels[idx] : null;
-                return (
-                  <div
-                    key={place.id}
-                    style={{
-                      padding: "10px 12px", background: row ? "#f5f5f5" : "#fff",
-                      borderRadius: "6px",
-                      border: `1px solid ${row && overlappingHotelIndices.has(idx) ? "#e53935" : "#ddd"}`,
-                      marginBottom: "8px",
-                    }}
-                  >
-                    <label style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer" }}>
-                      <input
-                        type="checkbox"
-                        checked={!!row}
-                        onChange={(e) => (e.target.checked ? assignHotel(place) : unassignHotel(place.name))}
-                        style={{ width: "16px", height: "16px", cursor: "pointer" }}
-                      />
-                      <span style={{ flex: 1, minWidth: 0, fontSize: "13px", fontWeight: "bold", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        🏨 {place.name}
-                      </span>
-                      {!row && <span style={{ fontSize: "11px", color: "#aaa", flexShrink: 0 }}>일정에 포함 안 됨</span>}
-                    </label>
-                    {row && (
-                      <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap", marginTop: "8px", paddingLeft: "26px" }}>
-                        <span style={{ fontSize: "12px", color: "#666" }}>체크인</span>
+                {settings.pinnedPlaces.map((pin, i) => {
+                  const place = savedPlaces.find((p) => p.id === pin.placeId);
+                  if (!place) return null;
+                  const outside = !!pin.time && (pin.time < settings.startTime || pin.time > settings.endTime);
+                  return (
+                    <div key={i} className={`ws-ai__item${outside ? " is-bad" : ""}`}>
+                      <div className="ws-ai__itemopts ws-ai__pin">
+                        <b className="tm-grow tm-ellipsis">{place.name}</b>
                         <select
-                          value={row.checkInDay}
-                          onChange={(e) => {
-                            const newIn = Number(e.target.value);
-                            patchHotel(place.name, {
-                              checkInDay: newIn,
-                              checkOutDay: row.checkOutDay <= newIn ? newIn + 1 : row.checkOutDay,
-                            });
-                          }}
-                          style={{ padding: "4px 8px", border: "1px solid #ccc", borderRadius: "4px", fontSize: "13px" }}
-                        >
-                          {Array.from({ length: nDays - 1 }, (_, d) => (
-                            <option key={d + 1} value={d + 1}>DAY {d + 1}</option>
-                          ))}
-                        </select>
-                        <span style={{ fontSize: "12px", color: "#666" }}>체크아웃</span>
-                        <select
-                          value={row.checkOutDay}
-                          onChange={(e) => patchHotel(place.name, { checkOutDay: Number(e.target.value) })}
-                          style={{ padding: "4px 8px", border: "1px solid #ccc", borderRadius: "4px", fontSize: "13px" }}
-                        >
-                          {Array.from({ length: nDays }, (_, d) => d + 1)
-                            .filter((day) => day > row.checkInDay)
-                            .map((day) => (
-                              <option key={day} value={day}>DAY {day}</option>
-                            ))}
-                        </select>
-                        <span style={{ fontSize: "12px", color: "#555", fontWeight: "bold" }}>
-                          {row.checkOutDay - row.checkInDay}박
-                        </span>
-                        {overlappingHotelIndices.has(idx) && (
-                          <span style={{ fontSize: "11px", color: "#e53935", width: "100%" }}>
-                            ⚠️ 다른 숙소와 숙박 기간이 겹쳐요
-                          </span>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-              {hotelPlaces.length > 0 && (
-                <button
-                  onClick={() => setShowHotelSearch((v) => !v)}
-                  style={{ background: "none", border: "none", color: "#1976d2", fontSize: "12px", cursor: "pointer", padding: 0, textDecoration: "underline" }}
-                >
-                  {showHotelSearch ? "숙소 검색 닫기" : "＋ 다른 숙소 검색해서 저장"}
-                </button>
-              )}
-              </>
-              )}
-            </div>
-
-            {/* ── 출발지 설정 ── */}
-            <div>
-              <label style={{ display: "block", fontWeight: "bold", fontSize: "14px", marginBottom: "6px", color: "#333" }}>
-                ✈️ 출발지 설정 (선택){" "}
-                <span
-                  title="1일차 출발지는 도착 지점으로, 2일차 이후 출발지는 그날의 시작 지점으로 일정에 들어가요. '마지막 날 복귀 기준'은 하나만 고를 수 있고, 아무것도 고르지 않으면 1일차 출발지로 돌아가요. 체크한 교통 장소만 일정에 들어가요."
-                  style={{ cursor: "help", color: "#1976d2", fontWeight: "normal", fontSize: "12px" }}
-                >
-                  ?
-                </span>
-              </label>
-              <p style={{ fontSize: "12px", color: "#999", margin: "0 0 12px" }}>
-                공항, 기차역 등 출발·도착 기준점을 체크하세요. 체크한 곳만 일정에 들어가요.
-              </p>
-
-              {(transitPlaces.length === 0 || showDeptSearch) && (
-                <div style={{
-                  padding: "16px",
-                  background: "#f8f9ff",
-                  border: "2px solid #e3e8ff",
-                  borderRadius: "8px",
-                  marginBottom: "12px",
-                }}>
-                  <p style={{ fontSize: "13px", fontWeight: "bold", color: "#333", margin: "0 0 10px" }}>
-                    ✈️ 출발지를 검색해서 바로 추가하세요
-                  </p>
-                  <div style={{ display: "flex", gap: "8px", marginBottom: "8px" }}>
-                    <input
-                      type="text"
-                      value={deptSearchQuery}
-                      onChange={(e) => setDeptSearchQuery(e.target.value)}
-                      onKeyDown={(e) => e.key === "Enter" && handleDeptSearch()}
-                      placeholder="출발지 검색... (예: 인천공항, 오사카역)"
-                      style={{
-                        flex: 1, height: "38px", padding: "0 12px",
-                        border: "1.5px solid #ddd", borderRadius: "6px",
-                        fontSize: "13px", outline: "none",
-                      }}
-                    />
-                    <button
-                      onClick={handleDeptSearch}
-                      disabled={isDeptSearching || !deptSearchQuery.trim()}
-                      style={{
-                        padding: "0 16px", height: "38px",
-                        background: "#000", color: "#fff",
-                        border: "none", borderRadius: "6px",
-                        fontSize: "13px", fontWeight: "bold",
-                        cursor: isDeptSearching || !deptSearchQuery.trim() ? "not-allowed" : "pointer",
-                        opacity: isDeptSearching || !deptSearchQuery.trim() ? 0.5 : 1,
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {isDeptSearching ? "검색중..." : "검색"}
-                    </button>
-                  </div>
-
-                  {deptSearchError && (
-                    <p style={{ fontSize: "12px", color: "#e53935", margin: "0 0 8px" }}>
-                      ⚠️ {deptSearchError}
-                    </p>
-                  )}
-                  {deptAddedName && (
-                    <p style={{ fontSize: "12px", color: "#2e7d32", fontWeight: "bold", margin: "0 0 8px" }}>
-                      ✅ '{deptAddedName}' 장소로 추가됨
-                    </p>
-                  )}
-
-                  {deptSearchResults.length > 0 && (
-                    <div style={{
-                      border: "1.5px solid #e0e0e0",
-                      borderRadius: "6px",
-                      overflow: "hidden",
-                      maxHeight: "220px",
-                      overflowY: "auto",
-                    }}>
-                      {deptSearchResults.map((place) => {
-                        const alreadyAdded = savedPlaces.some(
-                          (p) => p.name === place.name && p.lat === place.lat
-                        );
-                        return (
-                          <div
-                            key={place.id}
-                            style={{
-                              padding: "10px 12px",
-                              borderBottom: "1px solid #f0f0f0",
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "10px",
-                              background: "#fff",
-                            }}
-                          >
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <p style={{ fontSize: "13px", fontWeight: "bold", margin: "0 0 2px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                ✈️ {place.name}
-                              </p>
-                              <p style={{ fontSize: "11px", color: "#999", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                📍 {place.address || "주소 없음"}
-                              </p>
-                            </div>
-                            <button
-                              onClick={() => handleDeptAdd(place)}
-                              disabled={alreadyAdded}
-                              style={{
-                                padding: "5px 12px", flexShrink: 0,
-                                background: alreadyAdded ? "#4caf50" : "#000",
-                                color: "#fff", border: "none",
-                                borderRadius: "5px", fontSize: "12px",
-                                fontWeight: "bold",
-                                cursor: alreadyAdded ? "default" : "pointer",
-                                whiteSpace: "nowrap",
-                              }}
-                            >
-                              {alreadyAdded ? "✓ 추가됨" : "+ 추가"}
-                            </button>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-
-                  {deptSearchResults.length === 0 && !deptSearchError && !isDeptSearching && (
-                    <p style={{ fontSize: "12px", color: "#bbb", margin: 0 }}>
-                      검색 후 선택하면 장소 목록에 자동으로 추가됩니다.
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {transitPlaces.map((place) => {
-                const idx = settings.departurePoints.findIndex((d) => d.name === place.name);
-                const row = idx >= 0 ? settings.departurePoints[idx] : null;
-                const sameDay =
-                  row != null &&
-                  settings.departurePoints.some((o, oi) => oi !== idx && o.day === row.day);
-                return (
-                  <div
-                    key={place.id}
-                    style={{
-                      padding: "10px 12px", background: row ? "#f5f5f5" : "#fff",
-                      borderRadius: "6px", border: `1px solid ${sameDay ? "#e53935" : "#ddd"}`,
-                      marginBottom: "8px",
-                    }}
-                  >
-                    <label style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer" }}>
-                      <input
-                        type="checkbox"
-                        checked={!!row}
-                        onChange={(e) => (e.target.checked ? assignDeparture(place) : unassignDeparture(place.name))}
-                        style={{ width: "16px", height: "16px", cursor: "pointer" }}
-                      />
-                      <span style={{ flex: 1, minWidth: 0, fontSize: "13px", fontWeight: "bold", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        ✈️ {place.name}
-                      </span>
-                      {!row && <span style={{ fontSize: "11px", color: "#aaa", flexShrink: 0 }}>일정에 포함 안 됨</span>}
-                    </label>
-                    {row && (
-                      <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap", marginTop: "8px", paddingLeft: "26px" }}>
-                        <span style={{ fontSize: "12px", color: "#666" }}>적용 일차</span>
-                        <select
-                          value={row.day}
-                          onChange={(e) => patchDeparture(place.name, { day: Number(e.target.value) })}
-                          style={{ padding: "4px 8px", border: "1px solid #ccc", borderRadius: "4px", fontSize: "13px" }}
-                        >
-                          {Array.from({ length: nDays }, (_, d) => (
-                            <option key={d + 1} value={d + 1}>DAY {d + 1}</option>
-                          ))}
-                        </select>
-                        <label style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "12px", cursor: "pointer" }}>
-                          <input
-                            type="checkbox"
-                            checked={row.isReturnPoint}
-                            onChange={(e) => setReturnPoint(idx, e.target.checked)}
-                          />
-                          마지막 날 복귀 기준
-                        </label>
-                        {sameDay && (
-                          <span style={{ fontSize: "11px", color: "#e53935", width: "100%" }}>
-                            ⚠️ 같은 일차에 다른 출발지가 이미 있어요
-                          </span>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-              {transitPlaces.length > 0 && (
-                <button
-                  onClick={() => setShowDeptSearch((v) => !v)}
-                  style={{ background: "none", border: "none", color: "#1976d2", fontSize: "12px", cursor: "pointer", padding: 0, textDecoration: "underline" }}
-                >
-                  {showDeptSearch ? "출발지 검색 닫기" : "＋ 공항·기차역 검색해서 저장"}
-                </button>
-              )}
-            </div>
-
-            {/* ── 장소 고정 ── */}
-            <div>
-              <label style={{ display: "block", fontWeight: "bold", fontSize: "14px", marginBottom: "6px", color: "#333" }}>
-                📌 특정 날짜에 장소 고정 (선택)
-              </label>
-              <p style={{ fontSize: "12px", color: "#999", margin: "0 0 12px" }}>
-                반드시 특정 날에 방문해야 하는 장소를 지정합니다.
-                시간을 비워두면 AI가 최적 위치에 배치합니다.
-              </p>
-              {settings.pinnedPlaces.length > 0 && (
-                <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "12px" }}>
-                  {settings.pinnedPlaces.map((pin, i) => {
-                    const place = savedPlaces.find((p) => p.id === pin.placeId);
-                    if (!place) return null;
-                    return (
-                      <div
-                        key={i}
-                        style={{
-                          display: "flex", alignItems: "center", gap: "8px",
-                          padding: "10px 12px", background: "#f5f5f5",
-                          borderRadius: "6px", border: "1px solid #ddd", flexWrap: "wrap",
-                        }}
-                      >
-                        <span style={{ fontWeight: "bold", fontSize: "13px", flex: 1, minWidth: "80px" }}>
-                          📍 {place.name}
-                        </span>
-                        <select
+                          className="tm-select"
+                          aria-label={`${place.name} 방문 일차`}
                           value={pin.day}
                           onChange={(e) => {
                             const next = [...settings.pinnedPlaces];
                             next[i] = { ...next[i], day: Number(e.target.value) };
                             updateSetting("pinnedPlaces", next);
                           }}
-                          style={{ padding: "4px 8px", border: "1px solid #ccc", borderRadius: "4px", fontSize: "13px" }}
                         >
                           {Array.from({ length: nDays }, (_, d) => (
                             <option key={d + 1} value={d + 1}>DAY {d + 1}</option>
                           ))}
                         </select>
-                        <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                          <input
-                            type="time"
-                            value={pin.time}
-                            onChange={(e) => {
-                              const next = [...settings.pinnedPlaces];
-                              next[i] = { ...next[i], time: e.target.value };
-                              updateSetting("pinnedPlaces", next);
-                            }}
-                            style={{
-                              padding: "4px 8px",
-                              border: `1px solid ${
-                                pin.time && (pin.time < settings.startTime || pin.time > settings.endTime)
-                                  ? "#e53935"
-                                  : "#ccc"
-                              }`,
-                              borderRadius: "4px", fontSize: "13px", width: "110px",
-                            }}
-                          />
-                          <span style={{ fontSize: "11px", color: "#bbb" }}>선택</span>
-                        </div>
-                        <button
-                          onClick={() =>
-                            updateSetting(
-                              "pinnedPlaces",
-                              settings.pinnedPlaces.filter((_, idx) => idx !== i)
-                            )
-                          }
-                          style={{
-                            padding: "4px 10px", background: "#fff",
-                            color: "#e53935", border: "1px solid #e53935",
-                            borderRadius: "4px", fontSize: "12px", cursor: "pointer",
+                        <input
+                          type="time"
+                          className={`tm-input ws-ai__time${outside ? " tm-input--error" : ""}`}
+                          aria-label={`${place.name} 방문 시각 (선택)`}
+                          value={pin.time}
+                          onChange={(e) => {
+                            const next = [...settings.pinnedPlaces];
+                            next[i] = { ...next[i], time: e.target.value };
+                            updateSetting("pinnedPlaces", next);
                           }}
+                        />
+                        <button
+                          type="button"
+                          className="tm-btn tm-btn--sm tm-btn--danger"
+                          onClick={() =>
+                            updateSetting("pinnedPlaces", settings.pinnedPlaces.filter((_, idx) => idx !== i))
+                          }
                         >
                           제거
                         </button>
-                        {pin.time && (pin.time < settings.startTime || pin.time > settings.endTime) && (
-                          <span style={{ fontSize: "11px", color: "#e53935", width: "100%" }}>
-                            ⚠️ 여행 시간대({settings.startTime}~{settings.endTime}) 밖이에요
+                        {outside && (
+                          <span className="ws-ai__err ws-ai__full">
+                            여행 시간대({settings.startTime}~{settings.endTime}) 밖이에요
                           </span>
                         )}
                       </div>
-                    );
-                  })}
-                </div>
-              )}
-              <select
-                value=""
-                onChange={(e) => {
-                  const id = e.target.value;
-                  if (!id) return;
-                  if (settings.pinnedPlaces.some((p) => p.placeId === id)) {
-                    setErrorMsg("이미 고정된 장소입니다.");
-                    return;
-                  }
-                  updateSetting("pinnedPlaces", [
-                    ...settings.pinnedPlaces,
-                    { placeId: id, day: 1, time: "" },
-                  ]);
-                }}
-                style={{
-                  width: "100%", padding: "10px",
-                  border: "2px dashed #ccc", borderRadius: "6px",
-                  fontSize: "13px", color: "#999", background: "#fafafa", cursor: "pointer",
-                }}
-              >
-                <option value="">+ 고정할 장소 선택...</option>
-                {visitPlaces.map((place) => (
-                  <option key={place.id} value={place.id}>
-                    {place.name} ({place.category})
-                  </option>
-                ))}
-              </select>
+                    </div>
+                  );
+                })}
+                <select
+                  className="tm-select ws-ai__addpin"
+                  aria-label="고정할 장소 고르기"
+                  value=""
+                  onChange={(e) => {
+                    const id = e.target.value;
+                    if (!id) return;
+                    if (settings.pinnedPlaces.some((p) => p.placeId === id)) {
+                      setErrorMsg("이미 고정된 장소입니다.");
+                      return;
+                    }
+                    updateSetting("pinnedPlaces", [...settings.pinnedPlaces, { placeId: id, day: 1, time: "" }]);
+                  }}
+                >
+                  <option value="">+ 고정할 장소 고르기</option>
+                  {visitPlaces.map((place) => (
+                    <option key={place.id} value={place.id}>
+                      {place.name} ({place.category})
+                    </option>
+                  ))}
+                </select>
+              </section>
             </div>
-          </div>
+          )}
         </div>
 
         {/* 생성 전 예상 — 일부가 빠질 것 같으면 미리 알려서 생성 뒤에 놀라지 않게 */}
         {estimate && estimate.excluded > 0 && (
-          <div
-            role="status"
-            style={{
-              padding: "12px 30px",
-              background: "#fff8e1",
-              borderTop: "3px solid #ffd54f",
-              color: "#795548",
-            }}
-          >
-            <p style={{ margin: 0, fontSize: "13px", fontWeight: 800 }}>
-              📊 {estimate.totalPlaces}곳 중 약 {estimate.included}곳이 일정에 들어가요
-            </p>
-            <p style={{ margin: "3px 0 0", fontSize: "12px", lineHeight: 1.5 }}>
+          <div className="tm-notice tm-notice--warn ws-ai__banner" role="status">
+            <b>{estimate.totalPlaces}곳 중 약 {estimate.included}곳이 일정에 들어가요</b>
+            <p>
               설정한 시간 기준으로 하루 최대 {estimate.maxPerDay}곳 × {estimate.nDays}일이라 나머지 {estimate.excluded}곳은 빠질 수 있어요.{" "}
               {settings.priority !== "efficiency"
-                ? "여행 기간이나 이용 시간을 늘리거나, 일정 스타일을 '효율적'으로 바꾸면 더 많이 들어가요."
+                ? "여행 기간이나 이용 시간을 늘리거나, 일정 스타일을 ‘효율적’으로 바꾸면 더 많이 들어가요."
                 : "여행 기간이나 이용 시간을 늘리면 더 많이 들어가요."}{" "}
               (예상이라 실제와 조금 다를 수 있어요)
             </p>
@@ -1641,70 +1283,30 @@ const AiScheduleModal: React.FC<AiScheduleModalProps> = ({
 
         {/* 생성 버튼이 잠긴 이유 — 중간 섹션은 스크롤하면 안 보여서 푸터 바로 위에 배너로 고정 노출 */}
         {!isLoading && !canGenerate && (
-          <div
-            role="alert"
-            style={{
-              padding: "14px 30px",
-              background: "#ffebee",
-              borderTop: "3px solid #e53935",
-              color: "#c62828",
-            }}
-          >
-            <p style={{ margin: "0 0 6px", fontSize: "14px", fontWeight: 800 }}>
-              ⚠️ 아직 일정을 생성할 수 없어요
-            </p>
+          <div className="tm-notice tm-notice--danger ws-ai__banner" role="alert">
+            <b>아직 일정을 생성할 수 없어요</b>
             {readinessIssues.map((issue, i) => (
-              <p key={i} style={{ margin: "3px 0 0", fontSize: "13px", lineHeight: 1.5 }}>
-                • {issue}
-              </p>
+              <p key={i}>• {issue}</p>
             ))}
           </div>
         )}
 
         {/* ── 푸터 ── */}
-        <div
-          style={{
-            padding: "20px 30px", borderTop: "2px solid #eee",
-            display: "flex", gap: "10px", justifyContent: "flex-end",
-          }}
-        >
-          <button
-            onClick={onClose}
-            disabled={isLoading}
-            style={{
-              padding: "12px 25px", background: "#fff", color: "#000",
-              border: "2px solid #000", borderRadius: "6px",
-              fontWeight: "bold", fontSize: "14px",
-              cursor: isLoading ? "not-allowed" : "pointer",
-              opacity: isLoading ? 0.5 : 1,
-            }}
-          >
+        <div className="tm-modal__foot">
+          <button type="button" className="tm-btn" onClick={onClose} disabled={isLoading}>
             취소
           </button>
           <button
+            type="button"
+            className="tm-btn tm-btn--primary"
             onClick={handleSubmit}
             disabled={isLoading || !canGenerate || generationLock !== null}
             title={generationLock ? "다른 멤버가 AI 일정을 만드는 중이에요" : !canGenerate ? readinessIssues[0] : undefined}
-            style={{
-              padding: "12px 25px",
-              background: isLoading || !canGenerate || generationLock ? "#999" : "#000",
-              color: "#fff", border: "2px solid #000", borderRadius: "6px",
-              fontWeight: "bold", fontSize: "14px",
-              cursor: isLoading || !canGenerate || generationLock ? "not-allowed" : "pointer",
-              transition: "0.2s",
-            }}
           >
-            {isLoading ? "⏳ 생성 중..." : generationLock ? "⏳ 다른 멤버가 생성 중" : "✨ AI 일정 생성하기"}
+            {isLoading ? "AI 생성 중…" : generationLock ? "다른 멤버가 생성 중" : hasExistingSchedule ? "새 일정으로 바꾸기" : "일정 생성"}
           </button>
         </div>
       </div>
-
-      <style>{`
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to   { transform: rotate(360deg); }
-        }
-      `}</style>
     </div>
   );
 };

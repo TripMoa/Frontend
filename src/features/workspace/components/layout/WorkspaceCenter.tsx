@@ -7,6 +7,7 @@ import { leaveTrip } from "../../../../api/trip.api";
 
 import "../../styles/center.css";
 import "../../styles/layout.css";
+import "../../styles/shell.css";
 
 import { useWorkspaceCore } from "../../hooks/useWorkspaceCore";
 import { useTimeline } from "../../hooks/useTimeline";
@@ -24,6 +25,7 @@ import { DayAllView, DayDetailView } from "../schedule";
 import WorkspaceTripModal from "./WorkspaceTripModal";
 import WorkspaceMemberModal from "./WorkspaceMemberModal";
 import NoticeModal from "../notice/NoticeItemModal";
+import NoticeGroupModal from "../notice/NoticeGroupModal";
 import ExpenseModal from "../expense/modal/ExpenseModal";
 import SettleDetailModal from "../../components/expense/modal/SettleDetailModal";
 import VoucherModal from "../voucher/VoucherModal";
@@ -32,7 +34,7 @@ import { useVouchers } from "../../hooks/useVouchers";
 import type { UseNoticesStore } from "../../hooks/useNotices";
 import { useTripContext } from "../../hooks/useTripContext";
 
-import { ActionPromptModal } from "../../../../shared/components/ActionPromptModal";
+import WsConfirm from "./WsConfirm";
 
 interface Props {
   noticeStore: UseNoticesStore;
@@ -42,6 +44,7 @@ const WorkspaceCenter: React.FC<Props> = ({ noticeStore }) => {
   const navigate = useNavigate();
 
   const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
+  const [isNoticeGroupModalOpen, setIsNoticeGroupModalOpen] = useState(false);
 
   const {
     activeView,
@@ -50,6 +53,11 @@ const WorkspaceCenter: React.FC<Props> = ({ noticeStore }) => {
     updateTripData,
     syncDateLogs,
     selectTab,
+    noticeGroups,
+    currentNoticeGroupId,
+    selectNoticeGroup,
+    isNoticeGroupsLoading,
+    tripMembers,
   } = useWorkspaceCore();
 
   const params = useParams<{ tripId: string }>();
@@ -62,6 +70,8 @@ const WorkspaceCenter: React.FC<Props> = ({ noticeStore }) => {
   const isSharedTrip = tripDetail?.visibility === "PUBLIC";
 
   const [isMemberModalOpen, setIsMemberModalOpen] = useState(false);
+  // 일정(전체) 화면의 [장소 추가 · AI 일정 생성] 버튼이 DAY 탭 줄 오른쪽 끝에 들어갈 자리
+  const [tabActionsEl, setTabActionsEl] = useState<HTMLDivElement | null>(null);
   const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState(false);
 
   const [noticeModal, setNoticeModal] = useState({
@@ -226,8 +236,6 @@ const WorkspaceCenter: React.FC<Props> = ({ noticeStore }) => {
     notices,
     openAdd,
     openEdit: openNoticeEdit,
-    deleteNotice,
-    togglePin,
     isLoading: isNoticeLoading,
   } = noticeStore;
 
@@ -286,64 +294,144 @@ const WorkspaceCenter: React.FC<Props> = ({ noticeStore }) => {
     }
   };
 
+
+  const tripPeriodText = (() => {
+    if (!trip.startDate || !trip.endDate) return "-";
+    const fmt = (d: string) => d.slice(5).replace("-", ".");
+    const diff = Math.round(
+      (new Date(trip.endDate).getTime() - new Date(trip.startDate).getTime()) / 86400000,
+    );
+    const nights = diff <= 0 ? "당일치기" : `${diff}박 ${diff + 1}일`;
+    return `${trip.startDate.slice(0, 4)}.${fmt(trip.startDate)} – ${fmt(trip.endDate)} · ${nights}`;
+  })();
+
   return (
     <div className="ws-main">
-      <div className="ws-top">
-        <div className="ws-title-wrap">
-          <span id="privacy-badge" title={isSharedTrip ? "함께하는 여행" : "나만의 여행"}>
-            <i className={`fa-solid ${isSharedTrip ? "fa-users" : "fa-user"}`} />
-          </span>
-          <div className="ws-title">{trip.title}</div>
-        </div>
-
-        <div
-          className={`ws-opt-wrapper ${open ? "active" : ""}`}
-          ref={dropdownRef}
-        >
-          <button className="ws-opt-btn" onClick={toggle}>
-            <i className="fa-solid fa-ellipsis"></i>
-          </button>
-
-          <div className={`ws-dropdown ${open ? "active" : ""}`}>
-            {isOwner && (
-              <div
-                className="ws-dd-item"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  openTripEdit();
-                  toggle();
-                }}
-              >
-                <i className="fa-solid fa-pen-to-square"></i> 여행 수정
-              </div>
-            )}
-
-            <div
-              className="ws-dd-item"
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsMemberModalOpen(true);
-                toggle();
-              }}
-            >
-              <i className="fa-solid fa-users"></i> 멤버 관리
+      <div className="ws-shell-head">
+        <div className="tm-page-head">
+          <div className="tm-page-head__text">
+            <div style={{ marginBottom: 10 }}>
+              <span className="tm-tag tm-tag--dark">
+                {isSharedTrip ? "함께하는 여행" : "나만의 여행"}
+              </span>
             </div>
+            <h1 className="tm-page-head__title">{trip.title}</h1>
+            <p className="tm-page-head__desc">{tripPeriodText}</p>
+          </div>
 
-            <div
-              className="ws-dd-item danger"
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsLeaveModalOpen(true);
-                toggle();
-              }}
+          <div className="tm-page-head__actions">
+            <button
+              type="button"
+              className="tm-btn tm-btn--sm ws-members-btn"
+              onClick={() => setIsMemberModalOpen(true)}
+              title="멤버 관리"
             >
-              <i className="fa-solid fa-right-from-bracket"></i> 여행 나가기
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="9" cy="8" r="3" />
+                <path d="M3 20v-1a6 6 0 0 1 12 0v1" />
+                <circle cx="17" cy="9" r="2.4" />
+                <path d="M17 14a5 5 0 0 1 4 5v1" />
+              </svg>
+              멤버 {tripMembers.length}
+            </button>
+
+            <div className="tm-topbar__menu" ref={dropdownRef}>
+              <button
+                type="button"
+                className="tm-btn tm-btn--icon"
+                aria-label="더 보기"
+                aria-expanded={open}
+                onClick={toggle}
+              >
+                ⋯
+              </button>
+              {open && (
+                <div className="tm-dropdown__menu">
+                  {isOwner && (
+                    <button
+                      type="button"
+                      className="tm-dropdown__item"
+                      onClick={() => {
+                        openTripEdit();
+                        toggle();
+                      }}
+                    >
+                      여행 수정
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="tm-dropdown__item tm-dropdown__item--danger"
+                    onClick={() => {
+                      setIsLeaveModalOpen(true);
+                      toggle();
+                    }}
+                  >
+                    여행 나가기
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
       </div>
 
       <div className="ws-body">
+        {activeView === "timeline" && (
+          <div className="ws-subnav">
+            <div className="tm-tabs" role="tablist" aria-label="일차">
+              {["DAY ALL", ...dayKeys].map((d) => (
+                <button
+                  key={d}
+                  type="button"
+                  role="tab"
+                  aria-selected={currentDay === d}
+                  className={`tm-tabs__item ${currentDay === d ? "is-on" : ""}`}
+                  onClick={() => selectTab(d, "timeline")}
+                >
+                  {d === "DAY ALL" ? "전체" : d}
+                </button>
+              ))}
+              <span className="tm-grow" />
+              <div className="ws-tab-actions" ref={setTabActionsEl} />
+            </div>
+          </div>
+        )}
+
+        {activeView === "notice" && (
+          <div className="ws-extop ws-ntop">
+            <div className="tm-row tm-row--wrap tm-gap-2">
+              {isNoticeGroupsLoading ? (
+                <span className="tm-hint">불러오는 중...</span>
+              ) : noticeGroups.length === 0 ? (
+                <span className="tm-hint">공지 그룹이 없어요</span>
+              ) : (
+                noticeGroups.map((g) => (
+                  <button
+                    key={g.groupId}
+                    type="button"
+                    className={`tm-pill ${currentNoticeGroupId === g.groupId ? "is-on" : ""}`}
+                    aria-pressed={currentNoticeGroupId === g.groupId}
+                    onClick={() => selectNoticeGroup(g.groupId)}
+                  >
+                    {g.name}
+                  </button>
+                ))
+              )}
+              {isOwner && (
+                <button type="button" className="tm-btn tm-btn--sm" onClick={() => setIsNoticeGroupModalOpen(true)}>
+                  그룹 관리
+                </button>
+              )}
+            </div>
+            <div className="ws-exacts">
+              <button type="button" className="tm-btn tm-btn--sm tm-btn--primary" onClick={openAdd}>
+                + 공지 추가
+              </button>
+            </div>
+          </div>
+        )}
+
         <div
           id="view-timeline"
           className={`content-view ${activeView === "timeline" ? "active" : ""}`}
@@ -362,7 +450,9 @@ const WorkspaceCenter: React.FC<Props> = ({ noticeStore }) => {
                 deletePlace={deletePlace}
                 autoOpenAiModal={autoOpenAiModal}
                 onAutoOpenAiModalHandled={() => setAutoOpenAiModal(false)}
+                actionsSlot={tabActionsEl}
                 scheduledItems={scheduledItems}
+                scheduledByDay={scheduledByDay}
                 generationLock={generation}
                 onScheduleRestored={() => syncFromServer([])}
                 scheduleRevision={scheduleRevision}
@@ -402,6 +492,7 @@ const WorkspaceCenter: React.FC<Props> = ({ noticeStore }) => {
                   expenseStore.openAddModal();
                 }}
                 generationLock={generation}
+                actionsSlot={tabActionsEl}
               />
             )}
           </div>
@@ -451,14 +542,7 @@ const WorkspaceCenter: React.FC<Props> = ({ noticeStore }) => {
           className={`content-view ${activeView === "notice" ? "active" : ""}`}
         >
           <div className="ws-inner">
-            <NoticeView
-              notices={notices}
-              isLoading={isNoticeLoading}
-              onAdd={openAdd}
-              onEdit={openNoticeEdit}
-              onDelete={deleteNotice}
-              onTogglePin={togglePin}
-            />
+            <NoticeView notices={notices} isLoading={isNoticeLoading} onEdit={openNoticeEdit} />
           </div>
         </div>
       </div>
@@ -511,13 +595,16 @@ const WorkspaceCenter: React.FC<Props> = ({ noticeStore }) => {
 
       <NoticeModal noticeStore={noticeStore} />
 
-      <ActionPromptModal
+      {isNoticeGroupModalOpen && <NoticeGroupModal onClose={() => setIsNoticeGroupModalOpen(false)} />}
+
+      <WsConfirm
         open={isLeaveModalOpen}
-        title="LEAVE TRIP"
-        headline="여행에서 나가시겠습니까?"
-        description="소유주인 경우 자동으로 소유권이 양도될 수 있습니다."
+        title="여행 나가기"
+        headline="이 여행에서 나갈까요?"
+        description="지출이나 입금 내역이 있으면 나갈 수 없어요. 소유주가 나가면 소유권이 넘겨질 수 있어요."
         cancelText="취소"
         confirmText="나가기"
+        danger
         onClose={() => setIsLeaveModalOpen(false)}
         onConfirm={() => {
           setIsLeaveModalOpen(false);
@@ -525,7 +612,7 @@ const WorkspaceCenter: React.FC<Props> = ({ noticeStore }) => {
         }}
       />
 
-      <ActionPromptModal
+      <WsConfirm
         open={dateChangePrompt.open}
         title="여행 기간 변경"
         headline={dateChangePrompt.headline}
@@ -536,7 +623,7 @@ const WorkspaceCenter: React.FC<Props> = ({ noticeStore }) => {
         onConfirm={regenerateNow}
       />
 
-      <ActionPromptModal
+      <WsConfirm
         open={noticeModal.open}
         title={noticeModal.title}
         headline={noticeModal.headline}

@@ -5,7 +5,6 @@
 // ODsay 이용 조건: 결과가 보이는 곳에 "powered by www.ODsay.com" 문구를 그대로 표기한다(수정·다른 로고와 결합 금지).
 
 import React from "react";
-import "../../../styles/modals.css";
 
 export interface TransitStep {
   type: "walk" | "subway" | "bus";
@@ -56,7 +55,7 @@ interface Props {
   onClose: () => void;
 }
 
-const ICON: Record<TransitStep["type"], string> = { walk: "🚶", subway: "🚇", bus: "🚌" };
+const KIND: Record<TransitStep["type"], string> = { walk: "도보", subway: "지하철", bus: "버스" };
 
 // 지도 앱 링크의 이름 부분 — 구분자(쉼표·슬래시)가 들어가면 링크가 깨지므로 공백으로 바꾼다
 const linkName = (name: string) => encodeURIComponent(name.replace(/[,/]/g, " ").trim() || "장소");
@@ -95,105 +94,70 @@ const TransitDetailModal: React.FC<Props> = ({
       : undefined;
 
   return (
-    <div className="modal-overlay active" onClick={onClose} style={{ zIndex: 10000 }}>
+    <div className="tm-overlay" onClick={onClose} style={{ zIndex: 10000 }}>
       <div
-        className="modal-window"
-        style={{ width: "92%", maxWidth: "520px", maxHeight: "85vh" }}
+        className="tm-modal tm-modal--narrow"
+        role="dialog"
+        aria-modal="true"
+        aria-label="이동 경로"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="modal-header">
-          <span className="mh-title">&gt;&gt; 이동 경로</span>
-          <button className="mh-close" onClick={onClose}>CLOSE [X]</button>
+        <div className="tm-modal__head">
+          <h3 className="tm-modal__title">이동 경로</h3>
+          <button type="button" className="tm-btn tm-btn--sm" onClick={onClose}>닫기</button>
         </div>
 
-        <div className="modal-body" style={{ padding: "16px 20px", overflowY: "auto" }}>
-          <p style={{ margin: "0 0 4px", fontWeight: "bold", fontSize: "14px" }}>
-            🚇 {fromName} → {toName}
-          </p>
-          {estimateMinutes != null && estimateMinutes > 0 && (
-            <p style={{ margin: "0 0 14px", fontSize: "12px", color: "#888" }}>
-              일정에 잡힌 이동 시간(추정): 약 {estimateMinutes}분
-            </p>
-          )}
+        <div className="tm-modal__body">
+          <div className="ws-fld">
+            <b>{fromName} → {toName}</b>
+            {estimateMinutes != null && estimateMinutes > 0 && (
+              <span className="tm-hint">예상 {estimateMinutes}분</span>
+            )}
+          </div>
 
-          {status === "loading" && (
-            <p style={{ fontSize: "13px", color: "#555", padding: "24px 0", textAlign: "center" }}>
-              실시간 경로를 불러오는 중이에요…
-            </p>
-          )}
+          {status === "loading" && <p className="tm-empty">실시간 경로를 불러오는 중이에요…</p>}
 
           {failed && (
-            <p style={{
-              fontSize: "13px", color: "#795548", background: "#fff8e1",
-              border: "1px solid #ffd54f", borderRadius: "6px", padding: "10px 12px", lineHeight: 1.6,
-            }}>
-              {failMessage || "실시간 경로를 가져오지 못했어요."}
-            </p>
+            <div className="tm-notice tm-notice--warn">{failMessage || "실시간 경로를 가져오지 못했어요."}</div>
           )}
 
           {status === "done" && result && result.success && (
             <>
               {result.search_type === "intercity" && (
-                <p style={{
-                  fontSize: "12px", color: "#795548", background: "#fff8e1", border: "1px solid #ffd54f",
-                  borderRadius: "6px", padding: "8px 10px", margin: "0 0 12px", lineHeight: 1.5,
-                }}>
+                <div className="tm-notice tm-notice--warn tm-mb-3">
                   도시 간 이동이라 터미널·역 사이 경로만 나와요. 출발지→터미널, 터미널→도착지 구간은 따로 확인해주세요.
-                </p>
+                </div>
               )}
               {result.routes.map((r, i) => (
-                <div
-                  key={i}
-                  style={{
-                    border: "1px solid #ddd", borderRadius: "8px", padding: "12px 14px",
-                    marginBottom: "10px", background: i === 0 ? "#f7fbff" : "#fff",
-                  }}
-                >
-                  <div style={{ fontWeight: "bold", fontSize: "13px", marginBottom: "8px" }}>
-                    {"①②③"[i] ?? i + 1} {r.total_time}분
-                    <span style={{ fontWeight: "normal", color: "#555" }}>
-                      {" "}· {r.payment.toLocaleString()}원 · 환승 {r.transfers}회 · 도보 {r.walk_minutes}분
-                    </span>
-                    {i === 0 && (
-                      <span style={{ marginLeft: "8px", fontSize: "11px", color: "#1976d2" }}>가장 빠른 경로</span>
-                    )}
-                  </div>
-                  {r.steps.map((s, si) => (
-                    <div key={si} style={{ display: "flex", gap: "8px", fontSize: "12px", color: "#333", marginBottom: "4px" }}>
-                      <span style={{ width: "18px", flexShrink: 0 }}>{ICON[s.type]}</span>
-                      <div style={{ minWidth: 0 }}>
-                        <div>{stepText(s)}</div>
-                        {stepSub(s) && <div style={{ color: "#999", fontSize: "11px" }}>{stepSub(s)}</div>}
+                <div key={i} className="ws-tr__route">
+                  <span className="ws-when__l">
+                    {i === 0 ? "가장 빠른 경로" : `경로 ${i + 1}`} · {r.total_time}분 · {r.payment.toLocaleString()}원 · 환승 {r.transfers}회
+                  </span>
+                  <div className="ws-sett ws-sett--tight">
+                    {r.steps.map((s, si) => (
+                      <div key={si} className="ws-airow ws-airow--tag">
+                        <span className={`tm-tag tm-tag--${s.type === "walk" ? "mint" : "blue"}`} style={{ justifySelf: "start" }}>
+                          {KIND[s.type]}
+                        </span>
+                        <span>
+                          {stepText(s)}
+                          {stepSub(s) && <span className="tm-hint ws-tr__sub">{stepSub(s)}</span>}
+                        </span>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               ))}
             </>
           )}
+        </div>
 
-          <div style={{
-            display: "flex", justifyContent: "space-between", alignItems: "center",
-            flexWrap: "wrap", gap: "8px", marginTop: "14px", paddingTop: "12px", borderTop: "1px solid #eee",
-          }}>
-            <span style={{ fontSize: "11px", color: "#999" }}>
-              {status === "done" && result?.success ? "powered by www.ODsay.com" : ""}
-            </span>
-            <div style={{ display: "flex", gap: "8px" }}>
-              <a
-                href={links.naver} target="_blank" rel="noopener noreferrer"
-                style={{ fontSize: "12px", color: "#1976d2" }}
-              >
-                네이버 지도에서 열기
-              </a>
-              <a
-                href={links.kakao} target="_blank" rel="noopener noreferrer"
-                style={{ fontSize: "12px", color: "#1976d2" }}
-              >
-                카카오맵에서 열기
-              </a>
-            </div>
-          </div>
+        <div className="tm-modal__foot ws-tr__foot">
+          <span className="tm-hint tm-mr-auto">
+            {status === "done" && result?.success ? "powered by www.ODsay.com" : ""}
+          </span>
+          <a className="ws-link" href={links.naver} target="_blank" rel="noopener noreferrer">네이버 지도에서 열기</a>
+          <a className="ws-link" href={links.kakao} target="_blank" rel="noopener noreferrer">카카오맵에서 열기</a>
         </div>
       </div>
     </div>

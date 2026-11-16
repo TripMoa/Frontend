@@ -1,12 +1,10 @@
 // src/features/workspace/components/modals/ExpenseModal.tsx
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import "./../../../styles/expModal.css";
 import { requestExpenseOcrWithPreview } from "../../../../../api/ocr.api";
-import BaseModal from "../../../../../shared/components/BaseModal";
 import { useTripContext } from "../../../hooks/useTripContext";
 import type { UseExpensesStore } from "../../../hooks/useExpenses";
-import { ActionPromptModal } from "../../../../../shared/components/ActionPromptModal";
+import WsConfirm from "../../layout/WsConfirm";
 import type {
   ExpenseItem,
   ExpenseMember,
@@ -160,6 +158,7 @@ const ExpenseModal: React.FC<Props> = ({
   type PromptMode = "notice" | "confirm";
 
   const [submitted, setSubmitted] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false); // 자세한 설정(카테고리·결제 수단·분할·일정 연결)
 
   const [prompt, setPrompt] = useState<{
     open: boolean;
@@ -167,6 +166,8 @@ const ExpenseModal: React.FC<Props> = ({
     title: string;
     headline: string;
     description: string;
+    confirmText?: string;
+    danger?: boolean;
     onConfirm?: () => void | Promise<void>;
   }>({
     open: false,
@@ -190,6 +191,7 @@ const ExpenseModal: React.FC<Props> = ({
     headline: string,
     description: string,
     onConfirm: () => void | Promise<void>,
+    opts?: { confirmText?: string; danger?: boolean },
   ) => {
     setPrompt({
       open: true,
@@ -197,6 +199,8 @@ const ExpenseModal: React.FC<Props> = ({
       title: "확인",
       headline,
       description,
+      confirmText: opts?.confirmText,
+      danger: opts?.danger,
       onConfirm,
     });
   };
@@ -672,6 +676,7 @@ const ExpenseModal: React.FC<Props> = ({
         closePrompt();
         await deleteExpense(editingId);
       },
+      { confirmText: "삭제", danger: true },
     );
   };
 
@@ -701,188 +706,78 @@ const ExpenseModal: React.FC<Props> = ({
     (fields[idx + 1] ?? fields[0]).focus();
   };
 
+  if (!isExpenseModalOpen) return null;
+
+  const CAT_NAME: Record<string, string> = {
+    FOOD: "식비",
+    TRANS: "교통",
+    STAY: "숙소",
+    SHOP: "쇼핑",
+    TICKET: "관광/티켓",
+    ETC: "기타",
+  };
+  const METHOD_NAME: Record<string, string> = { CARD: "카드", CASH: "현금", QR: "QR·간편결제" };
+  const linkedLabel = scheduleItemId != null ? "일정 연결됨" : "연결 없음";
+  const moreSummary = `${CAT_NAME[cat] ?? cat} · ${METHOD_NAME[method] ?? method} · ${
+    splitMode === "EQUAL" ? "균등 분할" : "금액 지정"
+  } · ${linkedLabel}`;
+  const star = <span className="ws-req" aria-hidden="true">*</span>;
+
   return (
     <>
-      <BaseModal
-        open={isExpenseModalOpen}
-        title={editingId ? "EDIT EXPENSE" : "ADD EXPENSE"}
-        onClose={closeExpenseModal}
-        className="exp2-modal"
-        width="min(980px, 92vw)"
-        height="90vh"
-      >
-        <div ref={formRef} className="exp2-body" onKeyDown={focusNextOnEnter}>
-          <div className="exp2-left">
-            <div className="exp2-receipt-section">
-              {currentFileName && (
-                <div className="exp2-filehint">첨부: {currentFileName}</div>
-              )}
-
-              <div
-                className="exp2-upload"
-                onClick={openPicker}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") openPicker();
-                }}
-              >
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleReceipt}
-                  className="exp2-file-input"
-                />
-
-                {currentReceiptBase64 ? (
-                  <div className="exp2-preview">
-                    <img
-                      alt="receipt preview"
-                      src={resolveReceiptSrc(currentReceiptBase64)}
-                    />
-                  </div>
-                ) : (
-                  <div className="exp2-upload-empty">
-                    <div className="exp2-upload-label">
-                      <span style={{ fontSize: 28 }}>📷</span>
-                      <span>UPLOAD RECEIPT</span>
-                    </div>
-                    <small>
-                      영수증 업로드 후 AUTO FILL 버튼을 누르면
-                      <br />
-                      데이터가 자동으로 입력됩니다.
-                    </small>
-                  </div>
-                )}
-              </div>
-
-              <div className="exp2-info-box">
-                ⚠ 왼쪽 영역은 자동 입력 대상이 아닙니다.
-              </div>
-
-              {currentReceiptBase64 && (
-                <div className="exp2-upload-actions">
-                  <button
-                    className="exp2-btn exp2-btn--ghost"
-                    type="button"
-                    onClick={requestOcrAutofill}
-                    disabled={ocrLoading}
-                  >
-                    {ocrLoading ? "자동 입력 중..." : "AUTO FILL"}
-                  </button>
-                  <button
-                    className="exp2-btn exp2-btn--ghost"
-                    type="button"
-                    onClick={clearAll}
-                  >
-                    CLEAR
-                  </button>
-                </div>
-              )}
-            </div>
-
-            <div className="exp2-left-box">
-              <div className="exp2-box-title">
-                WHO PAID? <span className="exp2-hint">(결제자)</span>
-              </div>
-
-              <select
-                className={`exp2-select ${payerError ? "is-error" : ""}`}
-                value={payer}
-                onChange={(e) =>
-                  handlePayerChange(e.target.value as ExpenseMember)
-                }
-              >
-                {expenseMembers.map((member) => (
-                  <option key={member} value={member}>
-                    {member}
-                  </option>
-                ))}
-              </select>
-              {payerError && (
-                <div className="exp2-field-error">결제자를 선택해주세요.</div>
-              )}
-
-              <div className="exp2-mini">
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={autoIncludePayer}
-                    onChange={(e) => setAutoIncludePayer(e.target.checked)}
-                  />{" "}
-                  결제자를 참여자에 자동 포함
-                </label>
-              </div>
-
-              <div style={{ height: 14 }} />
-
-              <div className="exp2-box-title">
-                WHO JOINED? <span className="exp2-hint">(참여자)</span>
-              </div>
-
-              <div className="exp2-pill-row">
-                {expenseMembers.map((member) => {
-                  const on = involved.includes(member);
-                  return (
-                    <div
-                      key={member}
-                      className={`exp2-pill ${on ? "" : "is-off"}`}
-                      onClick={() => toggleInvolved(member)}
-                      role="button"
-                      tabIndex={0}
-                    >
-                      {member}
-                    </div>
-                  );
-                })}
-              </div>
-              {involvedError && (
-                <div className="exp2-field-error">참여자를 선택해주세요.</div>
-              )}
-
-              <div style={{ height: 20 }} />
-
-              <div className="exp2-box-title">
-                EXPENSE TYPE <span className="exp2-hint">(지출 유형)</span>
-              </div>
-
-              <div
-                className="exp2-seg"
-                role="radiogroup"
-                aria-label="expense type"
-              >
-                <button
-                  type="button"
-                  className={expenseKind === "SHARED" ? "active" : ""}
-                  aria-pressed={expenseKind === "SHARED"}
-                  onClick={() => setExpenseKind("SHARED")}
-                >
-                  공동 지출
-                </button>
-
-                <button
-                  type="button"
-                  className={expenseKind === "PERSONAL" ? "active" : ""}
-                  aria-pressed={expenseKind === "PERSONAL"}
-                  onClick={() => setExpenseKind("PERSONAL")}
-                >
-                  개인 지출
-                </button>
-              </div>
-
-              {kindWarningMessage && (
-                <div className="exp2-inline-warning">{kindWarningMessage}</div>
-              )}
-            </div>
+      <div className="tm-overlay">
+        <div
+          className="tm-modal ws-expm"
+          role="dialog"
+          aria-modal="true"
+          aria-label={editingId ? "지출 수정" : "지출 추가"}
+        >
+          <div className="tm-modal__head">
+            <h3 className="tm-modal__title">{editingId ? "지출 수정" : "지출 추가"}</h3>
+            <button type="button" className="tm-btn tm-btn--sm" onClick={closeExpenseModal}>닫기</button>
           </div>
 
-          <div className="exp2-form">
-            <div className="exp2-row-2">
-              <div className="exp2-field">
-                <label>DATE</label>
+          <div ref={formRef} className="tm-modal__body" onKeyDown={focusNextOnEnter}>
+            {/* 영수증 — 자동 입력 */}
+            <div className="ws-ocrrow">
+              <span className="tm-hint tm-grow">
+                {currentFileName
+                  ? `첨부: ${currentFileName}`
+                  : "영수증 사진으로 자동 입력할 수 있어요 (3MB 이하)"}
+              </span>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleReceipt}
+                className="ws-sr"
+                tabIndex={-1}
+                aria-hidden="true"
+              />
+              {currentReceiptBase64 && (
+                <>
+                  <button type="button" className="tm-btn tm-btn--sm" onClick={requestOcrAutofill} disabled={ocrLoading}>
+                    {ocrLoading ? "자동 입력 중..." : "자동 입력"}
+                  </button>
+                  <button type="button" className="tm-btn tm-btn--sm" onClick={clearAll}>지우기</button>
+                </>
+              )}
+              <button type="button" className="tm-btn tm-btn--sm" onClick={openPicker}>
+                {currentReceiptBase64 ? "다시 올리기" : "영수증 올리기"}
+              </button>
+            </div>
+            {currentReceiptBase64 && (
+              <div className="ws-expm__preview">
+                <img alt="영수증 미리보기" src={resolveReceiptSrc(currentReceiptBase64)} />
+              </div>
+            )}
+
+            <div className="ws-when ws-when--2 ws-expm__row">
+              <div className="ws-when__cell">
+                <label className="ws-when__l" htmlFor="ws-ex-d">날짜 {star}</label>
                 <input
-                  className={`exp2-input ${dateError ? "is-error" : ""}`}
+                  id="ws-ex-d"
+                  className={`tm-input ws-when__in${dateError ? " tm-input--error" : ""}`}
                   type="date"
                   value={date}
                   min="1900-01-01"
@@ -892,21 +787,17 @@ const ExpenseModal: React.FC<Props> = ({
                     setDate(e.target.value);
                   }}
                 />
-                {dateError && (
-                  <div className="exp2-field-error">날짜를 입력해주세요.</div>
-                )}
+                {dateError && <div className="tm-field__error">날짜를 입력해주세요.</div>}
               </div>
-
-              <div className="exp2-field">
-                <label>AMOUNT</label>
+              <div className="ws-when__cell">
+                <label className="ws-when__l" htmlFor="ws-ex-a">금액 {star}</label>
                 <input
-                  className={`exp2-input ${amountError ? "is-error" : ""}`}
+                  id="ws-ex-a"
+                  className={`tm-input ws-when__in${amountError ? " tm-input--error" : ""}`}
                   type="text"
                   inputMode="numeric"
                   value={amountError ? "" : costText}
-                  placeholder={
-                    amountError ? "금액은 0원보다 커야 해요." : "금액 입력"
-                  }
+                  placeholder={amountError ? "금액은 0원보다 커야 해요." : "금액 입력"}
                   onChange={(e) => {
                     setSubmitted(false);
                     handleCostInput(e.target.value);
@@ -915,224 +806,247 @@ const ExpenseModal: React.FC<Props> = ({
               </div>
             </div>
 
-            <div className="exp2-field">
-              <label>STORE NAME</label>
-              <input
-                className={`exp2-input ${storeNameError ? "is-error" : ""}`}
-                type="text"
-                value={storeNameError ? "" : storeName}
-                placeholder={
-                  storeNameError ? "상호명을 입력해주세요." : "상호명 입력"
-                }
-                onChange={(e) => {
-                  setSubmitted(false);
-                  setStoreName(e.target.value);
-                }}
-              />
-            </div>
-
-            <div className="exp2-field">
-              <label>ITEM</label>
-              <input
-                className={`exp2-input ${titleError ? "is-error" : ""}`}
-                type="text"
-                value={titleError ? "" : title}
-                placeholder={titleError ? "항목을 입력해주세요." : "항목 입력"}
-                onChange={(e) => {
-                  setSubmitted(false);
-                  setTitle(e.target.value);
-                }}
-              />
-            </div>
-
-            <div className="exp2-row-2">
-              <div className="exp2-field">
-                <label>CATEGORY</label>
-                <select
-                  className="exp2-select"
-                  value={cat}
-                  onChange={(e) => setCat(e.target.value)}
-                >
-                  <option value="FOOD">식비 (FOOD)</option>
-                  <option value="TRANS">교통 (TRANS)</option>
-                  <option value="STAY">숙소 (STAY)</option>
-                  <option value="SHOP">쇼핑 (SHOP)</option>
-                  <option value="TICKET">관광/티켓 (TICKET)</option>
-                  <option value="ETC">기타 (ETC)</option>
-                </select>
+            <div className="ws-when ws-when--2 ws-expm__row">
+              <div className="ws-when__cell">
+                <label className="ws-when__l" htmlFor="ws-ex-t">항목 {star}</label>
+                <input
+                  id="ws-ex-t"
+                  className={`tm-input ws-when__in${titleError ? " tm-input--error" : ""}`}
+                  type="text"
+                  value={titleError ? "" : title}
+                  placeholder={titleError ? "항목을 입력해주세요." : "예: 점심"}
+                  onChange={(e) => {
+                    setSubmitted(false);
+                    setTitle(e.target.value);
+                  }}
+                />
               </div>
-
-              <div className="exp2-field">
-                <label>METHOD</label>
-                <select
-                  className="exp2-select"
-                  value={method}
-                  onChange={(e) => setMethod(e.target.value)}
-                >
-                  <option value="CARD">신용카드 (CARD)</option>
-                  <option value="CASH">현금 (CASH)</option>
-                  <option value="QR">QR/간편결제 (QR)</option>
-                </select>
+              <div className="ws-when__cell">
+                <label className="ws-when__l" htmlFor="ws-ex-s">상호명 {star}</label>
+                <input
+                  id="ws-ex-s"
+                  className={`tm-input ws-when__in${storeNameError ? " tm-input--error" : ""}`}
+                  type="text"
+                  value={storeNameError ? "" : storeName}
+                  placeholder={storeNameError ? "상호명을 입력해주세요." : "예: 타코야키 와나카"}
+                  onChange={(e) => {
+                    setSubmitted(false);
+                    setStoreName(e.target.value);
+                  }}
+                />
               </div>
             </div>
 
-            {scheduleItemOptions.length > 0 && (
-              <div className="exp2-field">
-                <label>연결할 일정 (선택)</label>
-                <select
-                  className="exp2-select"
-                  value={scheduleItemId ?? ""}
-                  onChange={(e) =>
-                    setScheduleItemId(
-                      e.target.value ? Number(e.target.value) : null,
-                    )
-                  }
+            <div className="ws-fld">
+              <label className="ws-when__l" htmlFor="ws-ex-p">결제자 {star}</label>
+              <select
+                id="ws-ex-p"
+                className={`tm-select${payerError ? " tm-input--error" : ""}`}
+                value={payer}
+                onChange={(e) => handlePayerChange(e.target.value as ExpenseMember)}
+              >
+                {expenseMembers.map((member) => (
+                  <option key={member} value={member}>{member}</option>
+                ))}
+              </select>
+              {payerError && <div className="tm-field__error">결제자를 선택해주세요.</div>}
+              <label className="tm-check ws-expm__auto">
+                <input
+                  type="checkbox"
+                  checked={autoIncludePayer}
+                  onChange={(e) => setAutoIncludePayer(e.target.checked)}
+                />
+                <span>결제자를 참여자에 자동 포함</span>
+              </label>
+            </div>
+
+            <div className="ws-fld">
+              <span className="ws-when__l">참여자 {star}</span>
+              <div className="tm-row ws-expm__joined">
+                {expenseMembers.map((member) => (
+                  <label key={member} className="tm-check">
+                    <input
+                      type="checkbox"
+                      checked={involved.includes(member)}
+                      onChange={() => toggleInvolved(member)}
+                    />
+                    <span>{member}</span>
+                  </label>
+                ))}
+              </div>
+              {involvedError && <div className="tm-field__error">참여자를 선택해주세요.</div>}
+            </div>
+
+            <div className="ws-fld">
+              <span className="ws-when__l">지출 유형 {star}</span>
+              <div className="tm-seg ws-aiseg" role="group" aria-label="지출 유형">
+                <button
+                  type="button"
+                  className={expenseKind === "SHARED" ? "is-on" : ""}
+                  aria-pressed={expenseKind === "SHARED"}
+                  onClick={() => setExpenseKind("SHARED")}
                 >
-                  <option value="">연결 안 함</option>
-                  {Object.entries(groupedScheduleItemsByDay).map(
-                    ([day, items]) => (
-                      <optgroup key={day} label={day}>
-                        {items.map((item) => (
-                          <option key={item.id} value={item.id}>
-                            {item.time} · {item.title}
-                          </option>
-                        ))}
-                      </optgroup>
-                    ),
-                  )}
-                </select>
+                  공동 지출
+                </button>
+                <button
+                  type="button"
+                  className={expenseKind === "PERSONAL" ? "is-on" : ""}
+                  aria-pressed={expenseKind === "PERSONAL"}
+                  onClick={() => setExpenseKind("PERSONAL")}
+                >
+                  개인 지출
+                </button>
+              </div>
+              {submitted && !expenseKind && <div className="tm-field__error">지출 유형을 선택해주세요.</div>}
+              {kindWarningMessage && <p className="ws-aidesc ws-expm__warn">{kindWarningMessage}</p>}
+            </div>
+
+            {/* 금액을 직접 나눌 때는 접지 않고 바로 보이게 */}
+            {splitMode === "AMOUNT" && (
+              <div className="ws-fld">
+                <span className="ws-when__l">금액 지정 — 참여자별 부담액</span>
+                <div className="ws-sett">
+                  {participants.map((p) => (
+                    <div key={p.member} className="ws-airow ws-airow--split">
+                      <b>
+                        {p.member}
+                        {p.member === payer && <span className="tm-tag ws-expm__payer">결제자</span>}
+                      </b>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        className="tm-input ws-when__in"
+                        aria-label={`${p.member} 부담액`}
+                        value={fmt(splitAmounts[p.member] ?? 0)}
+                        onChange={(e) => handleAmountInput(p.member, e.target.value)}
+                      />
+                    </div>
+                  ))}
+                </div>
+                <div className="tm-kv"><span>총액</span><b>{fmt(total)}원</b></div>
+                <div className="tm-kv"><span>분할 합계</span><b>{fmt(splitSum)}원</b></div>
+                <div className="tm-kv">
+                  <span>차이</span>
+                  <b className={diff === 0 ? "ws-pos" : "ws-neg"}>
+                    {diff >= 0 ? fmt(diff) : `-${fmt(Math.abs(diff))}`}원
+                  </b>
+                </div>
+                {splitError && <div className="tm-field__error">분할 합계가 총액과 같아야 해요.</div>}
               </div>
             )}
 
-            <div className="exp2-split-card">
-              <div className="exp2-split-head">
-                <div className="exp2-split-title">SPLIT CALC</div>
+            <button
+              type="button"
+              className="ws-morebar"
+              aria-expanded={moreOpen}
+              onClick={() => setMoreOpen((v) => !v)}
+            >
+              <b>자세한 설정</b>
+              <span className="tm-hint tm-ellipsis">{moreOpen ? "접기 ▴" : `${moreSummary} ▾`}</span>
+            </button>
 
-                <div
-                  className="exp2-toggle"
-                  role="tablist"
-                  aria-label="split type"
-                >
-                  <button
-                    type="button"
-                    className={splitMode === "EQUAL" ? "active" : ""}
-                    aria-selected={splitMode === "EQUAL"}
-                    onClick={() => setSplitMode("EQUAL")}
-                  >
-                    균등 (1/N)
-                  </button>
-                  <button
-                    type="button"
-                    className={splitMode === "AMOUNT" ? "active" : ""}
-                    aria-selected={splitMode === "AMOUNT"}
-                    onClick={() => setSplitMode("AMOUNT")}
-                  >
-                    금액 입력
-                  </button>
+            {moreOpen && (
+              <div className="ws-aimore">
+                <div className="ws-fld">
+                  <label className="ws-when__l" htmlFor="ws-ex-cat">카테고리</label>
+                  <select id="ws-ex-cat" className="tm-select" value={cat} onChange={(e) => setCat(e.target.value)}>
+                    {Object.keys(CAT_NAME).map((k) => (
+                      <option key={k} value={k}>{CAT_NAME[k]}</option>
+                    ))}
+                  </select>
                 </div>
-              </div>
 
-              <div className="exp2-split-grid">
-                {participants.map((p) => (
-                  <div key={p.member} className="exp2-split-row">
-                    <div className="exp2-who">
-                      <strong>{p.member}</strong>
-                      {p.member === payer && (
-                        <span className="exp2-tag">PAYER</span>
-                      )}
-                    </div>
-
-                    <div className="exp2-amt">
-                      {splitMode === "EQUAL" ? (
-                        <div className="exp2-amt-text">{fmt(p.amount)}원</div>
-                      ) : (
-                        <>
-                          <input
-                            type="text"
-                            inputMode="numeric"
-                            value={fmt(splitAmounts[p.member] ?? 0)}
-                            onChange={(e) =>
-                              handleAmountInput(p.member, e.target.value)
-                            }
-                          />
-                          <span className="exp2-won">원</span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="exp2-split-summary">
-                <div className="exp2-summary-left">
-                  <div className="exp2-kv">
-                    <span className="k">총액</span>
-                    <span className="v">{fmt(total)}원</span>
-                  </div>
-                  <div className="exp2-kv">
-                    <span className="k">분할합계</span>
-                    <span className="v">{fmt(splitSum)}원</span>
-                  </div>
-                  <div className="exp2-kv">
-                    <span className="k">차이</span>
-                    <span className="v">
-                      {diff >= 0 ? fmt(diff) : `-${fmt(Math.abs(diff))}`}원
-                    </span>
+                <div className="ws-fld">
+                  <span className="ws-when__l">결제 수단</span>
+                  <div className="tm-seg ws-aiseg" role="group" aria-label="결제 수단">
+                    {Object.keys(METHOD_NAME).map((k) => (
+                      <button
+                        key={k}
+                        type="button"
+                        className={method === k ? "is-on" : ""}
+                        aria-pressed={method === k}
+                        onClick={() => setMethod(k)}
+                      >
+                        {METHOD_NAME[k]}
+                      </button>
+                    ))}
                   </div>
                 </div>
 
-                <div className={`exp2-delta ${canSave ? "ok" : "bad"}`}>
-                  {canSave ? "OK: 저장 가능" : saveErrorMessage}
+                <div className="ws-fld">
+                  <span className="ws-when__l">분할 방식</span>
+                  <div className="tm-seg ws-aiseg" role="group" aria-label="분할 방식">
+                    <button
+                      type="button"
+                      className={splitMode === "EQUAL" ? "is-on" : ""}
+                      aria-pressed={splitMode === "EQUAL"}
+                      onClick={() => setSplitMode("EQUAL")}
+                    >
+                      균등
+                    </button>
+                    <button
+                      type="button"
+                      className={splitMode === "AMOUNT" ? "is-on" : ""}
+                      aria-pressed={splitMode === "AMOUNT"}
+                      onClick={() => setSplitMode("AMOUNT")}
+                    >
+                      금액 지정
+                    </button>
+                  </div>
+                  {splitMode === "EQUAL" && participants.length > 0 && (
+                    <p className="ws-aidesc ws-expm__warn">
+                      {participants.map((p) => `${p.member} ${fmt(p.amount)}원`).join(" · ")}
+                    </p>
+                  )}
                 </div>
-                {splitError && (
-                  <div className="exp2-field-error">
-                    분할 합계가 총액과 같아야 해요.
+
+                {scheduleItemOptions.length > 0 && (
+                  <div className="ws-fld">
+                    <label className="ws-when__l" htmlFor="ws-ex-link">연결할 일정</label>
+                    <select
+                      id="ws-ex-link"
+                      className="tm-select"
+                      value={scheduleItemId ?? ""}
+                      onChange={(e) => setScheduleItemId(e.target.value ? Number(e.target.value) : null)}
+                    >
+                      <option value="">연결 안 함</option>
+                      {Object.entries(groupedScheduleItemsByDay).map(([day, items]) => (
+                        <optgroup key={day} label={day}>
+                          {items.map((item) => (
+                            <option key={item.id} value={item.id}>
+                              {item.time} · {item.title}
+                            </option>
+                          ))}
+                        </optgroup>
+                      ))}
+                    </select>
                   </div>
                 )}
               </div>
-            </div>
+            )}
+          </div>
 
-            <div className="exp2-info-box">
-              <div className="exp2-info-row">
-                정산 모드: <strong>통합 버전</strong>
-              </div>
-              <div className="exp2-info-row">
-                잔액 분배:{" "}
-                <strong>
-                  {settings?.roundingRule === "SEQUENTIAL"
-                    ? "순차 분배"
-                    : settings?.roundingRule === "RANDOM"
-                      ? "랜덤 분배"
-                      : "결제자 우선"}
-                </strong>
-              </div>
-            </div>
-
-            <div className="exp2-footer">
-              <button
-                className="exp2-delete"
-                style={{ display: editingId ? "block" : "none" }}
-                onClick={handleDelete}
-              >
-                DELETE
-              </button>
-
-              <button className="exp2-save" onClick={handleSave}>
-                SAVE RECORD
-              </button>
-            </div>
+          <div className="tm-modal__foot">
+            {editingId && (
+              <button type="button" className="tm-btn tm-btn--danger tm-mr-auto" onClick={handleDelete}>삭제</button>
+            )}
+            <button type="button" className="tm-btn" onClick={closeExpenseModal}>취소</button>
+            <button type="button" className="tm-btn tm-btn--primary" onClick={handleSave}>
+              {editingId ? "수정 저장" : "저장"}
+            </button>
           </div>
         </div>
-      </BaseModal>
+      </div>
 
-      <ActionPromptModal
+      <WsConfirm
         open={prompt.open}
         title={prompt.title}
         headline={prompt.headline}
         description={prompt.description}
         hideCancel={prompt.mode === "notice"}
         cancelText="취소"
-        confirmText="확인"
+        confirmText={prompt.confirmText ?? "확인"}
+        danger={prompt.danger}
         onClose={closePrompt}
         onConfirm={async () => {
           if (prompt.mode === "confirm" && prompt.onConfirm) {
