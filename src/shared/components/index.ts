@@ -2,7 +2,6 @@
 
 export { default as Layout } from "./Layout";
 export { default as Header } from "./Header";
-export { default as Footer } from "./Footer";
 export { default as BaseModal } from "./BaseModal";
 export { ActionPromptModal } from "./ActionPromptModal";
 export { AvatarDisplay } from "./AvatarDisplay";
