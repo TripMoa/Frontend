@@ -1,45 +1,47 @@
-// src/features/home/pages/Home.tsx
-
-import { useState } from "react";
+import { useRef, useState } from "react";
+import type { FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/Home.css";
 import { createTrip } from "../../../api/trip.api";
 import { useAccessGuard } from "../../../shared/hooks/useAccessGuard";
 import { ActionPromptModal } from "../../../shared/components/ActionPromptModal";
 import type { TripCreateRequest } from "../../../types/trip.types";
+import { useHandFont } from "../hooks/useHandFont";
+
+const FEATURES = [
+  { no: "01", title: "같이 그리는 지도", desc: "친구를 초대해 한 지도에서 동시에 일정을 짜요. 친구가 고친 내용이 바로 보여요.", hand: "\"이거 누가 넣었어\" 종결" },
+  { no: "02", title: "AI가 짜는 동선", desc: "가고 싶은 곳만 찍으세요. 이동 시간과 거리를 계산해 효율적인 순서로 묶어 드려요.", hand: "우리 다리는 소중하니까" },
+  { no: "03", title: "1원까지 나눠요", desc: "쓴 돈만 적으세요. 인원수에 맞춰 누가 누구에게 얼마 보낼지 계산해 드려요.", hand: "총무 은퇴 가능" },
+  { no: "04", title: "여행기로 남겨요", desc: "다녀온 여행을 사진과 함께 기록해요. 마음에 드는 여행기는 일정을 통째로 가져와 내 여행에 써요.", hand: "남의 맛집 루트 그대로 복붙" },
+  { no: "05", title: "같이 갈 사람 찾아요", desc: "날짜·예산·여행 스타일이 맞는 동행을 찾고, 마음에 드는 글에 신청 한 번이면 끝이에요.", hand: "혼자 가긴 아쉬우니까" },
+  { no: "06", title: "승인되면 바로 대화", desc: "동행 신청이 승인되면 1:1 채팅이 열려요. 여행 이야기는 여기서 나누고, 여행이 끝나면 방도 같이 닫혀요.", hand: "번호 교환은 천천히" },
+];
+
+const isValidDateFormat = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value);
+
+const normalizeDateInput = (value: string) => {
+  const [year = "", month = "", day = ""] = value.split("-");
+  return [year.slice(0, 4), month.slice(0, 2), day.slice(0, 2)].filter(Boolean).join("-");
+};
 
 export default function Home() {
+  useHandFont();
   const navigate = useNavigate();
-  const [formError, setFormError] = useState<string | null>(null);
+  const destinationRef = useRef<HTMLInputElement>(null);
 
-  const { requireLogin, showLoginModal, closeLoginModal, moveToLogin } =
-    useAccessGuard();
+  const { requireLogin, showLoginModal, closeLoginModal, moveToLogin } = useAccessGuard();
 
   const [destination, setDestination] = useState("");
   const [tripStartDate, setTripStartDate] = useState("");
   const [tripEndDate, setTripEndDate] = useState("");
+  const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const isValidDateFormat = (value: string) => {
-    return /^\d{4}-\d{2}-\d{2}$/.test(value);
-  };
+  const isDateRangeValid = !tripStartDate || !tripEndDate || tripEndDate >= tripStartDate;
+  const destinationMissing = !destination && Boolean(tripStartDate || tripEndDate);
+  const errorMessage = formError ?? (tripStartDate && tripEndDate && !isDateRangeValid ? "복귀일은 출발일 이후여야 합니다." : null);
 
-  const normalizeDateInput = (value: string) => {
-    const [year = "", month = "", day = ""] = value.split("-");
-
-    return [year.slice(0, 4), month.slice(0, 2), day.slice(0, 2)]
-      .filter(Boolean)
-      .join("-");
-  };
-
-  const handleDateChange = (value: string, setter: (v: string) => void) => {
-    setter(normalizeDateInput(value));
-  };
-
-  const isDateRangeValid =
-    !tripStartDate || !tripEndDate || tripEndDate >= tripStartDate;
-
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     if (!requireLogin()) return;
@@ -49,20 +51,15 @@ export default function Home() {
       setFormError("여행지를 입력해주세요.");
       return;
     }
-
     if (!tripStartDate || !tripEndDate) {
       setFormError("출발일과 복귀일을 입력해주세요.");
       return;
     }
-
     if (!isValidDateFormat(tripStartDate) || !isValidDateFormat(tripEndDate)) {
       setFormError("날짜는 YYYY-MM-DD 형식으로 입력해주세요.");
       return;
     }
-
-    if (!isDateRangeValid) {
-      return;
-    }
+    if (!isDateRangeValid) return;
 
     const payload: TripCreateRequest = {
       title: destination.trim(),
@@ -84,331 +81,130 @@ export default function Home() {
     }
   };
 
+  const goToForm = () => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    destinationRef.current?.focus({ preventScroll: true });
+  };
+
   return (
-    <section className="page-section">
-      <div className="container">
-        {/* HERO */}
-        <section className="hero-section">
-          <div className="deco-tag">SYSTEM: READY</div>
-          <h1 className="hero-title">
-            Where is your
-            <br />
-            Next Destination?
-          </h1>
-          <p className="hero-desc">// 새로운 여행 작전 계획을 수립하십시오.</p>
+    <div className="tm-home tm-grid-bg home-page">
+      <div className="home-wrap">
+        <section className="tm-home-hero">
+          <div>
+            <span className="tm-home-hero__note tm-hand">단톡방 탈출 프로젝트 ↓</span>
+            <h1 className="tm-home-hero__title">
+              다음 여행은
+              <br />
+              <mark>어디로</mark> 가<span className="q">?</span>
+            </h1>
+            <p className="tm-home-hero__lead">
+              여행지랑 날짜만 정하면 여행방이 바로 열려요. 친구를 불러 일정을 같이 짜고, 정산은 알아서 나눠 드릴게요.
+            </p>
 
-          <form className="plan-form" onSubmit={handleSubmit}>
-            <div className="input-group">
-              <label className="input-label">TARGET LOCATION (여행지)</label>
-              <input
-                type="text"
-                className={`input-field ${
-                  !destination && (tripStartDate || tripEndDate)
-                    ? "input-error"
-                    : ""
-                }`}
-                placeholder="예: 도쿄, 제주도, 뉴욕..."
-                value={destination}
-                onChange={(e) => {
-                  setFormError(null);
-                  setDestination(e.target.value);
-                }}
-              />
+            <form className="tm-home-form" onSubmit={handleSubmit} noValidate>
+              <div className="tm-field">
+                <label className="tm-label" htmlFor="home-destination">어디 갈 거야?</label>
+                <input
+                  ref={destinationRef}
+                  id="home-destination"
+                  type="text"
+                  className={`tm-input ${destinationMissing ? "tm-input--error" : ""}`}
+                  placeholder="예: 도쿄, 제주도, 뉴욕..."
+                  value={destination}
+                  aria-invalid={destinationMissing || undefined}
+                  onChange={(e) => {
+                    setFormError(null);
+                    setDestination(e.target.value);
+                  }}
+                />
+              </div>
+
+              <div className="tm-field">
+                <label className="tm-label" htmlFor="home-start">출발</label>
+                <input
+                  id="home-start"
+                  type="date"
+                  className="tm-input"
+                  value={tripStartDate}
+                  min="1900-01-01"
+                  max="9999-12-31"
+                  onChange={(e) => {
+                    setFormError(null);
+                    setTripStartDate(normalizeDateInput(e.target.value));
+                  }}
+                />
+              </div>
+
+              <div className="tm-field">
+                <label className="tm-label" htmlFor="home-end">복귀</label>
+                <input
+                  id="home-end"
+                  type="date"
+                  className="tm-input"
+                  value={tripEndDate}
+                  min={tripStartDate || "1900-01-01"}
+                  max="9999-12-31"
+                  onChange={(e) => {
+                    setFormError(null);
+                    setTripEndDate(normalizeDateInput(e.target.value));
+                  }}
+                />
+              </div>
+
+              <button type="submit" className="tm-btn tm-btn--primary" disabled={isSubmitting}>
+                {isSubmitting ? "여행방 만드는 중..." : "여행방 만들기 →"}
+              </button>
+
+              {errorMessage && (
+                <p className="tm-notice tm-notice--danger home-form-error" role="alert">
+                  ⚠ {errorMessage}
+                </p>
+              )}
+            </form>
+          </div>
+
+          <div className="tm-home-board" aria-hidden="true">
+            <div className="tm-home-piece tm-home-piece--ticket">
+              <span className="tm-home-tape" />
+              <div className="r1"><span>BOARDING · 3명</span><span>11.12</span></div>
+              <b>ICN → KIX</b>
+              <div className="dash" />
+              <div className="r1"><span>오사카 3박 4일</span><span>SEAT: 아무데나</span></div>
             </div>
-
-            <div className="input-group">
-              <label className="input-label">DEP. DATE (출발)</label>
-              <input
-                type="date"
-                className="input-field"
-                value={tripStartDate}
-                min="1900-01-01"
-                max="9999-12-31"
-                onChange={(e) => {
-                  setFormError(null);
-                  handleDateChange(e.target.value, setTripStartDate);
-                }}
-              />
-            </div>
-
-            <div className="input-group">
-              <label className="input-label">ARR. DATE (복귀)</label>
-              <input
-                type="date"
-                className="input-field"
-                value={tripEndDate}
-                min={tripStartDate || "1900-01-01"}
-                max="9999-12-31"
-                onChange={(e) => {
-                  setFormError(null);
-                  handleDateChange(e.target.value, setTripEndDate);
-                }}
-              />
-            </div>
-
-            <button
-              type="submit"
-              className="generate-btn"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? "GENERATING..." : <>GENERATE {">"}</>}
-            </button>
-
-            {formError && <p className="home-form-error">⚠ {formError}</p>}
-
-            {tripStartDate && tripEndDate && !isDateRangeValid && (
-              <p className="home-form-error">
-                ⚠ 복귀일은 출발일 이후여야 합니다.
-              </p>
-            )}
-          </form>
-
-          <ActionPromptModal
-            open={showLoginModal}
-            title="로그인이 필요합니다"
-            headline="로그인 후 이용할 수 있어요"
-            description="여행 계획 생성은 로그인한 사용자만 이용할 수 있습니다."
-            cancelText="취소"
-            confirmText="로그인"
-            onClose={closeLoginModal}
-            onConfirm={moveToLogin}
-          />
+            <div className="tm-home-stamp">D-14<br />설렘</div>
+            <div className="tm-home-piece tm-home-piece--sticky">민: 오사카성은<br />무조건 가야 함!!</div>
+            <div className="tm-home-piece tm-home-piece--polar"><i /><span>타코야키 🐙</span></div>
+            <div className="tm-home-piece tm-home-piece--chat"><small>지</small>환전은 누가 해?</div>
+          </div>
         </section>
 
-        {/* MODULE 01 */}
-        <div className="feature-row">
-          <div className="feat-content">
-            <span className="feat-tag">MODULE 01. SYNC</span>
-            <h2 className="feat-title">
-              함께 그리는
-              <br />
-              실시간 여행 지도
-            </h2>
-            <p className="feat-desc">
-              친구를 초대해 동시에 계획을 세워보세요.
-              <br />
-              마치 게임처럼, 친구의 수정 사항이 실시간으로 눈앞에 펼쳐집니다.
-            </p>
-          </div>
-
-          <div className="feat-visual">
-            <div className="mock-box">
-              <div
-                style={{
-                  fontWeight: "bold",
-                  marginBottom: "10px",
-                  fontFamily: "var(--font-mono)",
-                }}
-              >
-                OSAKA_PLAN.map
-              </div>
-              <div className="mock-line"></div>
-              <div className="mock-line short"></div>
-              <div style={{ display: "flex", gap: "5px", marginTop: "15px" }}>
-                <div
-                  style={{
-                    width: "20px",
-                    height: "20px",
-                    background: "#000",
-                    borderRadius: "50%",
-                  }}
-                ></div>
-                <div
-                  style={{
-                    width: "20px",
-                    height: "20px",
-                    background: "#aaa",
-                    borderRadius: "50%",
-                  }}
-                ></div>
-                <div
-                  style={{
-                    fontSize: "12px",
-                    lineHeight: "20px",
-                    fontWeight: "bold",
-                  }}
-                >
-                  + User Joined
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* MODULE 02 */}
-        <div className="feature-row reverse">
-          <div className="feat-content">
-            <span className="feat-tag">MODULE 02. AI-OPT</span>
-            <h2 className="feat-title">
-              AI가 찾아주는
-              <br />
-              최적의 루트
-            </h2>
-            <p className="feat-desc">
-              가고 싶은 장소만 콕콕 집어주세요.
-              <br />
-              AI가 이동 시간과 거리를 계산해 가장 효율적인 여행 동선을 만들어
-              드립니다.
-            </p>
-          </div>
-
-          <div className="feat-visual">
-            <div className="mock-box" style={{ width: "65%" }}>
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  marginBottom: "10px",
-                  borderBottom: "2px solid #000",
-                  paddingBottom: "5px",
-                }}
-              >
-                <span
-                  style={{
-                    fontWeight: "bold",
-                    fontFamily: "var(--font-mono)",
-                  }}
-                >
-                  AI_ROUTING...
-                </span>
-                <span
-                  style={{
-                    background: "#000",
-                    color: "#fff",
-                    fontSize: "10px",
-                    padding: "2px 5px",
-                  }}
-                >
-                  PROCESSING
-                </span>
-              </div>
-
-              <div
-                style={{
-                  fontSize: "12px",
-                  fontWeight: "bold",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "8px",
-                }}
-              >
-                <div
-                  style={{ display: "flex", alignItems: "center", gap: "5px" }}
-                >
-                  <span
-                    style={{ width: "8px", height: "8px", background: "#000" }}
-                  ></span>
-                  HOTEL (START)
-                </div>
-                <div
-                  style={{
-                    borderLeft: "2px dotted #aaa",
-                    height: "15px",
-                    marginLeft: "3px",
-                  }}
-                ></div>
-                <div
-                  style={{ display: "flex", alignItems: "center", gap: "5px" }}
-                >
-                  <span
-                    style={{
-                      width: "8px",
-                      height: "8px",
-                      border: "2px solid #000",
-                      boxSizing: "border-box",
-                    }}
-                  ></span>
-                  MUSEUM
-                </div>
-                <div
-                  style={{
-                    borderLeft: "2px dotted #aaa",
-                    height: "15px",
-                    marginLeft: "3px",
-                  }}
-                ></div>
-                <div
-                  style={{ display: "flex", alignItems: "center", gap: "5px" }}
-                >
-                  <span
-                    style={{
-                      width: "8px",
-                      height: "8px",
-                      border: "2px solid #000",
-                      boxSizing: "border-box",
-                    }}
-                  ></span>
-                  CAFE
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* MODULE 03 */}
-        <div className="feature-row">
-          <div className="feat-content">
-            <span className="feat-tag">MODULE 03. CALC</span>
-            <h2 className="feat-title">
-              1원 단위까지 확실한
-              <br />
-              자동 정산
-            </h2>
-            <p className="feat-desc">
-              &quot;누가 얼마 냈지?&quot; 고민하지 마세요.
-              <br />
-              지출 내역만 입력하면 인원수에 맞춰 복잡한 계산을 자동으로
-              끝내드립니다.
-            </p>
-          </div>
-
-          <div className="feat-visual">
-            <div className="mock-box" style={{ width: "60%" }}>
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  borderBottom: "2px dashed #000",
-                  paddingBottom: "10px",
-                  marginBottom: "10px",
-                }}
-              >
-                <span style={{ fontWeight: "bold" }}>TOTAL</span>
-                <span
-                  style={{
-                    fontFamily: "var(--font-mono)",
-                    fontWeight: "bold",
-                    fontSize: "18px",
-                  }}
-                >
-                  ₩ 450,000
-                </span>
-              </div>
-
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  fontSize: "14px",
-                }}
-              >
-                <span>ME</span>
-                <span style={{ color: "red" }}>- 12,500</span>
-              </div>
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  fontSize: "14px",
-                }}
-              >
-                <span>FRIEND</span>
-                <span style={{ color: "blue" }}>+ 12,500</span>
-              </div>
-            </div>
-          </div>
-        </div>
+        <section className="tm-home-feat home-feat" aria-label="TRIPMOA 기능">
+          {FEATURES.map((f) => (
+            <article key={f.no} className="tm-home-feat__item">
+              <span className="tm-home-feat__no">{f.no}</span>
+              <h3>{f.title}</h3>
+              <p>{f.desc}</p>
+              <span className="tm-hand">{f.hand}</span>
+            </article>
+          ))}
+        </section>
       </div>
-    </section>
+
+      <section className="tm-home-band">
+        <h2>이번엔 <mark>같이</mark> 짜자</h2>
+        <button type="button" className="tm-btn" onClick={goToForm}>무료로 시작하기</button>
+      </section>
+
+      <ActionPromptModal
+        open={showLoginModal}
+        title="로그인이 필요합니다"
+        headline="로그인 후 이용할 수 있어요"
+        description="여행 계획 생성은 로그인한 사용자만 이용할 수 있습니다."
+        cancelText="취소"
+        confirmText="로그인"
+        onClose={closeLoginModal}
+        onConfirm={moveToLogin}
+      />
+    </div>
   );
 }

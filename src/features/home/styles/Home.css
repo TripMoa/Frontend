@@ -1,242 +1,120 @@
-/* index.css */
+.home-page {
+  overflow-x: hidden;
+  font-family: var(--tm-font);
+  color: var(--tm-ink);
+  line-height: normal;
+}
 
-/* Hero Section (상단 메인 영역) */
-.hero-section,
-.hero-section * {
-  font-family: "Share Tech Mono", "Noto Sans KR", monospace !important;
+.home-page .tm-label,
+.home-page .tm-input,
+.home-page .tm-btn,
+.home-page .tm-home-piece--ticket .r1,
+.home-page .tm-home-piece--polar span,
+.home-page .tm-home-piece--chat,
+.home-page .tm-home-piece--chat small,
+.home-page .tm-home-feat__no,
+.home-page .tm-home-feat__item h3,
+.home-page .tm-home-band h2 {
+  line-height: normal;
+}
+
+.home-page .tm-input {
+  height: 44px;
+}
+
+.home-page .tm-home-piece--ticket b {
+  font-weight: 700;
+}
+
+.home-page .tm-home-piece--chat {
+  font-size: 16px;
+}
+
+.home-page .tm-home-piece--chat small {
+  font-size: smaller;
+}
+
+.home-page .tm-hand,
+.home-page .tm-home-piece--sticky,
+.home-page .tm-home-piece--polar span {
+  font-family: "Gaegu", cursive;
+}
+
+.home-page .tm-home-feat__item p,
+.home-page .tm-home-band .tm-btn {
+  font-size: 16px;
+}
+
+.home-wrap {
   box-sizing: border-box;
+  max-width: var(--tm-w-wide);
+  margin: 0 auto;
+  padding: 0 28px;
 }
 
-.hero-section {
-  border: 3px solid #000;
-  background: #fff;
-  padding: 40px;
-  margin-bottom: 100px;
-  box-shadow: 10px 10px 0px rgba(0, 0, 0, 1);
-  position: relative;
-  text-align: left;
+.home-page .tm-home-hero__title mark {
+  color: var(--tm-ink);
 }
 
-.deco-tag {
-  position: absolute;
-  top: -15px;
-  right: 20px;
-  background: #111;
-  color: #fff;
-  padding: 5px 10px;
-  font-size: 0.8rem;
-  font-weight: 400;
-  letter-spacing: 1px;
+.home-page .tm-input.tm-input--error {
+  border-color: var(--tm-danger);
+  background: var(--tm-danger-bg);
 }
 
-.hero-title {
-  font-size: 3rem;
-  margin: 0 0 10px 0;
-  text-transform: uppercase;
-  line-height: 1;
-  font-weight: 900;
-  color: #000;
-  letter-spacing: normal;
-}
-
-.hero-desc {
-  margin-bottom: 30px;
-  color: #555;
-  font-weight: bold;
-  font-size: 1rem;
-}
-
-/* 여행 계획 입력 폼 */
-.plan-form {
-  display: grid;
-  grid-template-columns: 2fr 1fr 1fr auto;
-  gap: 15px;
-  align-items: end;
-  background: transparent;
-  border: none;
-  padding: 0;
-  max-width: 100%;
-}
-
-.input-group {
-  display: flex;
-  flex-direction: column;
-  text-align: left;
-}
-
-.input-label {
-  font-size: 0.9rem;
-  font-weight: bold;
-  margin-bottom: 8px;
-  color: #333;
-  display: block;
-  text-transform: uppercase;
-}
-
-.input-field {
-  border: 3px solid #000 !important;
-  padding: 0 15px;
-  font-size: 1.1rem;
-  background: #eee;
-  outline: none;
-  width: 100%;
-  height: 60px;
-  border-radius: 0 !important;
-  color: #000;
-  display: flex;
-  align-items: center;
-}
-
-.input-field::placeholder {
-  color: #888;
-  font-family: "Noto Sans KR", sans-serif;
-  font-weight: 500;
-}
-
-.input-field:focus {
-  background: #fff;
-}
-
-.generate-btn {
-  background: #111;
-  color: #fff;
-  border: 3px solid #000;
-  padding: 0 30px;
-  font-size: 1.3rem;
-  cursor: pointer;
-  height: 60px;
-  transition: 0.2s;
-  font-weight: bold;
-  letter-spacing: 1px;
-  margin: 0;
-  border-radius: 0 !important;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transform: none;
-}
-
-.generate-btn:hover {
-  background: #fff;
-  color: #000;
-  box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.5);
-  transform: translate(-2px, -7px);
+.home-page .tm-input:focus-visible,
+.home-page .tm-btn:focus-visible {
+  outline: 3px solid var(--tm-yellow);
+  outline-offset: 2px;
 }
 
 .home-form-error {
-  margin: 8px 0 0;
-  font-size: 0.85rem;
-  line-height: 1.4;
-  color: #d32f2f;
-  font-weight: 800;
-  font-family: "Noto Sans KR", sans-serif !important;
+  grid-column: 1 / -1;
+  margin: 0;
 }
 
-.input-field.input-error {
-  border-color: #d32f2f !important;
-  background: #fff7f7;
+.home-feat {
+  row-gap: 52px;
 }
 
-.generate-btn:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-  transform: none;
+.home-feat .tm-home-feat__item:nth-child(4) {
+  transform: rotate(0.8deg);
 }
 
-.generate-btn:disabled:hover {
-  background: #111;
-  color: #fff;
-  box-shadow: none;
-  transform: none;
+.home-feat .tm-home-feat__item:nth-child(5) {
+  transform: rotate(-1deg);
 }
 
-/* Feature Rows (기능 소개) */
-.feature-row {
-  display: flex;
-  align-items: center;
-  gap: 60px;
-  margin-bottom: 100px;
-}
-.feature-row.reverse {
-  flex-direction: row-reverse;
+.home-feat .tm-home-feat__item:nth-child(6) {
+  transform: rotate(0.6deg);
 }
 
-.feat-content {
-  flex: 1;
-}
-
-.feat-tag {
-  font-family: var(--font-mono);
-  font-weight: bold;
-  font-size: 14px;
-  color: var(--accent);
-  margin-bottom: 10px;
-  display: block;
-}
-
-.feat-title {
-  font-size: 32px;
-  font-weight: 800;
-  margin-bottom: 20px;
-  line-height: 1.3;
-}
-
-.feat-desc {
-  font-size: 17px;
-  color: #555;
-  line-height: 1.6;
-}
-
-.feat-visual {
-  flex: 1;
-  height: 350px;
-  background: #fff;
-  border: 2px solid #000;
-  box-shadow: var(--shadow-hard);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  overflow: hidden;
-  background-image: radial-gradient(#ddd 1px, transparent 1px);
-  background-size: 10px 10px;
-}
-
-.mock-box {
-  width: 70%;
-  background: #fff;
-  border: 2px solid #000;
-  padding: 20px;
-  box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.1);
-}
-
-.mock-line {
-  height: 10px;
-  background: #eee;
-  margin-bottom: 10px;
-  width: 100%;
-}
-.mock-line.short {
-  width: 60%;
-}
-
-/* 모바일 반응형 */
-@media (max-width: 900px) {
-  .plan-form {
-    grid-template-columns: 1fr;
+@media (max-width: 960px) and (min-width: 701px) {
+  .home-feat {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .hero-title {
-    font-size: 2.2rem;
+}
+
+@media (max-width: 700px) {
+  .home-wrap {
+    padding: 0 16px;
   }
-  .generate-btn {
-    width: 100%;
-    margin-top: 10px;
+
+  .home-page .tm-home-hero {
+    padding: 36px 0 48px;
   }
-  .feature-row {
-    flex-direction: column;
-    text-align: center;
+
+  .home-page .tm-home-board {
+    display: none;
   }
-  .feature-row.reverse {
-    flex-direction: column;
+
+  .home-page .tm-home-band {
+    padding: 44px 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-page .tm-home-feat__item,
+  .home-page .tm-btn {
+    transition: none;
   }
 }
