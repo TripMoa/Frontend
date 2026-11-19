@@ -2,8 +2,7 @@
 
 /* === [레이아웃 공통 (Main, Container)] === */
 main {
-  margin-top: 70px;
-  min-height: calc(100vh - 70px);
+  min-height: calc(100vh - var(--tm-h-header));
 }
 
 .container {
@@ -16,7 +15,7 @@ main {
   display: block;
   animation: fadeIn 0.4s ease;
 
-  min-height: calc(100vh - 70px);
+  min-height: calc(100vh - var(--tm-h-header));
 }
 
 .section-header {
