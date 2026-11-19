@@ -1,8 +1,6 @@
-import { PenSquare, Inbox, User } from "lucide-react";
 import { ActionPromptModal } from "../../../shared/components";
 import { useAccessGuard } from "../../../shared/hooks";
 import { useUserProfile } from "../../user/hooks";
-import "../styles/MateHeader.css";
 
 interface MateHeaderProps {
   onWriteClick: () => void;
@@ -51,47 +49,38 @@ export function MateHeader({
 
   return (
     <>
-    <div className="header">
-      <div className="flex items-center justify-between flex-wrap gap-4">
-        <h1 className="text-[32px] font-black font-mono uppercase tracking-wide leading-tight">
-          FIND YOUR TRAVEL COMPANION
-        </h1>
+    <div className="mate-ph">
+      <div className="mate-ph__text">
+        <h1 className="mate-ph__title">FIND YOUR<br />TRAVEL COMPANION</h1>
+        <p className="mate-ph__desc">여행 일정이 맞는 동행을 찾아보세요 · 만 19세 이상 성인 인증 필요</p>
+      </div>
 
-        <div className="flex gap-3">
-          <button 
-            className="flex items-center gap-2 bg-white text-black px-5 py-2.5 transition-colors font-bold text-sm uppercase tracking-wide button"
-            onClick={handleWriteClick}
-          >
-            <PenSquare className="w-4 h-4" />
-            WRITE
-          </button>
-
-          <button 
-            className="flex items-center gap-2 bg-white text-black px-5 py-2.5 transition-colors font-bold text-sm uppercase tracking-wide relative button"
+      <div className="mate-ph__actions">
+        <span className="mate-badge-wrap">
+          <button
+            type="button"
+            className="mate-bt"
             onClick={handleMySentClick}
+            aria-label={mySentCount > 0 ? `MY SENT, 보낸 신청 ${mySentCount}개` : undefined}
           >
-            <Inbox className="w-4 h-4" />
             MY SENT
-            {mySentCount > 0 && (
-              <span className="absolute -top-2 -right-2 bg-blue-500 text-white text-xs w-5 h-5 flex items-center justify-center font-bold">
-                {mySentCount}
-              </span>
-            )}
           </button>
-
-          <button 
-            className="flex items-center gap-2 px-5 py-2.5 transition-colors font-bold text-sm uppercase tracking-wide relative button buttonDark"
+          {mySentCount > 0 && <span className="mate-count mate-count--info" aria-hidden="true">{mySentCount}</span>}
+        </span>
+        <span className="mate-badge-wrap">
+          <button
+            type="button"
+            className="mate-bt"
             onClick={handleReceivedClick}
+            aria-label={receivedPendingCount > 0 ? `RECEIVED, 대기 중인 신청 ${receivedPendingCount}개` : undefined}
           >
-            <User className="w-4 h-4" />
             RECEIVED
-            {receivedPendingCount > 0 && (
-              <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs w-5 h-5 flex items-center justify-center font-bold">
-                {receivedPendingCount}
-              </span>
-            )}
           </button>
-        </div>
+          {receivedPendingCount > 0 && <span className="mate-count" aria-hidden="true">{receivedPendingCount}</span>}
+        </span>
+        <button type="button" className="mate-bt mate-bt--r" onClick={handleWriteClick}>
+          WRITE
+        </button>
       </div>
     </div>
 

@@ -1,6 +1,3 @@
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import "../styles/MatePagination.css";
-
 interface MatePaginationProps {
   currentPage: number;
   totalPages: number;
@@ -15,23 +12,17 @@ export function MatePagination({
   if (totalPages <= 1) return null;
 
   return (
-    <div className="flex items-center justify-center gap-3 mt-8">
-
-      {/* PREV */}
+    <nav className="mate-pg" aria-label="페이지 이동">
       <button
+        type="button"
+        className="mate-pg__b"
         onClick={() => onPageChange(Math.max(1, currentPage - 1))}
         disabled={currentPage === 1}
-        className={`flex items-center gap-2 px-5 py-2.5 font-bold text-sm uppercase tracking-wide transition-all pagination-button ${
-          currentPage === 1
-            ? "bg-[#eee] text-black/40 cursor-not-allowed pagination-button-disabled"
-            : "bg-white text-black hover:bg-black hover:text-white"
-        }`}
+        aria-label="이전 페이지"
       >
-        <ChevronLeft className="w-4 h-4" />
-        PREV
+        ‹
       </button>
 
-      {/* 페이지 번호 */}
       {Array.from({ length: totalPages }).map((_, index) => {
         const pageNumber = index + 1;
         const isActive = currentPage === pageNumber;
@@ -39,31 +30,25 @@ export function MatePagination({
         return (
           <button
             key={pageNumber}
+            type="button"
             onClick={() => onPageChange(pageNumber)}
-            className={`w-11 h-11 font-bold text-sm font-mono transition-all page-button ${
-              isActive
-                ? "page-button-active"
-                : "bg-white text-black hover:bg-[#eee]"
-            }`}
+            className={`mate-pg__b ${isActive ? "is-on" : ""}`}
+            aria-current={isActive ? "page" : undefined}
           >
             {pageNumber}
           </button>
         );
       })}
 
-      {/* NEXT */}
       <button
+        type="button"
+        className="mate-pg__b"
         onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
         disabled={currentPage === totalPages}
-        className={`flex items-center gap-2 px-5 py-2.5 font-bold text-sm uppercase tracking-wide transition-all pagination-button ${
-          currentPage === totalPages
-            ? "bg-[#eee] text-black/40 cursor-not-allowed pagination-button-disabled"
-            : "bg-white text-black hover:bg-black hover:text-white"
-        }`}
+        aria-label="다음 페이지"
       >
-        NEXT
-        <ChevronRight className="w-4 h-4" />
+        ›
       </button>
-    </div>
+    </nav>
   );
 }
