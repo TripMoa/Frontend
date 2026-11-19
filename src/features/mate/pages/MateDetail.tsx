@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Heart, Calendar, Users, Wallet, Eye } from "lucide-react";
 import type { Post, ApplicationRequest } from "../hooks/mate.types";
 import { calculateDuration, getAgeGroupLabel, getGenderPreferenceLabel, getTransportLabel } from "../hooks/mate.constants";
 import { useMate } from "../hooks/useMate";
@@ -8,7 +7,10 @@ import { useAuth } from "../../user/pages/AuthContext";
 import { isPostExpired } from "../hooks/mate.util";
 import { useAccessGuard } from "../../../shared/hooks";
 import { ActionPromptModal } from "../../../shared/components";
+import "../styles/Mate.css";
 import "../styles/MateDetail.css";
+import { getApplicantAvatar } from "../../../shared/hooks/avatar";
+import { AvatarDisplay } from "../../../shared/components/AvatarDisplay";
 import { getAccessToken } from "../../../api/api";
 import { applyMatePost } from "../../../api/mate.api";
 
@@ -19,7 +21,6 @@ export default function MateDetail() {
   const { toggleLike, fetchPostDetail } = useMate();
 
   const [post, setPost] = useState<Post | null>(null);
-  const [showApplyForm, setShowApplyForm] = useState(false);
   const [applyMessage, setApplyMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
 
@@ -39,10 +40,6 @@ export default function MateDetail() {
     requireLogin,
     requireAdultVerified,
   } = useAccessGuard(profile);
-
-  const handleApplyClick = () => {
-    if (requireAdultVerified()) setShowApplyForm(true);
-  };
 
   const handleLikeClick = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
@@ -113,6 +110,7 @@ export default function MateDetail() {
 
   const handleApplySubmit = async () => {
     if (!postId || !applyMessage.trim() || !post) return;
+    if (!requireAdultVerified()) return;
 
     try {
       const requestBody: ApplicationRequest = {
@@ -126,265 +124,187 @@ export default function MateDetail() {
         hasApplied: true,
       } : null);
 
-      setShowApplyForm(false);
       setApplyMessage("");
-      alert("신청이 완료되었습니다!");
       
     } catch (error) {
       alert(error instanceof Error ? error.message : "신청 중 오류가 발생했습니다.");
     }
   };
 
+  const pageHead = (
+    <div className="mate-ph">
+      <div className="mate-ph__text">
+        <button type="button" onClick={() => navigate("/mate")} className="mate-bt mate-bt--ghost mate-bt--sm mate-ph__back">
+          ‹ 목록으로
+        </button>
+        <h2 className="mate-ph__title">모집글 상세</h2>
+      </div>
+    </div>
+  );
+
   if (isLoading) {
     return (
-      <div className="mate-detail flex flex-col items-center justify-center h-[60vh]">
-        <div className="text-xl font-bold">게시글을 불러오는 중...</div>
-      </div>
+      <section className="page-section tm-grid-bg">
+        <div className="mate-p2">
+          {pageHead}
+          <div className="mate-section">
+            <div className="tm-loading"><span className="tm-spinner" />게시글을 불러오는 중...</div>
+          </div>
+        </div>
+      </section>
     );
   }
 
   if (!post) {
     return (
-      <div className="mate-detail flex flex-col items-center justify-center h-[60vh]">
-        <p className="text-xl font-bold text-black/70 mb-4">게시글을 찾을 수 없습니다</p>
-        <button onClick={() => navigate("/mate")} className="btn-outline">
-          <ArrowLeft size={18} />
-          목록으로 돌아가기
-        </button>
-      </div>
+      <section className="page-section tm-grid-bg">
+        <div className="mate-p2">
+          {pageHead}
+          <div className="mate-section">
+            <div className="mate-empty">
+              <span className="mate-empty__icon" aria-hidden="true">🧳</span>
+              <b>게시글을 찾을 수 없어요</b>
+              삭제됐거나 주소가 잘못됐을 수 있어요
+            </div>
+          </div>
+        </div>
+      </section>
     );
   }
 
   const isLiked = post.liked || false;
   const hasApplied = post.hasApplied || false;
   const isExpire = isPostExpired(post);
+  const isFull = post.currentParticipant >= post.maxParticipant;
+  const styles = post.author?.travelStyles ?? [];
+  const authorGender = post.author.gender ? getGenderPreferenceLabel(post.author.gender.toLowerCase()) : "";
+
+  const applyArea = hasApplied ? (
+    <div className="mate-notice mate-notice--ok">✓ 신청이 완료되었습니다! 작성자가 승인하면 채팅에 참여할 수 있어요.</div>
+  ) : isAuthor ? (
+    <div className="mate-notice">내가 쓴 글에는 신청할 수 없어요. 받은 신청은 RECEIVED에서 관리해요.</div>
+  ) : isExpire ? (
+    <div className="mate-notice">모집이 종료된 게시글이에요.</div>
+  ) : isFull ? (
+    <div className="mate-notice">모집 인원이 다 찼어요.</div>
+  ) : (
+    <>
+      <div className="mate-field">
+        <label className="mate-lb mate-lb--req" htmlFor="mate-apply-message">신청 메시지</label>
+        <textarea
+          id="mate-apply-message"
+          className="tm-textarea"
+          rows={4}
+          value={applyMessage}
+          onChange={(e) => setApplyMessage(e.target.value)}
+          placeholder="작성자에게 나를 소개하고 같이 가고 싶은 이유를 적어주세요"
+        />
+      </div>
+      <div className="mate-form-actions">
+        <button
+          type="button"
+          disabled={!applyMessage.trim()}
+          className="mate-bt mate-bt--r"
+          onClick={handleApplySubmit}
+        >
+          신청하기
+        </button>
+      </div>
+    </>
+  );
 
   return (
     <>
-    <div className="mate-detail">
-      <div className="max-w-4xl mx-auto px-6 py-16">
-        
-        {/* 1. 상단 내비게이션 & 메타 정보 (조회수, 좋아요 가로 배치) */}
-        <div className="flex justify-between items-end header-border">
-          <div>
-            <button 
-              onClick={() => navigate(-1)} 
-              className="flex items-center gap-2 mb-6 font-bold hover:underline group"
-            >
-              <ArrowLeft size={20} strokeWidth={3} className="transition-transform group-hover:-translate-x-1" />
-              <span className="uppercase tracking-tighter text-lg font-black">Back to List</span>
-            </button>
-            <h1 className="text-5xl font-black uppercase tracking-tighter leading-none text-black">
-              {post.destination}
-            </h1>
+    <section className="page-section tm-grid-bg">
+    <div className="mate-p2 mate-detail">
+      {pageHead}
+
+      <div className="mate-art">
+        <div className="mate-art__main">
+          <div className="mate-art__to">
+            <small>TO</small>
+            <h1 className="mate-art__title">{post.destination}</h1>
+          </div>
+          <div className="mate-art__meta">
+            <span>TICKET NO. {post.id.toString().padStart(6, "0")}</span>
+            <span aria-hidden="true">·</span>
+            <span>조회 {post.viewsCount}</span>
+            <span aria-hidden="true">·</span>
+            <span>좋아요 {post.likesCount}</span>
           </div>
 
-          <div className="flex gap-3 mb-1">
-            {/* 조회수 박스 */}
-            <div className="stat-box">
-              <Eye size={18} strokeWidth={3} className="text-black" />
-              <span>{post.viewsCount}</span>
-            </div>
+          <div className="mate-info">
+            <div><small>DEPARTURE</small><b>{post.startDate}</b></div>
+            <div><small>ARRIVAL</small><b>{post.endDate}</b></div>
+            <div><small>DURATION</small><b>{calculateDuration(post.startDate, post.endDate)}</b></div>
+            <div><small>SEAT</small><b>{post.currentParticipant}/{post.maxParticipant}</b></div>
+            <div><small>TRANSPORT</small><b>{getTransportLabel(post.transport)}</b></div>
+            <div><small>BUDGET</small><b>{post.budget.toLocaleString()}</b></div>
+          </div>
 
-            {/* 좋아요 버튼 (활성화 시 빨간색) */}
+          <div className="mate-prefs">
+            {isExpire ? (
+              <span className="mate-tag">마감</span>
+            ) : isFull ? (
+              <span className="mate-tag mate-tag--r">정원 마감</span>
+            ) : (
+              <span className="mate-tag mate-tag--m">모집중</span>
+            )}
+            <span className="mate-tag mate-tag--b">{getAgeGroupLabel(post.ageGroup)}</span>
+            <span className="mate-tag mate-tag--p">{getGenderPreferenceLabel(post.genderPreference)}</span>
+          </div>
+
+          <div className="mate-art__body">{post.content}</div>
+
+          <section className="mate-form-sec">
+            <h3 className="mate-form-sec__title">신청하기</h3>
+            {applyArea}
+          </section>
+        </div>
+
+        <aside className="mate-art__side">
+          <div className="mate-card">
+            <div className="mate-profile">
+              <span className="mate-av mate-av--lg" aria-hidden="true">
+                <AvatarDisplay avatar={getApplicantAvatar(post.author.profileImage, post.author.avatarEmoji)} />
+              </span>
+              <div className="mate-grow">
+                <div className="mate-profile__name">{post.author.nickname}</div>
+                <div className="mate-li__hint">
+                  작성자{authorGender && ` · ${authorGender}`}{post.author.age ? ` · ${post.author.age}세` : ""}
+                </div>
+              </div>
+            </div>
+            {styles.length > 0 && (
+              <div className="mate-prefs mate-profile__tags">
+                {styles.map((tag) => (
+                  <span key={tag} className="mate-tag mate-tag--m">#{tag}</span>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="mate-card">
+            <div className="mate-kv"><span className="mate-kv__k">모집 인원</span><span className="mate-kv__v">{post.currentParticipant} / {post.maxParticipant}명</span></div>
+            <div className="mate-kv"><span className="mate-kv__k">예산</span><span className="mate-kv__v">₩{post.budget.toLocaleString()}</span></div>
+            <div className="mate-kv"><span className="mate-kv__k">이동수단</span><span className="mate-kv__v">{getTransportLabel(post.transport)}</span></div>
+          </div>
+
+          <div className="mate-btns">
             <button
+              type="button"
               onClick={handleLikeClick}
-              className={`stat-box btn-like ${isLiked ? "active" : ""}`}
+              className={`mate-bt ${isLiked ? "mate-bt--r" : ""}`}
+              aria-pressed={isLiked}
             >
-              <Heart 
-                size={18} 
-                strokeWidth={3} 
-                fill={isLiked ? "white" : "none"} 
-              />
-              <span>{post.likesCount}</span>
+              {isLiked ? "♥ 찜 취소" : "♡ 찜하기"}
             </button>
+            <button type="button" className="mate-bt" onClick={() => navigate("/mate")}>‹ 목록으로</button>
           </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 items-start">
-          
-          {/* 왼쪽 컬럼 */}
-          <div className="lg:col-span-2 space-y-8">
-            
-            {/* 2. 여행 필수 정보 섹션 */}
-            <section className="info-grid">
-              <div className="info-item border-r-4 border-black">
-                <Calendar size={24} strokeWidth={3} className="mb-2 text-black" />
-                <p className="info-label">Duration</p>
-                <p className="text-lg font-black">{calculateDuration(post.startDate, post.endDate)}</p>
-                <p className="text-[10px] font-bold text-gray-400">{post.startDate} ~ {post.endDate}</p>
-              </div>
-              <div className="info-item border-r-4 border-black">
-                <Users size={24} strokeWidth={3} className="mb-2 text-black" />
-                <p className="info-label">Members</p>
-                <p className="text-lg font-black">{post.currentParticipant}/{post.maxParticipant}</p>
-                <p className="text-[10px] font-bold text-gray-400">PEOPLES</p>
-              </div>
-              <div className="info-item">
-                <Wallet size={24} strokeWidth={3} className="mb-2 text-black" />
-                <p className="info-label">Budget</p>
-                <p className="text-lg font-black">{post.budget.toLocaleString()}₩</p>
-                <p className="text-[10px] font-bold text-gray-400">KRW</p>
-              </div>
-            </section>
-
-            {/* 3. 메이트 선호도 섹션 */}
-            <section className="preference-card">
-              <div className="flex items-center gap-3 mb-4">
-                <span className="bg-black text-white text-xs font-black px-2 py-1 uppercase italic">
-                  Mate Preference
-                </span>
-                <div className="h-[2px] flex-grow bg-black/10"></div>
-              </div>
-              
-              <div className="grid grid-cols-3 gap-4">
-                <div className="preference-item bg-blue-50">
-                  <span className="text-[10px] font-black text-blue-600 uppercase">Trans</span>
-                  <span className="text-sm font-black">{getTransportLabel(post.transport)}</span>
-                </div>
-                
-                <div className="preference-item bg-pink-50">
-                  <span className="text-[10px] font-black text-pink-600 uppercase">Gender</span>
-                  <span className="text-sm font-black">{getGenderPreferenceLabel(post.genderPreference)}</span>
-                </div>
-                
-                <div className="preference-item bg-green-50">
-                  <span className="text-[10px] font-black text-green-600 uppercase">Age</span>
-                  <span className="text-sm font-black">{getAgeGroupLabel(post.ageGroup)}</span>
-                </div>
-              </div>
-            </section>
-
-            {/* 4. 여행 소개글 (여기는 시원하게 유지) */}
-            <section className="neo-card min-h-[400px]">
-              <h3 className="text-2xl font-black mb-6 uppercase italic underline decoration-yellow-400 decoration-4 underline-offset-4">
-                Travel Intro
-              </h3>
-              <div className="leading-relaxed whitespace-pre-wrap text-xl font-medium text-black/90">
-                {post.content}
-              </div>
-            </section>
-          </div>
-
-          {/* 오른쪽 컬럼: 사이드바 (작성자 프로필 & 신청하기) */}
-          <div className="space-y-10 lg:sticky lg:top-10">
-            
-            {/* 4. 작성자 상세 프로필 카드 */}
-            <div className="author-card">
-              <p className="inline-block text-[10px] font-black bg-black text-white px-3 py-1 mb-8 uppercase tracking-widest">
-                Host Info
-              </p>
-              
-              <div className="flex items-center gap-5 mb-10 border-black pb-8"
-              style={{borderBottomWidth: "thin", borderBottomColor: "gray"}}>
-                <div className="author-avatar">
-                  {post.author.profileImage ? (
-                    <img 
-                      src={post.author.profileImage} 
-                      alt="profile" 
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <span>{post.author.avatarEmoji || "👤"}</span>
-                  )}
-                </div>
-                <div className="overflow-hidden">
-                  <p className="font-black text-3xl uppercase tracking-tighter leading-none mb-2 break-words">
-                    {post.author.nickname}
-                  </p>
-                  <p className="text-xs font-bold border-black inline-block break-all">
-                    {post.author.email}
-                  </p>
-                </div>
-              </div>
-
-              {/* 성별, 나이 정보 */}
-              <div className="grid grid-cols-2 gap-4 mb-8">
-                <div className="meta-tag">
-                  <p className="text-[10px] font-black uppercase text-gray-500 mb-1">Gender</p>
-                  <p className="text-base font-black uppercase">{getGenderPreferenceLabel(post.author.gender.toLowerCase())}</p>
-                </div>
-                <div className="meta-tag">
-                  <p className="text-[10px] font-black uppercase text-gray-500 mb-1">Age</p>
-                  <p className="text-base font-black">{post.author.age}세</p>
-                </div>
-              </div>
-
-              {/* 여행 스타일 태그 */}
-              {post.author?.travelStyles && post.author.travelStyles.length > 0 && (
-                <div>
-                  <p className="text-[10px] font-black uppercase text-gray-500 mb-4">Travel Styles</p>
-                  <div className="flex flex-wrap gap-2">
-                    {post.author.travelStyles.map((tag) => (
-                      <span key={tag} className="travel-style-tag">
-                        #{tag}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* 5. 신청하기 섹션 */}
-            <div className="apply-card">
-              {isExpire ? (
-                <>
-                  <div className="text-center py-4 font-black uppercase italic text-xl border-4 border-black bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-                    모집 종료
-                  </div>
-                </>
-              ) : isAuthor ? (
-                <>
-                  <div className="text-center py-4 font-black uppercase italic text-xl border-4 border-black bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-                    My Post
-                  </div>
-                </>
-              ) : !showApplyForm ? (
-                <button
-                  disabled={hasApplied || post.currentParticipant >= post.maxParticipant}
-                  onClick={handleApplyClick}
-                  className="apply-button"
-                >
-                  {hasApplied ? "Applied" : post.currentParticipant >= post.maxParticipant ? "Full" : "Apply Now"}
-                </button>
-              ) : (
-                <div className="space-y-5">
-                  <textarea
-                    className="w-full h-40 p-4 border-4 border-black font-bold resize-none focus:outline-none text-base bg-white placeholder:text-gray-400"
-                    value={applyMessage}
-                    onChange={(e) => setApplyMessage(e.target.value)}
-                    placeholder="신청 메시지를 입력하세요..."
-                  />
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <button
-                      className="py-3 border-4 border-black bg-white font-black uppercase hover:bg-gray-100 transition-all"
-                      onClick={() => {
-                        setShowApplyForm(false);
-                        setApplyMessage("");
-                      }}
-                    >
-                      Cancel
-                    </button>
-
-                    <button
-                      disabled={!applyMessage.trim()}
-                      className="py-3 border-4 border-black bg-black text-white font-black uppercase disabled:opacity-50 transition-all"
-                      onClick={handleApplySubmit}
-                    >
-                      Send
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* 하단 여백 */}
-        <div className="py-12"></div>
+        </aside>
       </div>
     </div>
+    </section>
 
     <ActionPromptModal
       open={showLoginModal}
