@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowUpDown, User, ChevronDown } from "lucide-react";
 
 import { useMate } from "../hooks/useMate";
 import { useAuth } from "../../user/pages/AuthContext";
@@ -23,7 +22,6 @@ import {
 } from "../components";
 
 import "../styles/Mate.css";
-import "../../chat/styles/ChatFAB.css";
 import type { MateTabKey } from "../components/MateTabs";
 import { isPostExpired } from "../hooks/mate.util";
 import { getAccessToken } from "../../../api/api";
@@ -46,7 +44,7 @@ export default function Mate() {
   const [showChatModal, setShowChatModal] = useState(false);
 
   const [activeTab, setActiveTab] = useState<MateTabKey>('all');
-  
+
   const { chatRooms, createRoom, sendMessage, refreshRooms, markAsRead, leaveRoom } = useChat();
 
   const { posts, loading, error, 
@@ -121,6 +119,15 @@ export default function Mate() {
   }, [fetchPosts]);
 
   useEffect(() => {
+    if (!showSortDropdown) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (!(e.target as HTMLElement).closest(".mate-sort")) setShowSortDropdown(false);
+    };
+    document.addEventListener("click", handleClickOutside);
+    return () => document.removeEventListener("click", handleClickOutside);
+  }, [showSortDropdown]);
+
+  useEffect(() => {
     if (showReceivedModal) {
       fetchReceivedApplications();
     }
@@ -132,13 +139,11 @@ export default function Mate() {
     }
   }, [showSentModal]);
 
-  // 탭 진입 시 데이터 로드
   useEffect(() => {
     if (activeTab === 'passed') fetchPassedPosts();
     else if (activeTab === 'expired') fetchExpiredPosts();
   }, [activeTab, fetchPassedPosts, fetchExpiredPosts]);
 
-  // 페이지 첫 진입 시에도 passed 목록은 받아둬야 ALL 탭에서 필터 가능
   useEffect(() => { fetchPassedPosts(); }, [fetchPassedPosts]);
   useEffect(() => { fetchExpiredPosts(); }, [fetchExpiredPosts]);
 
@@ -231,164 +236,132 @@ export default function Mate() {
 
   const token = getAccessToken();
 
+  useEffect(() => {
+    if (!token) return;
+    fetchSentApplications();
+    fetchReceivedApplications();
+  }, [token, fetchSentApplications, fetchReceivedApplications]);
+
+  const mySentCount = applications.length;
+  const receivedPendingCount = receivedApplications.filter(
+    (a) => String(a.status ?? "pending").toLowerCase() === "pending"
+  ).length;
+
+  const TAB_BANNER: Record<Exclude<MateTabKey, 'all'>, [string, string, string]> = {
+    passed: ["📁", ">> PASSED ARCHIVE", "관심 없음으로 넘긴 글이에요. UNPASS를 누르면 목록에 다시 나와요."],
+    expired: ["⏳", ">> EXPIRED POSTS", "모집 기간이 끝난 글이에요. 내용만 볼 수 있어요."],
+    liked: ["💖", ">> MY WISHLIST", "찜한 글이에요. 마음에 드는 동행에게 신청해 보세요."],
+    my: ["👤", ">> MY OWN POSTS", "내가 쓴 모집 글이에요. 받은 신청은 RECEIVED에서 관리해요."],
+  };
+
+  const sortControl = (
+    <div className="mate-sort">
+      <button
+        type="button"
+        className="mate-bt"
+        onClick={() => setShowSortDropdown(!showSortDropdown)}
+        aria-haspopup="menu"
+        aria-expanded={showSortDropdown}
+      >
+        정렬: {getSortLabel(sortBy)}
+      </button>
+      {showSortDropdown && (
+        <div className="mate-sort__menu" role="menu">
+          <div className="mate-sort__head" aria-hidden="true">정렬 기준</div>
+          {SORT_OPTIONS.flatMap((group) => group.options).map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              role="menuitemradio"
+              aria-checked={sortBy === option.value}
+              className={`mate-sort__item ${sortBy === option.value ? "is-on" : ""}`}
+              onClick={() => {
+                setSortBy(option.value);
+                setCurrentPage(1);
+                setShowSortDropdown(false);
+              }}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
   return (
-    <section className="page-section">
-      <div className="container" style={{ paddingTop: "40px", paddingBottom: "40px" }}>
-        <div style={{ marginBottom: "35px" }}>
-          <MateHeader
-            onWriteClick={() => setShowWriteModal(true)}
-            onMySentClick={() => setShowSentModal(true)}
-            onReceivedClick={() => setShowReceivedModal(true)}
-            onChatListClick={() => {}}
-            mySentCount={0}
-            receivedPendingCount={0}
-            unreadChatCount={0}
-          />
-        </div>
-        
-        <div className="mate-management-board">
-          <MateTabs
-            active={activeTab}
-            onChange={setActiveTab}
-            counts={counts}
-          />
+    <section className="page-section tm-grid-bg">
+      <div className="mate-p2">
+        <MateHeader
+          onWriteClick={() => setShowWriteModal(true)}
+          onMySentClick={() => setShowSentModal(true)}
+          onReceivedClick={() => setShowReceivedModal(true)}
+          onChatListClick={() => {}}
+          mySentCount={mySentCount}
+          receivedPendingCount={receivedPendingCount}
+          unreadChatCount={0}
+        />
 
-          <div className="filter-wrapper">
-            {activeTab === 'all' ? (
-              <MateFilters
-                locationFilter={locationFilter}
-                setLocationFilter={setLocationFilter}
-                dateFilter={dateFilter}
-                setDateFilter={setDateFilter}
-                genderFilter={genderFilter}
-                setGenderFilter={setGenderFilter}
-                ageFilter={ageFilter}
-                setAgeFilter={setAgeFilter}
-                selectedTags={selectedTags}
-                toggleTag={toggleTag}
-                setCurrentPage={setCurrentPage}
-              />
-            ) : (
-            <div className="tab-status-banner">
-              <div className="banner-icon">
-                {activeTab === 'passed' && '📁'}
-                {activeTab === 'expired' && '⏳'}
-                {activeTab === 'liked' && '💖'}
-                {activeTab === 'my' && '👤'}
-              </div>
-              <div className="banner-content">
-                <span className="banner-title">
-                  {activeTab === 'passed' && '>> PASSED ARCHIVE'}
-                  {activeTab === 'expired' && '>> EXPIRED POSTS'}
-                  {activeTab === 'liked' && '>> MY WISHLIST'}
-                  {activeTab === 'my' && '>> MY OWN POSTS'}
-                </span>
-                <p className="banner-desc">
-                  {activeTab === 'passed' && "관심 없음으로 분류한 게시글들입니다. 복원 버튼으로 다시 리스트에 넣을 수 있습니다."}
-                  {activeTab === 'expired' && "이미 모집 기간이 종료된 게시글입니다. 정보 확인만 가능합니다."}
-                  {activeTab === 'liked' && "내가 찜한 게시글 모음입니다. 관심 있는 파티원에게 신청서를 보내보세요!"}
-                  {activeTab === 'my' && "내가 작성한 모집글입니다. 지원자 현황과 상세 내용을 관리하세요."}
-                </p>
-              </div>
-            </div>
-            )
+        <MateTabs
+          active={activeTab}
+          onChange={setActiveTab}
+          counts={counts}
+          aside={<b className="mate-found">{displayedPosts.length} posts found</b>}
+        />
+
+        {activeTab === 'all' ? (
+          <MateFilters
+            locationFilter={locationFilter}
+            setLocationFilter={setLocationFilter}
+            dateFilter={dateFilter}
+            setDateFilter={setDateFilter}
+            genderFilter={genderFilter}
+            setGenderFilter={setGenderFilter}
+            ageFilter={ageFilter}
+            setAgeFilter={setAgeFilter}
+            selectedTags={selectedTags}
+            toggleTag={toggleTag}
+            setCurrentPage={setCurrentPage}
+            actions={
+              <>
+                {sortControl}
+                {hasActiveFilters && (
+                  <button type="button" className="mate-x" onClick={handleResetAll}>초기화</button>
+                )}
+              </>
             }
-          </div>
-        </div>
-
-        <div
-          style={{ marginBottom: "30px", marginTop: "30px" }}
-          className="flex items-center justify-between flex-wrap gap-4"
-        >
-          <div className="flex items-center gap-3">
-            <ArrowUpDown className="w-5 h-5 text-black/60" />
-            <span className="text-sm text-black/60">SORT BY:</span>
-
-            <div className="relative dropdown-sort">
-              <button
-                type="button"
-                onClick={() => setShowSortDropdown(!showSortDropdown)}
-                className={`min-w-[180px] px-4 py-2 border-2 border-black text-left text-sm font-bold flex items-center justify-between transition-all ${
-                  sortBy !== "default" ? "bgActive" : "bg-white text-black hover:bg-[#f5f5f5]"
-                }`}
-              >
-                <span>{getSortLabel(sortBy)}</span>
-                <ChevronDown
-                  className={`w-4 h-4 ml-2 transition-transform ${
-                    showSortDropdown ? "rotate-180" : ""
-                  }`}
-                />
-              </button>
-
-              {showSortDropdown && (
-                <div className="absolute top-full left-0 mt-1 min-w-[200px] bg-white z-50 overflow-hidden sortDropdown">
-                  {SORT_OPTIONS.map((group, groupIdx) => (
-                    <div key={group.group}>
-                      <div className="px-4 py-2 bg-[#f4f4f4] text-xs font-bold text-black/50 uppercase border-b border-black/20">
-                        {group.group}
-                      </div>
-
-                      {group.options.map((option, optIdx) => (
-                        <button
-                          key={option.value}
-                          type="button"
-                          onClick={() => {
-                            setSortBy(option.value);
-                            setCurrentPage(1);
-                            setShowSortDropdown(false);
-                          }}
-                          className={`w-full px-4 py-2.5 text-left text-sm font-bold transition-colors ${
-                            optIdx !== group.options.length - 1 ||
-                            groupIdx !== SORT_OPTIONS.length - 1
-                              ? "border-b border-black/10"
-                              : ""
-                          } ${
-                            sortBy === option.value
-                              ? "bgActive"
-                              : "bg-white text-black hover:bg-[#eee]"
-                          }`}
-                        >
-                          {option.label}
-                        </button>
-                      ))}
-                    </div>
-                  ))}
-                </div>
-              )}
+          />
+        ) : (
+          <div className="mate-notice mate-banner">
+            <span className="mate-banner__icon" aria-hidden="true">{TAB_BANNER[activeTab][0]}</span>
+            <div className="mate-banner__text">
+              <b>{TAB_BANNER[activeTab][1]}</b>
+              <span>{TAB_BANNER[activeTab][2]}</span>
             </div>
+            {sortControl}
           </div>
-
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-black/70">{displayedPosts.length} posts found</span>
-            {hasActiveFilters && (
-              <button
-                onClick={handleResetAll}
-                className="text-sm text-black/70 hover:text-black font-bold font-mono underline"
-              >
-                [ RESET ALL ]
-              </button>
-            )}
-          </div>
-        </div>  
+        )}
 
         {loading && posts.length === 0 ? (
-          <div className="bg-white p-20 text-center font-mono font-bold animate-pulse border-2 border-black">
-            {">> SCANNING FOR NEW MATES..."}
+          <div className="mate-section">
+            <div className="tm-loading"><span className="tm-spinner" />동행 글을 불러오는 중...</div>
           </div>
         ) : !visiblePosts || visiblePosts.length === 0 ? (
-          <div className="bg-white p-12 text-center emptyState">
-            <User className="w-16 h-16 mx-auto mb-4 text-black/30" />
-            <p className="text-black/60 text-lg font-bold uppercase">
-              {activeTab === 'passed' ? 'ARCHIVE IS EMPTY' 
-              : activeTab === 'expired' ? 'NO EXPIRED POSTS' 
-              : activeTab === 'liked' ? 'NO LIKED POSTS'
-              : 'NO POSTS FOUND'}
-            </p>
+          <div className="mate-section">
+            <div className="mate-empty">
+              <span className="mate-empty__icon" aria-hidden="true">🧳</span>
+              <b>
+                {activeTab === 'passed' ? '넘긴 글이 없어요'
+                : activeTab === 'expired' ? '마감된 글이 없어요'
+                : activeTab === 'liked' ? '찜한 글이 없어요'
+                : activeTab === 'my' ? '아직 쓴 글이 없어요'
+                : '조건에 맞는 글이 없어요'}
+              </b>
+              {activeTab === 'all' && (hasActiveFilters ? "필터를 바꾸거나 초기화해 보세요" : "직접 모집글을 써 보세요")}
+            </div>
           </div>
         ) : (
-          <div
-            style={{ display: "flex", flexDirection: "column", gap: "25px", marginBottom: "40px" }}
-          >
+          <div>
             {visiblePosts.map((post) => (
               <MatePostCard
                 key={post.id}
@@ -416,7 +389,6 @@ export default function Mate() {
             setShowWriteModal(false);
             setWriteError(null);
           }}
-          // 전역 error보다는 관리 중인 writeError를 넘겨주는 게 더 정확할 수 있습니다.
           writeError={writeError} 
           onSubmit={handlePostSubmit}
           startDate={startDate}
@@ -485,7 +457,6 @@ export default function Mate() {
           onMarkAsRead={(chatId) => markAsRead(chatId)}
         />
       )}
-
 
     </section>
   );
