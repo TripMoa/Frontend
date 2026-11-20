@@ -1,273 +1,191 @@
-/* 필터 섹션 전체 컨테이너 */
 .filter-section {
-  background: #fff;
-  padding: 24px;
-  margin-bottom: 32px;
-  border: 3px solid #000;
-  box-shadow: 4px 4px 0px rgba(0, 0, 0, 1);
-  font-family: var(--font-mono);
+  margin-bottom: 16px;
+  padding: 8px 4px 16px;
+  background: var(--tm-paper);
+  border: 0;
+  border-top: var(--tm-bd-thin);
+  border-bottom: var(--tm-bd-thin);
+  box-shadow: none;
+  font-family: var(--tm-font);
 }
 
-/* 필터 헤더 - FILTERS 타이틀 + RESET ALL 버튼 */
-.filter-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 20px;
-}
-
-.filter-header-title {
-  font-size: 12px;
-  font-weight: 700;
-  color: rgba(0, 0, 0, 0.5);
-  text-transform: uppercase;
-  font-family: var(--font-mono);
-  letter-spacing: 1px;
-}
-
-/* 필터 항목 그리드 - 여행지/기간/예산 */
+/* 여행지 / 기간 / 예산 3칸 */
 .filter-selects {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 12px;
-  margin-bottom: 16px;
+  grid-template-columns: 1.2fr 1fr 1fr;
+  gap: 0 16px;
+  margin-bottom: 0;
 }
 
-/* 필터 항목 단일 그룹 */
 .filter-select-group {
   display: flex;
   flex-direction: column;
 }
 
-/* 필터 항목 라벨 */
 .filter-select-label {
   display: block;
-  font-size: 11px;
-  font-weight: 700;
-  margin-bottom: 8px;
-  color: rgba(0, 0, 0, 0.6);
-  text-transform: uppercase;
-  font-family: var(--font-mono);
-  letter-spacing: 0.5px;
+  margin: 8px 0 6px;
+  font: 800 var(--tm-fs-xs)/1.4 var(--tm-font);
+  letter-spacing: .1em;
+  color: #555;
+  text-transform: none;
 }
 
-/* 여행지 텍스트 검색창 래퍼*/
-.filter-search-wrapper {
-  position: relative;
-  width: 100%;
-  display: flex;
-  align-items: center;
-}
+/* 여행지 검색 */
 
-/* 여행지 검색창 핀 아이콘 */
-.filter-search-icon {
-  position: absolute;
-  left: 12px;
-  color: rgba(0, 0, 0, 0.4);
-  pointer-events: none;
-  flex-shrink: 0;
-}
-
-/* 여행지 텍스트 검색 입력창 */
 .filter-search-input {
   width: 100%;
-  padding: 10px 12px 10px 40px;
-  border: 2px solid #000;
-  background: #fff;
-  font-size: 14px;
-  font-family: var(--font-mono);
-  font-weight: 400;
+  height: var(--tm-h-input);
+  padding: 0 2px;
+  border: 0;
+  border-bottom: 2px solid var(--tm-ink);
+  border-radius: 0;
+  background: transparent;
+  color: var(--tm-ink);
+  font: 700 15px/1 var(--tm-font);
   outline: none;
   box-sizing: border-box;
-  color: #000;
-  transition: box-shadow 0.15s;
+  box-shadow: none;
+  transition: border-color var(--tm-ease), background var(--tm-ease);
 }
 
 .filter-search-input::placeholder {
-  color: rgba(0, 0, 0, 0.4);
-  font-weight: 400;
+  color: #888;
+  font-weight: 600;
 }
 
-/* 포커스 시 외곽선 강조 */
 .filter-search-input:focus {
-  box-shadow: 0 0 0 2px #000;
-  border: 2px solid #000;
+  border: 0;
+  border-bottom: 2px solid var(--tm-red);
+  box-shadow: none;
 }
 
-/* 커스텀 드롭다운 래퍼 */
+/* 값이 들어 있을 때 */
+.filter-search-input.active {
+  border: 0;
+  border-bottom: 2px solid var(--tm-ink);
+  padding: 0 2px;
+  background: var(--tm-yellow-soft);
+}
+
+/* 기간·예산 드롭다운 */
 .custom-select-wrapper {
   position: relative;
   width: 100%;
 }
 
-/* 드롭다운 트리거 버튼 */
 .custom-select-trigger {
-  width: 100%;
-  padding: 10px 12px;
-  border: 2px solid #000;
-  background: #fff;
-  color: #000;
-  font-size: 13px;
-  font-family: var(--font-mono);
-  font-weight: 700;
-  cursor: pointer;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  width: 100%;
+  height: var(--tm-h-input);
+  padding: 0 2px;
+  border: 0;
+  border-bottom: 2px solid var(--tm-ink);
+  border-radius: 0;
+  background: transparent;
+  color: var(--tm-ink);
+  font: 700 15px/1 var(--tm-font);
   text-align: left;
-  transition: background 0.15s, color 0.15s;
+  cursor: pointer;
+  transition: background var(--tm-ease), border-color var(--tm-ease);
 }
 
 .custom-select-trigger:hover {
-  background: #f5f5f5;
+  background: var(--tm-soft);
 }
 
-/* 드롭다운 열렸을 때*/
 .custom-select-trigger.open {
-  background: #000;
-  color: #fff;
+  border-bottom-color: var(--tm-red);
+  background: transparent;
+  color: var(--tm-ink);
 }
 
 .custom-select-trigger.open svg path {
-  stroke: #fff;
+  stroke: var(--tm-ink);
 }
 
-/* 드롭다운 옵션 목록 */
-.custom-select-dropdown {
-  position: absolute;
-  top: calc(100% + 1px);
-  left: 0;
-  right: 0;
-  border: 2px solid #000;
-  background: #fff;
-  z-index: 100;
-  box-shadow: 4px 4px 0px rgba(0, 0, 0, 1);
-}
-
-/* 드롭다운 단일 옵션 */
-.custom-select-option {
-  padding: 12px 16px;
-  font-size: 13px;
-  font-family: var(--font-mono);
-  font-weight: 700;
-  cursor: pointer;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-  transition: background 0.1s;
-  color: #000;
-}
-
-.custom-select-option:last-child {
-  border-bottom: none;
-}
-
-/* 선택된 옵션*/
-.custom-select-option.selected {
-  background: #000;
-  color: #fff;
-}
-
-.custom-select-option:not(.selected):hover {
-  background: #f0f0f0;
-}
-
-/* TRAVEL STYLE 태그 영역 구분선 */
-.filter-divider {
-  border-top: 2px dashed rgba(0, 0, 0, 0.2);
-  margin-top : 28px;
-  margin-bottom: 5px;
-}
-
-/* TRAVEL STYLE 레이블 */
-.filter-style-label {
-  font-size: 11px;
-  font-weight: 700;
-  color: rgba(0, 0, 0, 0.5);
-  text-transform: uppercase;
-  font-family: var(--font-mono);
-  letter-spacing: 1px;
-  display: inline-block;
-  margin-bottom: 12px;
-}
-
-/* 태그 목록 */
-.filter-tags-container {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-/* 태그 칩 */
-.filter-tag {
-  padding: 6px 14px;
-  border: 2px solid var(--border-color);
-  background: var(--secondary-color);
-  color: var(--primary-color);
-  font-size: 11px;
-  font-weight: 700;
-  font-family: var(--font-mono);
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.filter-tag:hover {
-  background: var(--bg-light);
-}
-
-.filter-tag-section {
-  margin-bottom: 24px;
-}
-
-/* 선택된 태그*/
-.filter-tag.selected {
-  background: #000;
-  color: #fff;
-  box-shadow: 4px 4px 0px rgba(0, 0, 0, 1);
-  transform: translate(-2px, -2px);
-}
-
-/* 태그 로딩/빈 상태 안내 텍스트 */
-.filter-loading,
-.filter-empty {
-  padding: 20px;
-  text-align: center;
-  color: var(--text-gray);
-  font-size: 12px;
-  font-family: var(--font-mono);
-}
-
-/* RESET ALL 버튼*/
-.filter-reset-btn {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 700;
-  color: rgba(0, 0, 0, 0.6);
-  background: none;
-  border: none;
-  cursor: pointer;
-  text-decoration: underline;
-  padding: 0;
-  margin-left: auto;
-}
-
-.filter-reset-btn:hover {
-  color: #000;
-}
-
-/* 여행지 검색창 활성화*/
-.filter-search-input.active {
-  border: 3px solid #000;
-  padding: 9px 11px 9px 35px;
-}
-
-/* 드롭다운 트리거 활성화*/
 .custom-select-trigger.active {
-  background: #000;
-  color: #fff;
+  background: var(--tm-yellow-soft);
+  color: var(--tm-ink);
 }
 
 .custom-select-trigger.active svg path {
-  stroke: #fff;
+  stroke: var(--tm-ink);
+}
+
+.custom-select-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: var(--tm-z-dropdown);
+  max-height: 280px;
+  overflow-y: auto;
+  background: var(--tm-paper);
+  border: var(--tm-bd-thin);
+  box-shadow: none;
+}
+
+.custom-select-option {
+  padding: 10px 14px;
+  border-bottom: var(--tm-bd-soft);
+  color: var(--tm-ink);
+  font: 700 var(--tm-fs-md)/1.3 var(--tm-font);
+  cursor: pointer;
+}
+
+.custom-select-option:last-child {
+  border-bottom: 0;
+}
+
+.custom-select-option.selected,
+.custom-select-option:not(.selected):hover {
+  background: var(--tm-yellow);
+  color: var(--tm-ink);
+}
+
+/* TRAVEL STYLE */
+.filter-divider {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 16px 0 0;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.filter-style-label {
+  display: inline-block;
+  margin: 0 4px 0 0;
+  font: 800 var(--tm-fs-xs)/1 var(--tm-font);
+  letter-spacing: .1em;
+  color: var(--tm-mute);
+  text-transform: none;
 }
 
 
+.custom-select-trigger:focus-visible {
+  outline: 3px solid var(--tm-yellow);
+  outline-offset: 2px;
+}
 
+.filter-loading {
+  padding: 8px 0;
+  text-align: left;
+  color: var(--tm-mute);
+  font: 700 var(--tm-fs-sm)/1.4 var(--tm-font);
+}
+
+
+@media (max-width: 960px) {
+  .filter-selects { grid-template-columns: 1fr; }
+  .filter-select-label { margin-top: 14px; }
+}
+
+
+.filter-section .filter-selects .filter-select-label {
+  margin-top: 8px;
+}

@@ -8,6 +8,7 @@ interface ConfirmModalProps {
   cancelText?: string;
 }
 
+// 확인 모달 - 디자인 기준 tm-overlay > tm-modal--narrow 와 같은 값 (구조는 그대로, 값만 --tm-* 토큰)
 function ConfirmModal({
   show,
   title,
@@ -27,37 +28,41 @@ function ConfirmModal({
         left: 0,
         right: 0,
         bottom: 0,
-        background: 'rgba(0, 0, 0, 0.7)',
+        background: 'var(--tm-overlay)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
+        padding: '20px',
         zIndex: 100000
       }}
       onClick={onCancel}
     >
       <div
         style={{
-          background: '#fff',
-          border: '3px solid #000',
-          boxShadow: '15px 15px 0px #000',
-          width: '360px'
+          background: 'var(--tm-paper)',
+          border: 'var(--tm-bd-thin)',
+          boxShadow: 'var(--tm-shadow-float)',
+          width: 'min(400px, 100%)',
+          fontFamily: 'var(--tm-font)',
+          color: 'var(--tm-ink)'
         }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* 헤더 */}
         <div
           style={{
-            background: '#000',
-            color: '#fff',
-            padding: '12px 20px'
+            background: 'var(--tm-paper)',
+            color: 'var(--tm-ink)',
+            padding: '14px 20px 10px'
           }}
         >
           <span
             style={{
-              fontFamily: "'Share Tech Mono', monospace",
-              fontSize: '16px',
+              fontFamily: 'var(--tm-font)',
+              fontSize: '20px',
               fontWeight: 900,
-              letterSpacing: '1px'
+              lineHeight: 1.3,
+              letterSpacing: '-.03em'
             }}
           >
             {title}
@@ -65,13 +70,16 @@ function ConfirmModal({
         </div>
 
         {/* 본문 */}
-        <div style={{ padding: '24px' }}>
+        <div style={{ padding: '4px 0 0' }}>
           <p
             style={{
-              fontFamily: "'Share Tech Mono', monospace",
-              fontSize: '14px',
+              fontFamily: 'var(--tm-font)',
+              fontSize: 'var(--tm-fs-md)',
+              fontWeight: 600,
               lineHeight: '1.6',
-              marginBottom: '24px',
+              color: 'var(--tm-mute)',
+              margin: 0,
+              padding: '0 20px 16px',
               whiteSpace: 'pre-line'
             }}
           >
@@ -79,40 +87,62 @@ function ConfirmModal({
           </p>
 
           {/* 버튼 */}
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'flex-end',
+              gap: 'var(--tm-gap-2)',
+              padding: '12px 20px',
+              borderTop: 'var(--tm-bd-soft)'
+            }}
+          >
             <button
               onClick={onCancel}
               style={{
-                border: '2px solid #000',
-                background: '#fff',
-                padding: '8px 16px',
-                fontWeight: 900,
-                fontSize: '12px',
-                fontFamily: "'Share Tech Mono', monospace",
+                border: 'var(--tm-bd-thin)',
+                background: 'var(--tm-paper)',
+                color: 'var(--tm-ink)',
+                height: 'var(--tm-h-btn)',
+                padding: '0 16px',
+                fontWeight: 800,
+                fontSize: 'var(--tm-fs-md)',
+                fontFamily: 'var(--tm-font)',
                 cursor: 'pointer'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'var(--tm-ink)';
+                e.currentTarget.style.color = 'var(--tm-paper)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'var(--tm-paper)';
+                e.currentTarget.style.color = 'var(--tm-ink)';
               }}
             >
               {cancelText}
             </button>
+            {/* 삭제·나가기 = tm-btn--danger */}
             <button
               onClick={onConfirm}
               style={{
-                border: '2px solid #d00000',
-                background: '#fff',
-                color: '#d00000',
-                padding: '8px 16px',
-                fontWeight: 900,
-                fontSize: '12px',
-                fontFamily: "'Share Tech Mono', monospace",
+                border: '1.5px solid var(--tm-ink)',
+                background: 'var(--tm-paper)',
+                color: 'var(--tm-red)',
+                height: 'var(--tm-h-btn)',
+                padding: '0 16px',
+                fontWeight: 800,
+                fontSize: 'var(--tm-fs-md)',
+                fontFamily: 'var(--tm-font)',
                 cursor: 'pointer'
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.background = '#d00000';
-                e.currentTarget.style.color = '#fff';
+                e.currentTarget.style.background = 'var(--tm-red)';
+                e.currentTarget.style.border = '1.5px solid var(--tm-red)';
+                e.currentTarget.style.color = 'var(--tm-paper)';
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.background = '#fff';
-                e.currentTarget.style.color = '#d00000';
+                e.currentTarget.style.background = 'var(--tm-paper)';
+                e.currentTarget.style.border = '1.5px solid var(--tm-ink)';
+                e.currentTarget.style.color = 'var(--tm-red)';
               }}
             >
               {confirmText}

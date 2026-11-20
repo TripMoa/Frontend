@@ -171,6 +171,10 @@ const Editor = forwardRef<EditorHandle, EditorProps>(({
         currentDraft?.description || editingStory?.description || "";
       // 이전 버전에서 저장된 data-bound 속성 제거
       editorRef.current.querySelectorAll("[data-bound]").forEach((el) => el.removeAttribute("data-bound"));
+      // 이전 버전에서 저장된 이전/다음 버튼 색 제거 (CSS 디자인 적용)
+      editorRef.current.querySelectorAll<HTMLElement>(".slider-prev-btn, .slider-next-btn").forEach((btn) => {
+        ["background", "color", "border", "border-radius"].forEach((p) => btn.style.removeProperty(p));
+      });
       // 1번째 사진부터 보이게
       editorRef.current.querySelectorAll(".slider-images-container").forEach((container) => {
         container.querySelectorAll("img").forEach((img, idx) => {
@@ -243,7 +247,7 @@ const Editor = forwardRef<EditorHandle, EditorProps>(({
           if (!coverBtn) return;
           const current = getImages()[getCurrentIndex()];
           if (current && getSrc(current) === selectedCoverRef.current) {
-            coverBtn.style.background = "#FFD93D";
+            coverBtn.style.background = "#ffe94a";
             coverBtn.style.color = "#000";
             if (buttonContainer) buttonContainer.style.opacity = "1";
           } else {
@@ -282,7 +286,7 @@ const Editor = forwardRef<EditorHandle, EditorProps>(({
           const current = getImages()[getCurrentIndex()];
           if (!current) return;
           setSelectedCoverImage(getSrc(current));
-          coverBtn.style.background = "#FFD93D";
+          coverBtn.style.background = "#ffe94a";
           coverBtn.style.color = "#000";
           if (buttonContainer) buttonContainer.style.opacity = "1";
         });
@@ -311,13 +315,13 @@ const Editor = forwardRef<EditorHandle, EditorProps>(({
         });
 
         slider.addEventListener("mouseenter", () => {
-          if (coverBtn && coverBtn.style.background !== "rgb(255, 217, 61)") {
+          if (coverBtn && coverBtn.style.background !== "rgb(255, 233, 74)") {
             if (buttonContainer) buttonContainer.style.opacity = "1";
           }
           if (deleteButtonContainer) deleteButtonContainer.style.opacity = "1";
         });
         slider.addEventListener("mouseleave", () => {
-          if (coverBtn && coverBtn.style.background !== "rgb(255, 217, 61)") {
+          if (coverBtn && coverBtn.style.background !== "rgb(255, 233, 74)") {
             if (buttonContainer) buttonContainer.style.opacity = "0";
           }
           if (deleteButtonContainer) deleteButtonContainer.style.opacity = "0";
@@ -406,8 +410,6 @@ const Editor = forwardRef<EditorHandle, EditorProps>(({
           prevBtn.className = "slider-prev-btn";
           prevBtn.innerHTML = "‹";
           prevBtn.setAttribute("contenteditable", "false");
-          prevBtn.addEventListener("mouseenter", () => { prevBtn.style.background = "rgba(255,255,255,0.5)"; });
-          prevBtn.addEventListener("mouseleave", () => { prevBtn.style.background = "rgba(255,255,255,0.25)"; });
           prevBtn.addEventListener("click", (evt) => {
             evt.preventDefault(); evt.stopPropagation();
             const images = imagesContainer.querySelectorAll("img");
@@ -422,7 +424,7 @@ const Editor = forwardRef<EditorHandle, EditorProps>(({
             const currentImg = images[currentIdx] as HTMLImageElement;
             const currentSrc = currentImg.getAttribute("data-image-src");
             if (coverBtn && currentSrc === selectedCoverRef.current) {
-              coverBtn.style.background = "#FFD93D"; coverBtn.style.color = "#000";
+              coverBtn.style.background = "#ffe94a"; coverBtn.style.color = "#000";
               if (buttonContainer) buttonContainer.style.opacity = "1";
             } else if (coverBtn) {
               coverBtn.style.background = "#000"; coverBtn.style.color = "#fff";
@@ -434,8 +436,6 @@ const Editor = forwardRef<EditorHandle, EditorProps>(({
           nextBtn.className = "slider-next-btn";
           nextBtn.innerHTML = "›";
           nextBtn.setAttribute("contenteditable", "false");
-          nextBtn.addEventListener("mouseenter", () => { nextBtn.style.background = "rgba(255,255,255,0.5)"; });
-          nextBtn.addEventListener("mouseleave", () => { nextBtn.style.background = "rgba(255,255,255,0.25)"; });
           nextBtn.addEventListener("click", (evt) => {
             evt.preventDefault(); evt.stopPropagation();
             const images = imagesContainer.querySelectorAll("img");
@@ -450,7 +450,7 @@ const Editor = forwardRef<EditorHandle, EditorProps>(({
             const currentImg = images[currentIdx] as HTMLImageElement;
             const currentSrc = currentImg.getAttribute("data-image-src");
             if (coverBtn && currentSrc === selectedCoverRef.current) {
-              coverBtn.style.background = "#FFD93D"; coverBtn.style.color = "#000";
+              coverBtn.style.background = "#ffe94a"; coverBtn.style.color = "#000";
               if (buttonContainer) buttonContainer.style.opacity = "1";
             } else if (coverBtn) {
               coverBtn.style.background = "#000"; coverBtn.style.color = "#fff";
@@ -480,7 +480,7 @@ const Editor = forwardRef<EditorHandle, EditorProps>(({
             const currentImg = images[currentIdx] as HTMLImageElement;
             const currentSrc = currentImg.getAttribute("data-image-src");
             setSelectedCoverImage(currentSrc);
-            newCoverBtn.style.background = "#FFD93D"; newCoverBtn.style.color = "#000";
+            newCoverBtn.style.background = "#ffe94a"; newCoverBtn.style.color = "#000";
             if (existingButtonContainer) (existingButtonContainer as HTMLElement).style.opacity = "1";
           });
         }
@@ -528,7 +528,7 @@ const Editor = forwardRef<EditorHandle, EditorProps>(({
           const currentImg = images[currentIndex] as HTMLImageElement;
           const currentSrc = currentImg.getAttribute("data-image-src");
           setSelectedCoverImage(currentSrc);
-          coverBtn.style.background = "#FFD93D"; coverBtn.style.color = "#000";
+          coverBtn.style.background = "#ffe94a"; coverBtn.style.color = "#000";
           buttonContainer.style.opacity = "1";
         });
         buttonContainer.appendChild(coverBtn);
@@ -539,8 +539,6 @@ const Editor = forwardRef<EditorHandle, EditorProps>(({
           prevBtn.className = "slider-prev-btn";
           prevBtn.innerHTML = "‹";
           prevBtn.setAttribute("contenteditable", "false");
-          prevBtn.addEventListener("mouseenter", () => { prevBtn.style.background = "rgba(0,0,0,0.8)"; });
-          prevBtn.addEventListener("mouseleave", () => { prevBtn.style.background = "rgba(0,0,0,0.5)"; });
           prevBtn.addEventListener("click", (evt) => {
             evt.preventDefault(); evt.stopPropagation();
             const images = imagesContainer.querySelectorAll("img");
@@ -552,7 +550,7 @@ const Editor = forwardRef<EditorHandle, EditorProps>(({
             const currentImg = images[currentIndex] as HTMLImageElement;
             const currentSrc = currentImg.getAttribute("data-image-src");
             if (currentSrc === selectedCoverRef.current) {
-              coverBtn.style.background = "#FFD93D"; coverBtn.style.color = "#000"; buttonContainer.style.opacity = "1";
+              coverBtn.style.background = "#ffe94a"; coverBtn.style.color = "#000"; buttonContainer.style.opacity = "1";
             } else {
               coverBtn.style.background = "#000"; coverBtn.style.color = "#fff"; buttonContainer.style.opacity = "0";
             }
@@ -563,8 +561,6 @@ const Editor = forwardRef<EditorHandle, EditorProps>(({
           nextBtn.className = "slider-next-btn";
           nextBtn.innerHTML = "›";
           nextBtn.setAttribute("contenteditable", "false");
-          nextBtn.addEventListener("mouseenter", () => { nextBtn.style.background = "rgba(0,0,0,0.8)"; });
-          nextBtn.addEventListener("mouseleave", () => { nextBtn.style.background = "rgba(0,0,0,0.5)"; });
           nextBtn.addEventListener("click", (evt) => {
             evt.preventDefault(); evt.stopPropagation();
             const images = imagesContainer.querySelectorAll("img");
@@ -576,7 +572,7 @@ const Editor = forwardRef<EditorHandle, EditorProps>(({
             const currentImg = images[currentIndex] as HTMLImageElement;
             const currentSrc = currentImg.getAttribute("data-image-src");
             if (currentSrc === selectedCoverRef.current) {
-              coverBtn.style.background = "#FFD93D"; coverBtn.style.color = "#000"; buttonContainer.style.opacity = "1";
+              coverBtn.style.background = "#ffe94a"; coverBtn.style.color = "#000"; buttonContainer.style.opacity = "1";
             } else {
               coverBtn.style.background = "#000"; coverBtn.style.color = "#fff"; buttonContainer.style.opacity = "0";
             }
@@ -599,7 +595,7 @@ const Editor = forwardRef<EditorHandle, EditorProps>(({
         deleteBtn.setAttribute("contenteditable", "false");
         deleteBtn.style.cssText = `width:40px;height:40px;border:none;background:rgba(0,0,0,0.6);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.2s;border-radius:4px;`;
         deleteBtn.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M3 6h18M8 6V4c0-1.1.9-2 2-2h4c1.1 0 2 .9 2 2v2m3 0v14c0 1.1-.9 2-2 2H7c-1.1 0-2-.9-2-2V6h14z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 11v6M14 11v6" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-        deleteBtn.addEventListener("mouseenter", () => { deleteBtn.style.background = "rgba(220,38,38,0.9)"; });
+        deleteBtn.addEventListener("mouseenter", () => { deleteBtn.style.background = "#ff4b2b"; });
         deleteBtn.addEventListener("mouseleave", () => { deleteBtn.style.background = "rgba(0,0,0,0.6)"; });
         deleteBtn.addEventListener("click", (evt) => {
           evt.preventDefault(); evt.stopPropagation();
@@ -631,11 +627,11 @@ const Editor = forwardRef<EditorHandle, EditorProps>(({
         deleteButtonContainer.appendChild(deleteBtn);
 
         sliderWrapper.addEventListener("mouseenter", () => {
-          if (coverBtn.style.background !== "rgb(255, 217, 61)") buttonContainer.style.opacity = "1";
+          if (coverBtn.style.background !== "rgb(255, 233, 74)") buttonContainer.style.opacity = "1";
           deleteButtonContainer.style.opacity = "1";
         });
         sliderWrapper.addEventListener("mouseleave", () => {
-          if (coverBtn.style.background !== "rgb(255, 217, 61)") buttonContainer.style.opacity = "0";
+          if (coverBtn.style.background !== "rgb(255, 233, 74)") buttonContainer.style.opacity = "0";
           deleteButtonContainer.style.opacity = "0";
         });
 
@@ -646,7 +642,7 @@ const Editor = forwardRef<EditorHandle, EditorProps>(({
 
         if (!selectedCoverRef.current && normalizedUrls.length > 0) {
           setSelectedCoverImage(normalizedUrls[0]);
-          coverBtn.style.background = "#FFD93D"; coverBtn.style.color = "#000";
+          coverBtn.style.background = "#ffe94a"; coverBtn.style.color = "#000";
           buttonContainer.style.opacity = "1";
         }
       }

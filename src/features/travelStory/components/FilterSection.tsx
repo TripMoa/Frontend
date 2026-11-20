@@ -53,8 +53,8 @@ function CustomSelect({
   const isActive = value !== "전체" && value !== "";
 
   return (
-    <div className="filter-select-group" ref={ref}>
-      <label className="filter-select-label">{label}</label>
+    <div className="tm-field filter-select-group" ref={ref}>
+      <label className="tm-label filter-select-label">{label}</label>
       <div className="custom-select-wrapper">
         <button
           type="button"
@@ -164,45 +164,23 @@ function FilterSection({ filters, setFilters, selectedType, setSelectedType }: F
     });
   };
 
-  return (
-    <div className="filter-section">
-      <div className="filter-header">
-        <span className="filter-header-title">FILTERS</span>
-        {hasActiveFilters && (
-          <button className="filter-reset-btn" onClick={resetFilters}>
-            [ RESET ALL ]
-          </button>
-        )}
-      </div>
+  // 태그가 하나도 안 골라졌으면 "전체"가 켜진 상태
+  const noTagSelected = filters.tags.length === 0;
 
+  return (
+    // = tm-filter-panel (디자인 기준 story.html 과 같은 구성)
+    <section className="tm-filter-panel filter-section">
       <div className="filter-selects">
-        {/* 여행지 - 텍스트 검색 */}
-        <div className="filter-select-group">
-          <label className="filter-select-label">여행지</label>
-          <div className="filter-search-wrapper">
-            <svg
-              className="filter-search-icon"
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              width="16"
-              height="16"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" />
-              <circle cx="12" cy="9" r="2.5" />
-            </svg>
-            <input
-              type="text"
-              className={`filter-search-input ${filters.destination ? "active" : ""}`}
-              placeholder="장소 검색..."
-              value={filters.destination}
-              onChange={(e) => updateFilter("destination", e.target.value)}
-            />
-          </div>
+        {/* 여행지 - 텍스트 검색 (= tm-field + tm-input) */}
+        <div className="tm-field filter-select-group">
+          <label className="tm-label filter-select-label">여행지</label>
+          <input
+            type="text"
+            className={`tm-input filter-search-input ${filters.destination ? "active" : ""}`}
+            placeholder="장소 검색..."
+            value={filters.destination}
+            onChange={(e) => updateFilter("destination", e.target.value)}
+          />
         </div>
 
         <CustomSelect
@@ -236,20 +214,28 @@ function FilterSection({ filters, setFilters, selectedType, setSelectedType }: F
         />
       </div>
 
+      {/* TRAVEL STYLE = tm-pill (켜짐 = 노랑) */}
       <div className="filter-divider">
-        <span className="filter-style-label">TRAVEL STYLE</span>
+        <b className="tm-toolbar__label filter-style-label">TRAVEL STYLE</b>
 
-        {isLoading && <div className="filter-loading">LOADING TAGS...</div>}
+        {isLoading && <span className="filter-loading">LOADING TAGS...</span>}
 
-        {/* 태그 선택 시 토글 방식으로 filters.tags 배열에 추가/제거 */}
         {!isLoading && (
-          <div className="filter-tags-container">
+          <>
+            <button
+              type="button"
+              className={`tm-pill ${noTagSelected ? "is-on" : ""}`}
+              onClick={() => updateFilter("tags", [])}
+            >
+              전체
+            </button>
             {travelStyles.map((tag) => {
               const isSelected = filters.tags.includes(tag.id);
               return (
                 <button
                   key={tag.id}
-                  className={`filter-tag ${isSelected ? "selected" : ""}`}
+                  type="button"
+                  className={`tm-pill ${isSelected ? "is-on" : ""}`}
                   onClick={() =>
                     updateFilter(
                       "tags",
@@ -263,10 +249,19 @@ function FilterSection({ filters, setFilters, selectedType, setSelectedType }: F
                 </button>
               );
             })}
-          </div>
+          </>
         )}
+
+        <button
+          type="button"
+          className="tm-btn tm-btn--sm"
+          onClick={resetFilters}
+          disabled={!hasActiveFilters}
+        >
+          모든 필터 초기화
+        </button>
       </div>
-    </div>
+    </section>
   );
 }
 

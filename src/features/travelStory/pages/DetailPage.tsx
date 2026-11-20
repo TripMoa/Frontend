@@ -24,6 +24,10 @@ const showFirstSliderImage = (html: string) => {
     doc.querySelectorAll(".slider-images-container").forEach((container) => {
       const imgs = Array.from(container.querySelectorAll("img")) as HTMLImageElement[];
       imgs.forEach((img, idx) => { img.style.display = idx === 0 ? "block" : "none"; });
+      // 이전 버전에서 저장된 이전/다음 버튼 색 제거 (CSS 디자인 적용)
+      container.parentElement?.querySelectorAll<HTMLElement>(".slider-prev-btn, .slider-next-btn").forEach((btn) => {
+        ["background", "color", "border", "border-radius"].forEach((p) => btn.style.removeProperty(p));
+      });
       const indicator = container.parentElement?.querySelector(".slider-indicator");
       if (indicator && imgs.length > 0) indicator.textContent = `1/${imgs.length}`;
     });
@@ -186,7 +190,7 @@ function DetailPage({
   if (author.avatarEmoji) {
     return (
       <div className="detail-avatar-placeholder"
-        style={{ background: author.avatarColor || '#000', fontSize: '28px' }}>
+        style={{ background: author.avatarColor || 'var(--tm-ink)', fontSize: '22px' }}>
         {author.avatarEmoji}
       </div>
     );
@@ -363,7 +367,7 @@ function DetailPage({
       <div className="detail-header">
         <button onClick={goBack} className="detail-close-btn">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
-            style={{ width: "24px", height: "24px", fill: "#000" }}>
+            style={{ width: "24px", height: "24px", fill: "var(--tm-ink)" }}>
             <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
           </svg>
         </button>
@@ -445,8 +449,8 @@ function DetailPage({
             className={`detail-action-btn ${liked ? "active" : ""}`}>
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
               style={{ width: "20px", height: "20px",
-                fill: liked ? "#fff" : "none",
-                stroke: liked ? "#fff" : "#000", strokeWidth: "2" }}>
+                fill: liked ? "var(--tm-red)" : "none",
+                stroke: liked ? "var(--tm-red)" : "currentColor", strokeWidth: "2" }}>
               <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
             </svg>
             <span>{likes}</span>
@@ -461,7 +465,7 @@ function DetailPage({
               className={`detail-action-btn ${isFollowed ? "active" : ""}`}>
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
                 style={{ width: "20px", height: "20px", fill: "none",
-                  stroke: isFollowed ? "#fff" : "#000", strokeWidth: "3" }}>
+                  stroke: "currentColor", strokeWidth: "3" }}>
                 <line x1="12" y1="5" x2="12" y2="19" />
                 <line x1="5" y1="12" x2="19" y2="12" />
               </svg>

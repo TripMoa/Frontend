@@ -101,7 +101,12 @@ function StoryCard({
   };
 
   // tags가 문자열이면 쉼표로 분리, 배열이면 그대로 사용
-  const tags = Array.isArray(story.tags) ? story.tags : [];
+  const rawTags = story.tags as unknown as string | string[] | null | undefined;
+  const tags: string[] = Array.isArray(rawTags)
+    ? rawTags
+    : typeof rawTags === 'string'
+      ? rawTags.split(',').map((t) => t.trim()).filter(Boolean)
+      : [];
 
   // description에서 이미지 URL 추출 (src 속성 또는 직접 URL 패턴 순으로 탐색)
   const getImageFromDescription = (desc: string) => {
@@ -144,166 +149,113 @@ function StoryCard({
     [story.description, imageUrl]
   );
 
-  const typeLabelMap = {
-  FREE: 'FREE',
-  REVIEW: 'REVIEW',
-};
+  // 카드 위 글 종류 표시 (디자인 기준: 리뷰 = 검정 태그, 자유글 = 회색 태그)
+  const typeLabelMap: Record<string, string> = {
+    FREE: '자유글',
+    REVIEW: '리뷰',
+  };
 
-return (  
-  <div className="story-card" onClick={() => onCardClick(story)}>
+  // 본문 HTML에서 태그·특수문자·슬라이더 글자를 지우고 100자로 자름
+  const plainDescription = story.description
+    ?.replace(/<[^>]*>/g, '')
+    .replace(/&[^;]+;/g, ' ')
+    .replace(/[‹›]/g, '')
+    .replace(/\d+\/\d+/g, '')
+    .replace(/cover/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .substring(0, 100);
 
-    <div className="story-card-image-wrapper">
-    {imageUrl ? (
-      <img
-        src={imageUrl}
-        alt={story.title}
-        className="story-card-image"
-        style={coverPosition ? { objectPosition: coverPosition } : undefined}
-      />
-    ) : (
-      <div style={{
-        width: '100%', height: '100%',
-        background: '#888888',
-      }} />
-    )}
+  const isLiked = likedStories.includes(story.id);
+  const isFollowed = followedStories.includes(story.id);
 
-  {/* 아래 기존 코드들 그대로 유지 */}
-  <div className="story-type-badge">
-    {typeLabelMap[story.type] || 'OTHER'}
-  </div>
+  // 작성일 (ISO 형식을 YYYY.MM.DD로 변환)
+  const displayDate = story.createdAt
+    ? new Date(story.createdAt).toISOString().split('T')[0].replace(/-/g, '.')
+    : story.date;
 
-  {/* PRIVATE 배지 추가 */}
-  {isMyStory && story.isPublic === false && (
-    <div className="story-private-badge">
-      PRIVATE
-    </div>
-  )}
-  
-  <div className="story-card-views">
-    {story.views || 0}
-  </div>
-</div>
+  return (
+    // = tm-polaroid + tm-tape (디자인 기준 story.html 과 같은 구성)
+    <article className="tm-polaroid story-card" onClick={() => onCardClick(story)}>
+      <span className="tm-tape" />
 
-      <div className="story-card-content">
-        <div className="story-card-author">
-          {(() => {
-            const a = story.author as any;
-            if (a?.profileType === 'CUSTOM' && a?.profileImage) {
-              return (
-                <img src={a.profileImage} alt={a.name}
-                  className="story-card-avatar"
-                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                />
-              );
-            }
-            if (a?.avatarEmoji) {
-              return (
-                <div className="story-card-avatar-placeholder"
-                  style={{ background: a.avatarColor || '#e0e0e0', fontSize: '20px' }}>
-                  {a.avatarEmoji}
-                </div>
-              );
-            }
-            return (
-              <div className="story-card-avatar-placeholder">
-                {a?.name?.charAt(0)?.toUpperCase() || '?'}
-              </div>
-            );
-          })()}
-          <span className="story-card-author-name">
-            {story.author?.name}
-            {/* 여럿이 간 여행이면 "외 n명" */}
-            {story.type === 'REVIEW' && (story.memberCount ?? 0) > 1 && ` 외 ${(story.memberCount as number) - 1}명`}
-          </span>
-        </div>
-
-        <div className="story-card-divider"></div>
-
-        <h3 className="story-card-title">{story.title}</h3>
-
-        {/* HTML 태그, 특수문자, 불필요한 문자열 제거 후 100자로 truncate */}
-        <p className="story-card-description">
-          {story.description
-            ?.replace(/<[^>]*>/g, '')
-            .replace(/&[^;]+;/g, ' ')
-            .replace(/[‹›]/g, '')       
-            .replace(/\d+\/\d+/g, '')
-            .replace(/cover/gi, '')
-            .replace(/COVER/g, '')       
-            .replace(/\s+/g, ' ')
-            .trim()
-            .substring(0, 100) || '내용 없음'}...
-        </p>
-
-        {/* 최대 3개의 태그만 표시 */}
-        {tags.length > 0 && (
-          <div className="story-card-tags">
-            {tags.slice(0, 3).map((tag: string, idx: number) => (
-              <span key={idx} className="story-card-tag">
-                {tag}
-              </span>
-            ))}
-          </div>
+      {/* 사진 칸: 사진이 없으면 회색 칸만 보임 */}
+      <div className="tm-polaroid__cover story-card-cover">
+        {imageUrl && (
+          <img
+            src={imageUrl}
+            alt={story.title}
+            style={coverPosition ? { objectPosition: coverPosition } : undefined}
+          />
         )}
-
-        <div className="story-card-footer">
-          <div className="story-card-stats">
-            {/* 좋아요 버튼 */}
-            <button 
-              onClick={toggleLike}
-              className={`story-card-stat-btn ${likedStories.includes(story.id) ? 'active' : ''}`}
-            >
-              <svg viewBox="0 0 24 24" width="16" height="16">
-                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" 
-                      fill={likedStories.includes(story.id) ? 'currentColor' : 'none'}
-                      stroke="currentColor"
-                      strokeWidth="2"/>
-              </svg>
-              {/* 좋아요 수 */}
-              <span>{likeCount}</span>
-            </button>
-
-            {/* 일정 저장 버튼 */}
-            {story.type === 'REVIEW' && (
-              <button
-                onClick={toggleFollow}
-                className={`story-card-stat-btn ${followedStories.includes(story.id) ? 'active' : ''}`}
-              >
-                <svg viewBox="0 0 24 24" width="16" height="16">
-                  <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" fill="currentColor"/>
-                </svg>
-                <span>USE THIS ITINERARY</span>
-              </button>
-            )}
-
-            {/* 댓글 수 */}
-            <button className="story-card-stat-btn">
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-              </svg>
-              <span>{story.comments || 0}</span>
-            </button>
-          </div>
-
-          {/* 작성일 (ISO 형식을 YYYY.MM.DD로 변환) */}
-          <span className="story-card-date">
-            {story.createdAt ? new Date(story.createdAt).toISOString().split('T')[0].replace(/-/g, '.') : story.date}
-          </span>
-        </div>
-
-        {/* 내 스토리일 때만 수정/삭제 버튼 표시 */}
-        {isMyStory && (
-          <div className="story-card-actions">
-            <button onClick={handleEdit} className="story-card-action-btn edit">
-              EDIT
-            </button>
-            <button onClick={handleDelete} className="story-card-action-btn delete">
-              DELETE
-            </button>
-          </div>
+        <span className={`tm-tag ${story.type === 'REVIEW' ? 'tm-tag--dark' : ''}`}>
+          {typeLabelMap[story.type] || 'OTHER'}
+        </span>
+        {/* 내 글이 비공개일 때만 */}
+        {isMyStory && story.isPublic === false && (
+          <span className="tm-badge tm-badge--yellow story-card-private">PRIVATE</span>
         )}
+        <span className="story-card-views">{story.views || 0}</span>
       </div>
-    </div>
+
+      {/* 작성자 (여럿이 간 여행이면 "외 n명") */}
+      <div className="story-card-author">
+        {story.author?.name}
+        {story.type === 'REVIEW' && (story.memberCount ?? 0) > 1 && ` 외 ${(story.memberCount as number) - 1}명`}
+      </div>
+
+      <h3 className="tm-polaroid__title">{story.title}</h3>
+      <p className="tm-polaroid__desc">{plainDescription || '내용 없음'}</p>
+
+      {/* 태그는 최대 3개 */}
+      {tags.length > 0 && (
+        <div className="tm-polaroid__tags">
+          {tags.slice(0, 3).map((tag: string, idx: number) => (
+            <span key={idx} className="tm-tag">{tag}</span>
+          ))}
+        </div>
+      )}
+
+      <div className="tm-polaroid__foot story-card-foot">
+        <button
+          type="button"
+          onClick={toggleLike}
+          className={`story-card-like ${isLiked ? 'is-on' : ''}`}
+          aria-pressed={isLiked}
+        >
+          {isLiked ? '♥' : '♡'} LIKES {likeCount}
+        </button>
+        <span>댓글 {story.comments || 0}</span>
+        <span className="tm-grow" />
+        <span className="story-card-date">{displayDate}</span>
+      </div>
+
+      {/* 버튼 줄: 일정 가져오기(리뷰만) + 내 글이면 수정·삭제 */}
+      {(story.type === 'REVIEW' || isMyStory) && (
+        <div className="tm-row tm-row--wrap story-card-buttons">
+          {story.type === 'REVIEW' && (
+            <button
+              type="button"
+              onClick={toggleFollow}
+              className={`tm-btn tm-btn--sm ${isFollowed ? 'tm-btn--dark' : 'tm-btn--primary'}`}
+              aria-pressed={isFollowed}
+            >
+              {isFollowed ? 'SAVED ✓' : 'USE THIS ITINERARY'}
+            </button>
+          )}
+          {isMyStory && (
+            <>
+              <button type="button" onClick={handleEdit} className="tm-btn tm-btn--sm">
+                수정
+              </button>
+              <button type="button" onClick={handleDelete} className="tm-btn tm-btn--sm tm-btn--danger">
+                삭제
+              </button>
+            </>
+          )}
+        </div>
+      )}
+    </article>
   );
 }
 

@@ -10,7 +10,6 @@ import { useAccessGuard } from "../../../shared/hooks/useAccessGuard";
 import { ActionPromptModal } from "../../../shared/components/ActionPromptModal";
 import type { Story } from '../../../api/stories.api';
 import CustomAlert from '../components/modals/CustomAlert';
-import { User } from 'lucide-react';
 import { TripCreateModal } from "../../myTrips/components/TripCreateModal";
 import { createTrip } from "../../../api/trip.api";
 import { getPlaces, createPlace } from "../../../api/place.api";
@@ -21,18 +20,18 @@ import '../styles/travelStory.css';
 
 const SORT_OPTIONS = ['기본 순서', '예산 높은 순', '예산 낮은 순', '조회수 높은 순', '좋아요 많은 순'];
 
-function EmptyState() {
+// 글이 없을 때 안내
+function EmptyState({ title, desc }: { title: string; desc: string }) {
   return (
-    <div className="bg-white p-12 text-center emptyState" style={{ marginTop: '40px' }}>
-      <User className="w-16 h-16 mx-auto mb-4 text-black/30" />
-      <p className="text-black/60 text-lg font-bold uppercase">
-        NO POSTS FOUND
-      </p>
+    <div className="tm-empty emptyState" style={{ marginTop: '40px' }}>
+      <span className="tm-empty__icon" aria-hidden="true">📷</span>
+      <div className="tm-empty__title">{title}</div>
+      <div>{desc}</div>
     </div>
   );
 }
 
-// 여행 스토리 기능 전체를 관리하는 루트 컴포넌트 (페이지 라우팅, 정렬, 페이지네이션 포함)
+// 여행 스토리 기능 전체를 관리하는 루트 컴포넌트
 function TravelStory() {
   const hook = useTravelStory();
 
@@ -100,7 +99,6 @@ function TravelStory() {
 
   // 태그 필터
   if (hook.filters.tags.length > 0) {
-    // 태그 ID → 이름으로 변환 후 비교
     const storyTags = typeof story.tags === 'string'
       ? (story.tags as string).split(',').map((t: string) => t.trim())
       : (story.tags || []);
@@ -160,7 +158,6 @@ selectedMembers: [],
 
   const sortRef = useRef<HTMLDivElement>(null);
 
-  // 정렬 드롭다운 외부 클릭 시 닫기
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (sortRef.current && !sortRef.current.contains(e.target as Node)) {
@@ -171,12 +168,12 @@ selectedMembers: [],
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // 정렬 기준 또는 필터 변경 시 첫 페이지로 초기화
+  // 정렬 기준, 필터, 글 종류 변경 시 첫 페이지로 초기화
   useEffect(() => {
     setCurrentPageNum(1);
-  }, [sortBy, hook.filters]);
+  }, [sortBy, hook.filters, hook.selectedType]);
 
-  // 저장한 일정 모달에 표시할 스토리 목록 (followedStories ID 기준으로 필터링)
+  // 저장한 일정 모달에 표시할 스토리 목록
   const getLikedStoriesList = () => {
     return hook.allStories.filter(story => hook.followedStories.includes(story.id));
   };
@@ -262,7 +259,7 @@ selectedMembers: [],
     );
   }
 
-  // 페이지네이션 계산 - 정렬된 스토리를 ITEMS_PER_PAGE 단위로 분할
+
   const sortedStories = getSortedStories(filteredStories);
   const totalPages = Math.ceil(sortedStories.length / ITEMS_PER_PAGE);
   const pagedStories = sortedStories.slice(
@@ -270,7 +267,6 @@ selectedMembers: [],
     currentPageNum * ITEMS_PER_PAGE
   );
 
-  // API 오류 발생 시 에러 표시
   if (hook.error) {
     return (
       <div className="travel-story-app">
@@ -286,34 +282,34 @@ selectedMembers: [],
       {hook.currentPage === 'main' && (
         <div className="container">
 
-          {/* 상단 헤더 - MY STORIES 및 WRITE 페이지 이동 버튼 포함 */}
-          <div className="ts-header">
-            <div className="ts-title">
-              <h1>VERIFIED DATA</h1>
-              <p>검증된 여행 작전 로그를 확인하십시오.</p>
+          {/* 제목줄 */}
+          <div className="tm-page-head ts-page-head">
+            <div className="tm-page-head__text">
+              <span className="tm-tag tm-tag--dark ts-page-head__tag">VERIFIED DATA</span>
+              <h1 className="ts-page-head__title">여행기</h1>
+              <p className="tm-page-head__desc">검증된 여행 사진 로그를 확인하십시오.</p>
             </div>
 
-            <div className="ts-actions">
-              <button
-                className="ts-btn outline"
-                onClick={handleMyStoriesClick}
-              >
-                <svg viewBox="0 0 24 24">
-                  <path d="M12 12c2.7 0 5-2.3 5-5s-2.3-5-5-5-5 2.3-5 5 2.3 5 5 5zm0 2c-3.3 0-10 1.7-10 5v3h20v-3c0-3.3-6.7-5-10-5z" fill="currentColor"/>
-                </svg>
-                MY STORIES
+            <div className="tm-page-head__actions">
+              <button className="tm-btn" onClick={handleMyStoriesClick}>
+                내 스토리
               </button>
-
-              <button className="ts-btn solid" onClick={handleWriteClick}>
-                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                </svg>
-                WRITE
+              <button className="tm-btn tm-btn--primary" onClick={handleWriteClick}>
+                글쓰기
               </button>
             </div>
           </div>
 
+          {/* 여행지, 기간, 예산, 태그 필터 */}
+          <FilterSection
+            filters={hook.filters}
+            setFilters={hook.setFilters}
+            selectedType={hook.selectedType}        
+            setSelectedType={hook.setSelectedType}
+            tags={hook.tags}
+          />
+
+          {/* 글 종류: ALL / FREE / REVIEW */}
            <div className="type-filter">
                 <button
                   onClick={() => hook.setSelectedType("ALL")}
@@ -338,15 +334,6 @@ selectedMembers: [],
                   REVIEW
                 </button>
               </div>
-
-          {/* 여행지, 기간, 예산, 태그 필터 */}
-          <FilterSection
-            filters={hook.filters}
-            setFilters={hook.setFilters}
-            selectedType={hook.selectedType}        
-            setSelectedType={hook.setSelectedType}
-            tags={hook.tags}
-          />
 
           {/* 정렬 드롭다운 및 검색 결과 수 표시 */}
           <div className="ts-sort-bar">
@@ -394,11 +381,11 @@ selectedMembers: [],
             <span className="ts-post-count">{sortedStories.length} posts found</span>
           </div>
 
-          {/* 스토리 목록 - 전체 없음 / 검색 결과 없음 / 카드 그리드 분기 */}
+          {/* 스토리 목록 */}
           {hook.allStories.length === 0 ? (
-            <EmptyState />
+            <EmptyState title="아직 올라온 여행기가 없어요" desc="첫 여행기를 써 보세요" />
           ) : sortedStories.length === 0 ? (
-            <EmptyState />
+            <EmptyState title="조건에 맞는 여행기가 없어요" desc="필터를 바꿔 보거나 직접 여행기를 써 보세요" />
           ) : (
             <>
            
@@ -417,7 +404,7 @@ selectedMembers: [],
                 ))}
               </div>
 
-              {/* 페이지네이션 - 총 페이지가 2 이상일 때만 표시 */}
+              {/* 페이지네이션 */}
               {totalPages > 1 && (
                 <div className="ts-pagination">
                   <button
@@ -503,7 +490,6 @@ selectedMembers: [],
       )}
 
 
-      {/* MODALS */}
       {/* 임시저장 목록 모달 */}
       <DraftModal
         show={hook.showDraftModal}

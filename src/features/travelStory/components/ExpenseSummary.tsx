@@ -61,7 +61,7 @@ function ExpenseSummary({ expenses }: { expenses: StoryExpenses }) {
   return (
     <>
       {isGroup && (
-        <div style={{ fontSize: "12px", fontWeight: 700, marginBottom: "8px", color: "rgba(0,0,0,0.6)" }}>
+        <div style={{ fontSize: "var(--tm-fs-xs)", fontWeight: 700, marginBottom: "8px", color: "var(--tm-mute)" }}>
           공동 지출 기준 · {memberCount}명
         </div>
       )}
