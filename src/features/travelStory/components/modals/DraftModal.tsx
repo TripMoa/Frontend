@@ -13,7 +13,7 @@ interface DraftModalProps {
   setDeleteHoverId: (id: number | null) => void;
 }
 
-// 임시저장 목록 모달 - 디자인 기준 tm-overlay > tm-modal + tm-list 와 같은 값 (구조는 그대로, 값만 --tm-* 토큰)
+// 임시저장 목록 모달
 function DraftModal({
   show,
   drafts,
@@ -25,8 +25,7 @@ function DraftModal({
   deleteHoverId,
   setDeleteHoverId
 }: DraftModalProps) {
-  // 훅은 항상 같은 순서로 호출되어야 하므로 early return 보다 먼저 선언
-  // (예전에는 return null 뒤에 있어서 모달을 열 때 "Rendered more hooks" 오류가 났음)
+  
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [targetDraftId, setTargetDraftId] = useState<number | null>(null);
 
@@ -83,7 +82,7 @@ function DraftModal({
             }}>
               {'>> DRAFT LIST'}
             </h2>
-            {/* 닫기 = tm-btn--sm */}
+            {/* 닫기 */}
             <button
               onClick={onClose}
               style={{
@@ -117,7 +116,7 @@ function DraftModal({
             padding: '4px 20px 16px',
             background: 'var(--tm-paper)'
           }}>
-            {/* 목록 = tm-list (선 하나로 나뉘는 줄) */}
+            {/* 목록 */}
             <div style={{ borderTop: drafts.length > 0 ? 'var(--tm-bd-soft)' : 'none' }}>
               {drafts.map((draft: any) => (
                 <div
@@ -213,7 +212,7 @@ function DraftModal({
               ))}
             </div>
 
-            {/* 빈 화면 = tm-empty */}
+            {/* 빈 화면 */}
             {drafts.length === 0 && (
               <div style={{
                 textAlign: 'center',

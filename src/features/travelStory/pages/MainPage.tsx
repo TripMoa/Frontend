@@ -33,7 +33,6 @@ interface MainPageProps {
   tags: TravelStyleOption[];
 }
 
-// 메인 페이지 - 헤더 / 필터 / 스토리 카드 목록 렌더링
 function MainPage({
   hook,
   stories,
@@ -61,7 +60,7 @@ function MainPage({
     
     <div className="travel-story-app container">
 
-      {/* 상단 헤더 - 페이지 제목 + MY STORIES / WRITE 버튼 */}
+      {/* 상단 헤더 */}
       <div className="main-header">
         <div className="main-header-left">
           <h1 className="main-header-title">VERIFIED DATA</h1>
@@ -85,7 +84,7 @@ function MainPage({
           <button
             onClick={() => {
               hook.setWriteType("FREE");
-              hook.navigateToPage('write'); // navigate도 hook 붙여!
+              hook.navigateToPage('write');
             }}
             className="main-action-btn primary"
           >
@@ -98,7 +97,7 @@ function MainPage({
       </div>
 
 
-      {/* 필터 섹션 - 목적지 / 기간 / 예산 / 태그 */}
+      {/* 필터 섹션 */}
       <FilterSection
         filters={filters}
         setFilters={setFilters}
@@ -122,7 +121,6 @@ function MainPage({
         ))}
       </div>
 
-      {/* 스토리 없을 때 빈 상태 안내 */}
       {filteredStories.length === 0 && (
         <div className="main-empty">
           <div className="main-empty-text">여행기가 없습니다.</div>

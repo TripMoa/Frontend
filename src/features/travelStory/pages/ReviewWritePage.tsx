@@ -6,6 +6,10 @@ import { getTravelStyles } from "../../../api/auth.api";
 import type { TravelStyleOption } from "../../../types/auth.types";
 import "../styles/travelStory.css";
 import "../styles/WritePage.css";
+import RouteSection from "../components/RouteSection";
+import ExpenseSummary from "../components/ExpenseSummary";
+import { getRoutePreview, getExpensePreview } from "../../../api/stories.api";
+import type { StoryExpenses } from "../../../api/stories.api";
 
 interface WritePageProps {
   goBack: () => void;
@@ -172,22 +176,43 @@ function ReviewWritePage({
     "";
   return val;
 });
-  const [expenses, setExpenses] = useState({
-    transportation: "", accommodation: "", food: "", attraction: "", shopping: "",
-  });
   const [isPublic, setIsPublic] = useState(editingStory?.isPublic ?? true);
+
+  // 계획한 동선 미리보기
+  const [routePreview, setRoutePreview] = useState<string | null>(editingStory?.route || null);
+  const reviewTripId = editingStory?.tripId || (window as any).tripDataForReview?.tripId;
+ 
+  useEffect(() => {
+    if (editingStory?.route || !reviewTripId) return;
+    getRoutePreview(reviewTripId)
+      .then((res) => setRoutePreview(res.data?.route || null))
+      .catch(() => setRoutePreview(null));
+  }, [reviewTripId, editingStory?.route]);
+
+  // TRAVEL LOG 경비 미리보기
+  const [expensePreview, setExpensePreview] = useState<StoryExpenses | null>(null);
+  const [expenseLoadFailed, setExpenseLoadFailed] = useState(false);
+  const [showExpense, setShowExpense] = useState<boolean>(editingStory?.showExpense ?? true);
+
+  useEffect(() => {
+    if (!reviewTripId) return;
+    getExpensePreview(reviewTripId)
+      .then((res) => { setExpensePreview(res.data); setExpenseLoadFailed(false); })
+      .catch(() => { setExpensePreview(null); setExpenseLoadFailed(true); });
+  }, [reviewTripId]);
+
+  const isLegacyExpense = !!editingStory?.expenses && editingStory.expenses.memberCount == null;
+  const expensesToShow: StoryExpenses | null =
+    isLegacyExpense && (!expensePreview || expensePreview.total === 0)
+      ? editingStory.expenses
+      : expensePreview;
 
   const editorRef = useRef<EditorHandle>(null);
 
-  // 여행 경비 항목 합산
-  const totalExpenses =
-    (parseInt(expenses.transportation) || 0) +
-    (parseInt(expenses.accommodation) || 0) +
-    (parseInt(expenses.food) || 0) +
-    (parseInt(expenses.attraction) || 0) +
-    (parseInt(expenses.shopping) || 0);
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, []);
 
-  // 나가기 경고 표시 여부 판단 - 제목/목적지/내용 중 하나라도 있으면 true
   const hasContent = useCallback(() => {
     if (editingStory || currentDraft) return true;
     const titleInput = document.querySelector(".title-input") as HTMLInputElement;
@@ -220,7 +245,6 @@ function ReviewWritePage({
     fetchTags();
   }, []);
 
-  // 브라우저 뒤로가기 감지
   useEffect(() => {
     window.history.pushState({ page: "write" }, "", window.location.href);
     const handlePopState = () => {
@@ -235,7 +259,6 @@ function ReviewWritePage({
     return () => window.removeEventListener("popstate", handlePopState);
   }, [hasContent, goBack]);
 
-  // 수정 모드 진입 시 태그 초기화
   useEffect(() => {
     if (editingStory?.tags && travelStyles.length > 0) {
       const tagNames = editingStory.tags.split(",").map((t: string) => t.trim());
@@ -244,20 +267,6 @@ function ReviewWritePage({
     }
   }, [travelStyles, editingStory]);
 
-  // 수정 모드 진입 시 경비 초기화
-  useEffect(() => {
-    if (editingStory?.expenses) {
-      setExpenses({
-        transportation: editingStory.expenses.transportation?.toString() || "",
-        accommodation: editingStory.expenses.accommodation?.toString() || "",
-        food: editingStory.expenses.food?.toString() || "",
-        attraction: editingStory.expenses.attraction?.toString() || "",
-        shopping: editingStory.expenses.shopping?.toString() || "",
-      });
-    }
-  }, [editingStory]);
-
-  // 페이지 이탈 시 브라우저 경고
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (hasContent()) { e.preventDefault(); e.returnValue = ""; }
@@ -266,7 +275,7 @@ function ReviewWritePage({
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [hasContent]);
 
-  // 발행 버튼 클릭 - 유효성 검사 후 publishData 설정 및 onPublish 호출
+  // 발행 버튼 클릭 
   const handlePublishClick = () => {
     const titleInput = document.querySelector(".title-input") as HTMLInputElement;
     const destinationInput = document.querySelector(".form-input") as HTMLInputElement;
@@ -285,15 +294,6 @@ function ReviewWritePage({
       .filter((name) => name)
       .join(",");
 
-    const expensesJson = JSON.stringify({
-      transportation: parseInt(expenses.transportation) || 0,
-      accommodation: parseInt(expenses.accommodation) || 0,
-      food: parseInt(expenses.food) || 0,
-      attraction: parseInt(expenses.attraction) || 0,
-      shopping: parseInt(expenses.shopping) || 0,
-      total: totalExpenses,
-    });
-
     (window as any).selectedCoverImageForPublish = coverImage;
     (window as any).publishData = {
       type: "REVIEW",
@@ -301,11 +301,11 @@ function ReviewWritePage({
       content,
       destination,
       duration,
-      budget: totalExpenses.toString(),
+      budget: String(expensesToShow?.total ?? 0),
       departureDate,
       tags: tagNames,
-      expenses: expensesJson,
       isPublic,
+      showExpense,
       tripId: (window as any).tripDataForReview?.tripId,
     };
 
@@ -328,7 +328,7 @@ function ReviewWritePage({
             className="write-close-btn"
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
-              style={{ width: "24px", height: "24px", fill: "#000", transition: "fill 0.2s", pointerEvents: "none" }}
+              style={{ width: "24px", height: "24px", fill: "var(--tm-ink)", transition: "fill 0.12s", pointerEvents: "none" }}
             >
               <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
             </svg>
@@ -352,11 +352,11 @@ function ReviewWritePage({
           <div className="write-title-section">
             <label className="write-label">TITLE *</label>
             <input
-              key={`title-${editingStory?.id || "new"}`}
+              key={`title-${currentDraft?.id || editingStory?.id || "new"}`}
               type="text"
               className="title-input"
               placeholder="여행 제목을 입력하세요."
-              defaultValue={editingStory?.title || currentDraft?.title || ""}
+              defaultValue={currentDraft?.title || editingStory?.title || ""}
               maxLength={30}
             />
           </div>
@@ -366,11 +366,11 @@ function ReviewWritePage({
             <div>
               <label className="write-label">DESTINATION *</label>
               <input
-                key={`dest-${editingStory?.id || "new"}`}
+                key={`dest-${currentDraft?.id || editingStory?.id || "new"}`}
                 type="text"
                 className="form-input"
                 placeholder="예: 경주"
-                defaultValue={editingStory?.destination || currentDraft?.destination || ""}
+                defaultValue={currentDraft?.destination || editingStory?.destination || ""}
               />
             </div>
             <div>
@@ -386,42 +386,57 @@ function ReviewWritePage({
               <CustomDatePicker 
                 value={departureDate} 
                 onChange={(val) => setDepartureDate(val)}
-                disabled={true}  // ← 이렇게 막으면 클릭해도 달력 안 뜸
+                disabled={true}
               />
             </div>
           </div>
 
-          {/* 경비 입력 */}
-          <div className="write-expenses-section">
-            <label className="write-label">여행 경비</label>
-            <div className="write-expenses-container">
-              <div className="write-expenses-grid">
-                {[
-                  { label: "교통비", key: "transportation" },
-                  { label: "숙박비", key: "accommodation" },
-                  { label: "식비", key: "food" },
-                  { label: "관광/입장료", key: "attraction" },
-                  { label: "쇼핑/기타", key: "shopping" },
-                ].map(({ label, key }) => (
-                  <div key={key} className="write-expense-row">
-                    <label className="write-expense-label">{label}</label>
-                    <input
-                      type="number"
-                      value={expenses[key as keyof typeof expenses]}
-                      onChange={(e) => setExpenses({ ...expenses, [key]: e.target.value })}
-                      placeholder="0"
-                      className="write-expense-input"
-                    />
-                    <span className="write-expense-unit">원</span>
-                  </div>
-                ))}
-              </div>
-              <div className="write-expenses-total">
-                <span>총 합계</span>
-                <span>{totalExpenses.toLocaleString()}원</span>
-              </div>
+          {/* 계획한 동선 미리보기 */}
+          {routePreview && (
+            <div className="write-expenses-section">
+              <label className="write-label">ROUTE · 여행 일정 연동</label>
+              <RouteSection route={routePreview} />
             </div>
-          </div>
+          )}
+
+          {/* 여행 경비 - TRAVEL LOG 카테고리별 합계 */}
+          {reviewTripId && (
+            <div className="write-expenses-section">
+              <label className="write-label">EXPENSES · TRAVEL LOG 연동</label>
+              <div style={{ display: "flex", gap: "10px", marginBottom: "12px" }}>
+                <button
+                  type="button"
+                  className={`style-tag ${showExpense ? "selected" : ""}`}
+                  onClick={() => setShowExpense(true)}
+                >
+                  경비 공개
+                </button>
+                <button
+                  type="button"
+                  className={`style-tag ${!showExpense ? "selected" : ""}`}
+                  onClick={() => setShowExpense(false)}
+                >
+                  경비 숨김
+                </button>
+              </div>
+              {showExpense ? (
+                <div className="detail-expenses" style={{ boxSizing: "border-box", marginBottom: "24px" }}>
+                  <h2 className="detail-expenses-title">여행 경비 총정리</h2>
+                  {expensesToShow ? (
+                    <ExpenseSummary expenses={expensesToShow} />
+                  ) : (
+                    <p style={{ margin: 0, fontSize: "13px", fontWeight: 700 }}>
+                      {expenseLoadFailed ? "TRAVEL LOG 경비를 불러오지 못했어요." : "경비를 불러오는 중..."}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <p style={{ margin: 0, fontSize: "13px", fontWeight: 700, color: "rgba(0,0,0,0.6)" }}>
+                  상세 페이지에 경비가 표시되지 않아요.
+                </p>
+              )}
+            </div>
+          )}
 
           {/* 공개 설정 */}
           <div className="write-tags-section">

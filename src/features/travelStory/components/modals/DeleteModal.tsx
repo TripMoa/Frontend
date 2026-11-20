@@ -6,7 +6,7 @@ interface DeleteModalProps {
   message?: string;
 }
 
-// 삭제 확인 모달 - 디자인 기준 tm-overlay > tm-modal--narrow 와 같은 값 (구조는 그대로, 값만 --tm-* 토큰)
+// 삭제 확인 모달
 function DeleteModal({
   show,
   onClose,
@@ -116,7 +116,7 @@ function DeleteModal({
             >
               취소
             </button>
-            {/* 삭제 = tm-btn--danger */}
+            {/* 삭제 */}
             <button
               onClick={onConfirm}
               style={{

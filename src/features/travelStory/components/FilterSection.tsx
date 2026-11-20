@@ -23,7 +23,7 @@ interface FilterSectionProps {
   tags: TravelStyleOption[];
 }
 
-// 공통 드롭다운 선택 컴포넌트 (여행 기간, 예산대)
+// 공통 드롭다운 선택 컴포넌트
 function CustomSelect({
   label,
   value,
@@ -49,7 +49,6 @@ function CustomSelect({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // '전체' 또는 빈 값이 아닐 때 활성 상태로 표시
   const isActive = value !== "전체" && value !== "";
 
   return (
@@ -107,7 +106,7 @@ function FilterSection({ filters, setFilters, selectedType, setSelectedType }: F
   const [travelStyles, setTravelStyles] = useState<TravelStyleOption[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // 태그 목록 로드 (실패 시 하드코딩된 기본값으로 fallback)
+  // 태그 목록 로드
   useEffect(() => {
     const fetchTags = async () => {
       try {
@@ -145,7 +144,6 @@ function FilterSection({ filters, setFilters, selectedType, setSelectedType }: F
     setFilters({ ...filters, [key]: value });
   };
 
-  // 하나 이상의 필터가 적용된 상태인지 확인 (RESET ALL 버튼 표시 여부)
   const hasActiveFilters =
     (filters.destination && filters.destination !== "전체") ||
     (filters.duration && filters.duration !== "전체") ||
@@ -164,14 +162,11 @@ function FilterSection({ filters, setFilters, selectedType, setSelectedType }: F
     });
   };
 
-  // 태그가 하나도 안 골라졌으면 "전체"가 켜진 상태
   const noTagSelected = filters.tags.length === 0;
 
   return (
-    // = tm-filter-panel (디자인 기준 story.html 과 같은 구성)
     <section className="tm-filter-panel filter-section">
       <div className="filter-selects">
-        {/* 여행지 - 텍스트 검색 (= tm-field + tm-input) */}
         <div className="tm-field filter-select-group">
           <label className="tm-label filter-select-label">여행지</label>
           <input
@@ -214,7 +209,7 @@ function FilterSection({ filters, setFilters, selectedType, setSelectedType }: F
         />
       </div>
 
-      {/* TRAVEL STYLE = tm-pill (켜짐 = 노랑) */}
+      {/* TRAVEL STYLE */}
       <div className="filter-divider">
         <b className="tm-toolbar__label filter-style-label">TRAVEL STYLE</b>
 

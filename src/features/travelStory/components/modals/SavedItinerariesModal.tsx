@@ -6,7 +6,7 @@ interface SavedItinerariesModalProps {
   onUseItinerary?: (story: any) => void;
 }
 
-// 저장한 일정 모달 - 디자인 기준 tm-overlay > tm-modal + tm-list 와 같은 값 (구조는 그대로, 값만 --tm-* 토큰)
+// 저장한 일정 모달
 function SavedItinerariesModal({ show, onClose, stories, onStoryClick, onUseItinerary }: SavedItinerariesModalProps) {
   if (!show) return null;
 
@@ -61,7 +61,7 @@ function SavedItinerariesModal({ show, onClose, stories, onStoryClick, onUseItin
             {'>> SAVED ITINERARIES'}
           </h2>
 
-          {/* 닫기 = tm-btn--sm */}
+          {/* 닫기 */}
           <button
             onClick={onClose}
             style={{
@@ -90,7 +90,7 @@ function SavedItinerariesModal({ show, onClose, stories, onStoryClick, onUseItin
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto', padding: '4px 20px 16px', background: 'var(--tm-paper)' }}>
-          {/* 목록 = tm-list */}
+          {/* 목록 */}
           <div style={{ borderTop: stories.length > 0 ? 'var(--tm-bd-soft)' : 'none' }}>
             {stories.map((story: any) => (
               <div
@@ -140,7 +140,7 @@ function SavedItinerariesModal({ show, onClose, stories, onStoryClick, onUseItin
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  {/* 여행기 보기 = tm-btn--sm */}
+                  {/* 여행기 보기 */}
                   <button
                     onClick={() => onStoryClick(story)}
                     style={{
@@ -161,7 +161,7 @@ function SavedItinerariesModal({ show, onClose, stories, onStoryClick, onUseItin
                   >
                     여행기 보기
                   </button>
-                  {/* USE THIS ITINERARY = tm-btn--sm tm-btn--primary */}
+                  {/* USE THIS ITINERARY */}
                   <button
                     onClick={() => onUseItinerary?.(story)}
                     style={{
@@ -187,7 +187,7 @@ function SavedItinerariesModal({ show, onClose, stories, onStoryClick, onUseItin
             ))}
           </div>
 
-          {/* 빈 화면 = tm-empty */}
+          {/* 빈 화면 */}
           {stories.length === 0 && (
             <div style={{
               textAlign: 'center', padding: '46px 20px', color: '#777',

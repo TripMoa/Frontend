@@ -5,7 +5,7 @@ interface VerifiedDataProps {
   onMyStoriesClick?: () => void;
 }
 
-// 여행 스토리 페이지 상단 헤더 - 글쓰기 및 내 스토리 이동 버튼 포함
+// 여행 스토리 페이지 상단 헤더
 function VerifiedData({
   onWriteClick,
   onMyStoriesClick,

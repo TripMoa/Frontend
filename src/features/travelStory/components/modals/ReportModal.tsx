@@ -58,7 +58,6 @@ function ReportModal({ show, onClose, onSubmit, targetType = '게시글', target
   </div>
 ) : (
   <div className="report-body">
-    {/* ⭐ 여기에 넣어야 해요 */}
     {(targetAuthor || targetContent) && (
       <div className="report-target-info">
         {targetAuthor && (

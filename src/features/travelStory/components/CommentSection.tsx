@@ -1,4 +1,3 @@
-// src/features/travelStory/components/CommentSection.tsx
 import { useEffect, useState } from "react";
 import ReportModal from "../components/modals/ReportModal";
 import * as commentAPI from "../../../api/comments.api";
@@ -44,7 +43,6 @@ function CommentSection({
     loadComments();
   }, [storyId]);
 
-  // 댓글 수 변경 시 부모 컴포넌트에 전달
   useEffect(() => {
     if (onCommentCountChange) {
       onCommentCountChange(comments.length);
@@ -78,7 +76,7 @@ function CommentSection({
     }
   };
 
-  // 댓글 작성 (금칙어 필터링 포함)
+  // 댓글 작성 
   const handleSubmit = async () => {
     if (!isAuthenticated) {
       setError("댓글을 작성하려면 로그인이 필요합니다.");
@@ -145,7 +143,7 @@ function CommentSection({
     }
   };
 
-  // 댓글 작성자 정보 반환 (author 객체 없을 경우 authorId로 fallback)
+  // 댓글 작성자 정보 반환 
   const getAuthorInfo = (comment: any) => {
     if (comment.author) {
       return comment.author;
@@ -154,12 +152,10 @@ function CommentSection({
     if (comment.authorId) {
       return {
         id: comment.authorId,
-        // nickname 우선, 없으면 name
         name:
           currentUser?.id === comment.authorId
             ? currentUser.nickname || currentUser.name
             : "사용자",
-        // profileImage 또는 avatar 우선
         avatar:
           currentUser?.id === comment.authorId
             ? currentUser.profileImage ||
@@ -198,7 +194,6 @@ function CommentSection({
       <div className="comments-list">
         {comments.map((comment) => {
           const author = getAuthorInfo(comment);
-          // nickname 우선, 없으면 name
           const displayName = author.nickname || author.name || "알 수 없음";
 
           return (
@@ -236,7 +231,6 @@ function CommentSection({
               )}
 
               <div className="comment-author-info">
-                {/* 프로필 사진 - 이미지 또는 텍스트 */}
                 <div className="comment-avatar">
                   {(() => {
                     const a = comment.author as any;

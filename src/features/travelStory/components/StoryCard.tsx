@@ -15,7 +15,6 @@ interface StoryCardProps {
   isMyStory?: boolean;
 }
 
-// URL 비교용 - 경로만 추출
 const toPath = (url: string) => {
   try {
     return new URL(url, window.location.origin).pathname;
@@ -24,7 +23,6 @@ const toPath = (url: string) => {
   }
 };
 
-// 본문에서 커버 사진의 object-position 값 추출
 const getCoverPosition = (description: string, coverUrl: string | null): string | null => {
   if (!description || !coverUrl || typeof DOMParser === "undefined") return null;
   try {
@@ -52,13 +50,11 @@ function StoryCard({
   onDelete,
   isMyStory = false
 }: StoryCardProps) {
-  // 카드 클릭 이벤트가 버블링되지 않도록 막고 수정 핸들러 호출
   const handleEdit = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (onEdit) onEdit(story);
   };
 
-  // 카드 클릭 이벤트가 버블링되지 않도록 막고 삭제 핸들러 호출
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (onDelete) onDelete(story.id);
@@ -68,7 +64,7 @@ function StoryCard({
   const [likeCount, setLikeCount] = useState<number>(story.likes ?? 0);
   useEffect(() => { setLikeCount(story.likes ?? 0); }, [story.likes]);
 
-  // 좋아요 토글 (서버 저장)
+  // 좋아요 토글
   const toggleLike = async (e: React.MouseEvent) => {
     e.stopPropagation();
     try {
@@ -83,7 +79,7 @@ function StoryCard({
     }
   };
 
-  // 일정 저장 토글 (서버 저장)
+  // 일정 저장 토글
   const toggleFollow = async (e: React.MouseEvent) => {
     e.stopPropagation();
     const isFollowed = followedStories.includes(story.id);
@@ -100,7 +96,6 @@ function StoryCard({
     }
   };
 
-  // tags가 문자열이면 쉼표로 분리, 배열이면 그대로 사용
   const rawTags = story.tags as unknown as string | string[] | null | undefined;
   const tags: string[] = Array.isArray(rawTags)
     ? rawTags
@@ -108,19 +103,15 @@ function StoryCard({
       ? rawTags.split(',').map((t) => t.trim()).filter(Boolean)
       : [];
 
-  // description에서 이미지 URL 추출 (src 속성 또는 직접 URL 패턴 순으로 탐색)
   const getImageFromDescription = (desc: string) => {
     if (!desc) return null;
     
-    // 1. src="..." 패턴
     let match = desc.match(/src=["']([^"']+)["']/);
     if (match) return match[1];
     
-    // 2. src=... (따옴표 없음)
     match = desc.match(/src=([^\s>]+)/);
     if (match) return match[1];
     
-    // 3. http로 시작하는 URL
     match = desc.match(/(https?:\/\/[^\s<>"]+\.(jpg|jpeg|png|gif|webp))/i);
     if (match) return match[1];
     
@@ -134,7 +125,6 @@ function StoryCard({
     return `${import.meta.env.VITE_API_BASE_URL}${url.startsWith("/") ? "" : "/"}${url}`;
   };
 
-  // FREE 타입이고 이미지 없으면 그레이, 아니면 기존 unsplash 이미지
     const imageUrl = (() => {
       if (story.imageUrl && !story.imageUrl.includes('unsplash')) return story.imageUrl;
       const fromDesc = getImageFromDescription(story.description);
@@ -143,19 +133,17 @@ function StoryCard({
       return 'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=800';
     })();
 
-  // 드래그로 맞춘 커버 위치를 카드에도 적용
   const coverPosition = useMemo(
     () => getCoverPosition(story.description, imageUrl),
     [story.description, imageUrl]
   );
 
-  // 카드 위 글 종류 표시 (디자인 기준: 리뷰 = 검정 태그, 자유글 = 회색 태그)
+  // 카드 위 글 종류 표시
   const typeLabelMap: Record<string, string> = {
     FREE: '자유글',
     REVIEW: '리뷰',
   };
 
-  // 본문 HTML에서 태그·특수문자·슬라이더 글자를 지우고 100자로 자름
   const plainDescription = story.description
     ?.replace(/<[^>]*>/g, '')
     .replace(/&[^;]+;/g, ' ')
@@ -169,17 +157,14 @@ function StoryCard({
   const isLiked = likedStories.includes(story.id);
   const isFollowed = followedStories.includes(story.id);
 
-  // 작성일 (ISO 형식을 YYYY.MM.DD로 변환)
   const displayDate = story.createdAt
     ? new Date(story.createdAt).toISOString().split('T')[0].replace(/-/g, '.')
     : story.date;
 
   return (
-    // = tm-polaroid + tm-tape (디자인 기준 story.html 과 같은 구성)
     <article className="tm-polaroid story-card" onClick={() => onCardClick(story)}>
       <span className="tm-tape" />
 
-      {/* 사진 칸: 사진이 없으면 회색 칸만 보임 */}
       <div className="tm-polaroid__cover story-card-cover">
         {imageUrl && (
           <img
@@ -198,7 +183,7 @@ function StoryCard({
         <span className="story-card-views">{story.views || 0}</span>
       </div>
 
-      {/* 작성자 (여럿이 간 여행이면 "외 n명") */}
+      {/* 작성자 */}
       <div className="story-card-author">
         {story.author?.name}
         {story.type === 'REVIEW' && (story.memberCount ?? 0) > 1 && ` 외 ${(story.memberCount as number) - 1}명`}
@@ -230,7 +215,6 @@ function StoryCard({
         <span className="story-card-date">{displayDate}</span>
       </div>
 
-      {/* 버튼 줄: 일정 가져오기(리뷰만) + 내 글이면 수정·삭제 */}
       {(story.type === 'REVIEW' || isMyStory) && (
         <div className="tm-row tm-row--wrap story-card-buttons">
           {story.type === 'REVIEW' && (

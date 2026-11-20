@@ -8,7 +8,7 @@ interface ConfirmModalProps {
   cancelText?: string;
 }
 
-// 확인 모달 - 디자인 기준 tm-overlay > tm-modal--narrow 와 같은 값 (구조는 그대로, 값만 --tm-* 토큰)
+// 확인 모달
 function ConfirmModal({
   show,
   title,
@@ -120,7 +120,7 @@ function ConfirmModal({
             >
               {cancelText}
             </button>
-            {/* 삭제·나가기 = tm-btn--danger */}
+            {/* 삭제·나가기 */}
             <button
               onClick={onConfirm}
               style={{

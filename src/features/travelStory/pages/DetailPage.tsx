@@ -16,7 +16,6 @@ import { useAuth } from "../../user/pages/AuthContext";
 import { useAccessGuard } from "../../../shared/hooks/useAccessGuard";
 import { ActionPromptModal } from "../../../shared/components/ActionPromptModal";
 
-// 사진 칸을 1번째 사진부터 보이게 정리 (첫 화면 깜빡임 방지)
 const showFirstSliderImage = (html: string) => {
   if (!html || typeof DOMParser === "undefined") return html;
   try {
@@ -24,7 +23,6 @@ const showFirstSliderImage = (html: string) => {
     doc.querySelectorAll(".slider-images-container").forEach((container) => {
       const imgs = Array.from(container.querySelectorAll("img")) as HTMLImageElement[];
       imgs.forEach((img, idx) => { img.style.display = idx === 0 ? "block" : "none"; });
-      // 이전 버전에서 저장된 이전/다음 버튼 색 제거 (CSS 디자인 적용)
       container.parentElement?.querySelectorAll<HTMLElement>(".slider-prev-btn, .slider-next-btn").forEach((btn) => {
         ["background", "color", "border", "border-radius"].forEach((p) => btn.style.removeProperty(p));
       });
@@ -37,7 +35,6 @@ const showFirstSliderImage = (html: string) => {
   }
 };
 
-// description HTML을 dangerouslySetInnerHTML로 렌더링 (불필요한 리렌더링 방지를 위해 memo 적용)
 const StoryDescription = React.memo(({ html }: { html: string }) => (
   <div
     className="detail-description"
@@ -74,17 +71,14 @@ function DetailPage({
   const { requireLogin, showLoginModal, closeLoginModal, moveToLogin } =
     useAccessGuard();
 
-  // 1번째 사진부터 보이도록 정리한 본문
   const descriptionHtml = useMemo(() => showFirstSliderImage(story.description), [story.description]);
 
-  // 상세 페이지 진입 시 맨 위로 스크롤
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
   }, [story.id]);
 
   // 조회수 중복 증가 방지용 플래그
   const hasIncrementedViews = useRef(false);
-  // props의 isFollowed가 없으면 followedStories 배열로 fallback
   const isFollowed =
     story.isFollowed !== undefined
       ? story.isFollowed
@@ -109,20 +103,17 @@ function DetailPage({
   });
   const [isSubmittingTrip, setIsSubmittingTrip] = useState(false);
 
-  // nickname 우선, 없으면 name으로 표시
   const rawAuthor = story?.author || {};
   const displayName =
     rawAuthor.nickname?.trim() || rawAuthor.name?.trim() || "알 수 없음";
   const author = { ...rawAuthor, displayName };
 
-  // 상대경로 이미지 URL을 절대경로로 변환
   const normalizeImageUrl = (url: string) => {
     if (!url) return "";
     if (url.startsWith("http")) return url;
     return `${import.meta.env.VITE_API_BASE_URL}${url.startsWith("/") ? "" : "/"}${url}`;
   };
 
-  // tags가 문자열이면 쉼표로 분리, 배열이면 그대로 사용
   const getTravelStyles = () => {
     if (!story.tags) return [];
     if (Array.isArray(story.tags)) return story.tags;
@@ -137,7 +128,6 @@ function DetailPage({
 
   const tags = getTravelStyles();
 
-  // createdAt을 한국어 날짜 형식으로 변환
   const displayDate =
     story.date ||
     (story.createdAt
@@ -173,7 +163,7 @@ function DetailPage({
     }
   }, [story.id, incrementViews, isAuthenticated]);
 
-  // 좋아요 상태 동기화 - likedStories 업데이트 시 반영
+  // 좋아요 상태 동기화
   useEffect(() => {
     setLiked(likedStories.includes(story.id) || (story.isLiked ?? false));
   }, [likedStories, story.id]);
@@ -202,7 +192,7 @@ function DetailPage({
   );
 };
 
-  // 좋아요 토글 - API 호출 후 로컬 상태 반영
+  // 좋아요 토글
   const handleToggleLike = async () => {
     if (!requireLogin()) return;
     try {
@@ -221,10 +211,9 @@ function DetailPage({
   setShowTripModal(true);
 };
 
-  // description 렌더링 후 이미지 슬라이더 초기화 (상대경로 URL 변환 및 prev/next 버튼 이벤트 등록)
+  
   useEffect(() => {
     setTimeout(() => {
-      // 사진 칸을 본문 맨 위로 (여러 개면 하나로 합침)
       const descEl = document.querySelector(".detail-description");
       if (descEl) {
         const allSliders = Array.from(descEl.querySelectorAll(".image-slider-wrapper")) as HTMLElement[];
@@ -239,7 +228,6 @@ function DetailPage({
               other.remove();
             });
           }
-          // 2장 이상인데 이전/다음 버튼이 없으면 생성
           if (main.querySelectorAll(".slider-images-container img").length > 1 && !main.querySelector(".slider-prev-btn")) {
             ["slider-prev-btn", "slider-next-btn"].forEach((cls, i) => {
               const btn = document.createElement("button");
@@ -273,7 +261,6 @@ function DetailPage({
         if (allImages.length === 0) return;
         let currentIndex = 0;
 
-        // 첫 번째 이미지만 표시, 나머지 숨김
         allImages.forEach((img, idx: number) => {
           const imgElement = img as HTMLElement;
           imgElement.style.position = "absolute";
@@ -333,7 +320,6 @@ function DetailPage({
     });
     const newTripId = tripRes.data.tripId;
 
-    // 장소 복사 실패해도 워크스페이스로 이동
     if (story.tripId) {
       try {
         const placesRes = await getPlaces(story.tripId);
@@ -404,7 +390,7 @@ function DetailPage({
               </div>
             </div>
           )}
-        </div> {/* detail-header-left 닫기 */}
+        </div> 
 
         {/* 프로필 사진 */}
         <div className="detail-author-info">
@@ -412,7 +398,6 @@ function DetailPage({
           <div className="detail-author-text">
             <div className="detail-author-name">
               {author.displayName}
-              {/* 여럿이 간 여행이면 "외 n명" */}
               {story.type === 'REVIEW' && (story.memberCount ?? 0) > 1 && ` 외 ${story.memberCount - 1}명`}
             </div>
           </div>
@@ -439,7 +424,7 @@ function DetailPage({
             )}
           </div>
         )}
-      </div> {/* detail-header 닫기 */}
+      </div> 
 
       <StoryDescription html={descriptionHtml} />
 
@@ -494,10 +479,10 @@ function DetailPage({
       </div>
     </div> 
 
-    {/* 계획한 동선 - route 없으면 숨김 */}
+    {/* 계획한 동선 */}
     {story.type === 'REVIEW' && <RouteSection route={story.route} />}
 
-    {/* 여행 경비 - 숨김이면 표시 안 함 */}
+    {/* 여행 경비 */}
     {story.type === 'REVIEW' && story.showExpense !== false && story.expenses && (
       <div className="detail-expenses">
         <h2 className="detail-expenses-title">여행 경비 총정리</h2>

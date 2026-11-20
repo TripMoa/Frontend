@@ -21,7 +21,6 @@ interface MyStoriesPageProps {
 }
 
 
-// 내 여행기 페이지 - 작성한 스토리 목록 및 통계(조회수, 좋아요, 저장 일정) 표시
 function MyStoriesPage({
   goBack,
   navigateToPage,
@@ -40,7 +39,6 @@ function MyStoriesPage({
 
   const stories = myStories;
   const ITEMS_PER_PAGE = 6;
-  // 보던 페이지 번호 기억 (글을 열었다가 돌아와도 같은 페이지)
   const [currentPageNum, setCurrentPageNum] = useState(() => {
     try {
       return Number(sessionStorage.getItem("myStoriesPage")) || 1;
@@ -53,13 +51,11 @@ function MyStoriesPage({
     try {
       sessionStorage.setItem("myStoriesPage", String(currentPageNum));
     } catch {
-      // 저장 못 해도 동작에는 문제 없음
     }
   }, [currentPageNum]);
 
   const totalPages = Math.ceil(stories.length / ITEMS_PER_PAGE);
 
-  // 글을 지워서 페이지 수가 줄면 마지막 페이지로
   useEffect(() => {
     if (totalPages > 0 && currentPageNum > totalPages) setCurrentPageNum(totalPages);
   }, [totalPages, currentPageNum]);

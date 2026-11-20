@@ -4,7 +4,7 @@ interface CustomAlertProps {
   onClose: () => void;
 }
 
-// 알림창 - 디자인 기준 tm-overlay > tm-modal--narrow + tm-confirm 과 같은 값 (구조는 그대로, 값만 --tm-* 토큰)
+// 알림창
 function CustomAlert({ show, message, onClose }: CustomAlertProps) {
   if (!show || !message) return null;
 
@@ -52,7 +52,7 @@ function CustomAlert({ show, message, onClose }: CustomAlertProps) {
         >
           {message}
         </div>
-        {/* 확인 = tm-btn--dark */}
+        {/* 확인 */}
         <button
           className="custom-alert-btn"
           onClick={onClose}
