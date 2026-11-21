@@ -33,6 +33,10 @@ function FreeWritePage({
 
   const editorRef = useRef<EditorHandle>(null);
 
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, []);
+
   // 나가기 경고 표시 여부 판단
   const hasContent = useCallback(() => {
     if (editingStory || currentDraft) return true;
@@ -64,7 +68,6 @@ function FreeWritePage({
     fetchTags();
   }, []);
 
-  // 브라우저 뒤로가기 감지
   useEffect(() => {
     window.history.pushState({ page: "write" }, "", window.location.href);
     const handlePopState = () => {
@@ -140,7 +143,7 @@ function FreeWritePage({
             className="write-close-btn"
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
-              style={{ width: "24px", height: "24px", fill: "#000", transition: "fill 0.2s", pointerEvents: "none" }}
+              style={{ width: "24px", height: "24px", fill: "var(--tm-ink)", transition: "fill 0.12s", pointerEvents: "none" }}
             >
               <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
             </svg>
@@ -164,11 +167,11 @@ function FreeWritePage({
           <div className="write-title-section">
             <label className="write-label">TITLE *</label>
             <input
-              key={`title-${editingStory?.id || "new"}`}
+              key={`title-${currentDraft?.id || editingStory?.id || "new"}`}
               type="text"
               className="title-input"
-              placeholder="여행 제목을 입력하세요."
-              defaultValue={editingStory?.title || currentDraft?.title || ""}
+              placeholder="제목을 입력하세요."
+              defaultValue={currentDraft?.title || editingStory?.title || ""}
               maxLength={30}
             />
           </div>

@@ -1,4 +1,3 @@
-// 후기 상세 - 계획한 동선 (DAY별 탭, route 없으면 숨김)
 import { useState } from "react";
 import { parseRoute } from "../../../api/stories.api";
 import "../styles/DetailPage.css";
@@ -7,7 +6,6 @@ interface RouteSectionProps {
   route?: string | null;
 }
 
-// 카테고리별 왼쪽 색 띠 (계획 페이지 색상과 맞춤)
 const getCategoryColor = (category?: string | null) => {
   const c = category || "";
   if (c.includes("관광")) return "#2f6fdf";
@@ -21,7 +19,7 @@ const getCategoryColor = (category?: string | null) => {
 
 function RouteSection({ route }: RouteSectionProps) {
   const days = parseRoute(route);
-  // 선택한 DAY 번호 (null이면 첫째 날)
+  // 선택한 DAY 번호 
   const [activeDay, setActiveDay] = useState<number | null>(null);
 
   if (days.length === 0) return null;
@@ -72,7 +70,7 @@ function RouteSection({ route }: RouteSectionProps) {
             )}
           </div>
 
-          {/* 다음 장소까지 이동시간 표시 (마지막 장소 제외) */}
+          {/* 다음 장소까지 이동시간 표시 */}
           {item.travelMinutes != null && idx < rows.length - 1 && (
             <div className="detail-route-move">↓ 이동 약 {item.travelMinutes}분</div>
           )}

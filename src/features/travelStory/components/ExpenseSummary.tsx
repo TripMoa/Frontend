@@ -22,9 +22,7 @@ const LEGACY_CATEGORIES: { key: keyof StoryExpenses; label: string }[] = [
 
 const won = (n: number) => `${n.toLocaleString()}원`;
 
-/* 여행 경비 요약
- - TRAVEL LOG: 0원 아닌 카테고리 + 총 지출 (+ 1인당 평균)
- - 직접 입력 후기: 기존 5칸 + 총 합계 */
+/* 여행 경비 요약 */
 function ExpenseSummary({ expenses }: { expenses: StoryExpenses }) {
   const memberCount = expenses.memberCount;
   const total = expenses.total || 0;
@@ -61,7 +59,7 @@ function ExpenseSummary({ expenses }: { expenses: StoryExpenses }) {
   return (
     <>
       {isGroup && (
-        <div style={{ fontSize: "12px", fontWeight: 700, marginBottom: "8px", color: "rgba(0,0,0,0.6)" }}>
+        <div style={{ fontSize: "var(--tm-fs-xs)", fontWeight: 700, marginBottom: "8px", color: "var(--tm-mute)" }}>
           공동 지출 기준 · {memberCount}명
         </div>
       )}

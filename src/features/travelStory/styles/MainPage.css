@@ -1,101 +1,100 @@
-/* 상단 헤더 - 페이지 제목 + 글쓰기/내 스토리 버튼 */
 .main-header {
-  background: var(--secondary-color);
-  padding: 32px 40px;
-  margin-bottom: 24px;
-  border: 3px solid var(--border-color);
-  box-shadow: 8px 8px 0px rgba(0, 0, 0, 1);
+  position: relative;
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  position: relative;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: var(--tm-gap-4);
+  margin: 6px 0 18px;
+  padding: 0;
+  background: none;
+  border: 0;
+  box-shadow: none;
 }
 
 .main-header-left {
   flex: 1;
+  min-width: 0;
 }
 
-/* 페이지 메인 타이틀 */
 .main-header-title {
-  font-family: var(--font-mono);
-  font-size: 32px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 2px;
-  margin-bottom: 8px;
+  margin: 0;
+  font: 900 clamp(26px, 2.8vw, 34px)/1.1 var(--tm-font);
+  letter-spacing: -.05em;
+  text-transform: none;
 }
 
-/* 페이지 서브타이틀 */
 .main-header-subtitle {
-  font-family: var(--font-mono);
-  font-size: 13px;
-  color: var(--text-gray);
+  margin: 4px 0 0;
+  font: 600 var(--tm-fs-md)/1.5 var(--tm-font);
+  color: var(--tm-mute);
 }
 
-/* 헤더 우측 버튼 그룹 */
 .main-header-actions {
   display: flex;
-  gap: 12px;
+  align-items: center;
+  gap: var(--tm-gap-2);
+  flex-wrap: wrap;
 }
 
-/* 헤더 버튼 공통 스타일 */
 .main-action-btn {
-  padding: 12px 24px;
-  border: 3px solid var(--border-color);
-  background: var(--secondary-color);
-  color: var(--primary-color);
-  font-weight: 700;
-  font-size: 12px;
-  font-family: var(--font-mono);
-  text-transform: uppercase;
-  cursor: pointer;
-  box-shadow: 4px 4px 0px rgba(0, 0, 0, 1);
-  transition: all 0.2s;
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
+  gap: 6px;
+  height: var(--tm-h-btn);
+  padding: 0 16px;
+  border: var(--tm-bd-thin);
+  background: var(--tm-paper);
+  color: var(--tm-ink);
+  box-shadow: none;
+  font: 800 var(--tm-fs-md)/1 var(--tm-font);
+  text-transform: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--tm-ease), color var(--tm-ease);
 }
 
 .main-action-btn:hover {
-  background: var(--bg-light);
-  transform: translate(-1px, -1px);
+  background: var(--tm-ink);
+  color: var(--tm-paper);
+  transform: none;
 }
 
-/* 글쓰기 버튼 - 검은 배경 강조 */
+/* WRITE */
 .main-action-btn.primary {
-  background: var(--primary-color);
-  color: var(--secondary-color);
+  background: var(--tm-red);
+  border-color: var(--tm-red);
+  color: var(--tm-paper);
 }
 
 .main-action-btn.primary:hover {
-  background: #333;
+  background: var(--tm-ink);
+  border-color: var(--tm-ink);
 }
 
-/* 글쓰기 버튼 아이콘 - 흰색 */
 .main-action-btn.primary svg {
-  stroke: var(--secondary-color);
-  fill: var(--secondary-color);
+  stroke: none;
+  fill: currentColor;
 }
 
-/* 스토리가 없을 때 빈 상태 안내 */
 .main-empty {
+  margin-top: 24px;
+  padding: 46px 20px;
   text-align: center;
-  padding: 80px 20px;
-  background: var(--secondary-color);
-  border: 3px dashed var(--border-color);
-  margin-top: 40px;
+  background: var(--tm-paper);
+  border: 0;
+  border-top: var(--tm-bd-thin);
+  border-bottom: var(--tm-bd-thin);
 }
 
 .main-empty-text {
-  font-size: 18px;
-  font-weight: 700;
-  font-family: var(--font-mono);
-  margin-bottom: 8px;
-  color: var(--primary-color);
+  margin-bottom: 4px;
+  font: 900 var(--tm-fs-md)/1.6 var(--tm-font);
+  color: var(--tm-ink);
 }
 
 .main-empty-subtext {
-  font-size: 14px;
-  color: var(--text-gray);
-  font-family: var(--font-mono);
+  font: 700 var(--tm-fs-md)/1.6 var(--tm-font);
+  color: #777;
 }
