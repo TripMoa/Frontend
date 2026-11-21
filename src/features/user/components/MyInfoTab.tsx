@@ -1,5 +1,3 @@
-// src/features/user/components/MyInfoTab.tsx
-
 import React, { useState } from "react";
 import type { UserProfile } from "../hooks/useUserSetting";
 
@@ -75,7 +73,7 @@ export default function MyInfoTab({
 
         <div className={styles.avatarInfo}>
           <p className={styles.avatarDesc}>
-            동그란 프로필을 클릭하면 랜덤 아바타로 바뀝니다.
+            프로필을 클릭하면 랜덤 아바타로 바뀝니다.
           </p>
           <button
             className={styles.secondaryButton}
