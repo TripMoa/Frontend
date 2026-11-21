@@ -44,7 +44,7 @@ export interface Story {
   expenses?: StoryExpenses;
 }
 
-// 후기 경비 (memberCount 있으면 TRAVEL LOG 요약)
+// 후기 경비
 export interface StoryExpenses {
   transportation: number | null;
   accommodation: number | null;
@@ -72,7 +72,6 @@ export interface RouteDay {
   items: RouteItem[];
 }
  
-// route JSON 문자열 → 배열 (비어 있거나 깨졌으면 빈 배열)
 export const parseRoute = (route?: string | null): RouteDay[] => {
   if (!route) return [];
   try {
@@ -100,7 +99,6 @@ export interface RouteDay {
 }
 
 
-// 스토리 목록 조회 시 사용할 필터 및 페이지네이션 파라미터 타입
 export interface StoryListParams {
   destination?: string;
   duration?: string;
@@ -111,7 +109,6 @@ export interface StoryListParams {
   limit?: number;
 }
 
-// 스토리 생성 및 수정 시 서버로 전송할 데이터 타입
 export interface CreateStoryData {
   title: string;
   description: string;
@@ -134,7 +131,6 @@ export interface CreateStoryData {
   };
 }
 
-// 서버 전송 전 tags 배열을 쉼표로 구분된 문자열로 변환 
 const convertTagsToString = (data: CreateStoryData | Partial<CreateStoryData>) => {
   if (data.tags && Array.isArray(data.tags)) {
     return {
@@ -214,7 +210,7 @@ export const getRoutePreview = (tripId: number) => {
   return api.get<{ route: string | null }>(`/stories/route-preview`, { params: { tripId } });
 };
 
-// 후기 작성 페이지 경비 미리보기 (TRAVEL LOG 카테고리별 합계)
+// 후기 작성 페이지 경비 미리보기
 export const getExpensePreview = (tripId: number) => {
   return api.get<StoryExpenses>(`/stories/expense-preview`, { params: { tripId } });
 };

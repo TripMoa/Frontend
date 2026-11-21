@@ -1,5 +1,5 @@
 import StoryCard from '../components/StoryCard';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import '../styles/travelStory.css';
 import '../styles/MyStoriesPage.css';
 import { User } from 'lucide-react';
@@ -21,7 +21,6 @@ interface MyStoriesPageProps {
 }
 
 
-// 내 여행기 페이지 - 작성한 스토리 목록 및 통계(조회수, 좋아요, 저장 일정) 표시
 function MyStoriesPage({
   goBack,
   navigateToPage,
@@ -40,9 +39,26 @@ function MyStoriesPage({
 
   const stories = myStories;
   const ITEMS_PER_PAGE = 6;
-  const [currentPageNum, setCurrentPageNum] = useState(1);
+  const [currentPageNum, setCurrentPageNum] = useState(() => {
+    try {
+      return Number(sessionStorage.getItem("myStoriesPage")) || 1;
+    } catch {
+      return 1;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem("myStoriesPage", String(currentPageNum));
+    } catch {
+    }
+  }, [currentPageNum]);
 
   const totalPages = Math.ceil(stories.length / ITEMS_PER_PAGE);
+
+  useEffect(() => {
+    if (totalPages > 0 && currentPageNum > totalPages) setCurrentPageNum(totalPages);
+  }, [totalPages, currentPageNum]);
   const pagedStories = stories.slice(
   (currentPageNum - 1) * ITEMS_PER_PAGE,
   currentPageNum * ITEMS_PER_PAGE
@@ -59,7 +75,7 @@ function MyStoriesPage({
           }}
           className="mystories-close-btn"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style={{ width: '24px', height: '24px', fill: '#000' }}>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style={{ width: '24px', height: '24px', fill: 'var(--tm-ink)' }}>
             <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
           </svg>
         </button>
@@ -69,7 +85,7 @@ function MyStoriesPage({
         <div className="mystories-stats-grid">
           <div className="mystories-stat-card">
             <div className="mystories-stat-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style={{ fill: '#000' }}>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style={{ fill: 'var(--tm-ink)' }}>
                 <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>
               </svg>
             </div>
@@ -79,7 +95,7 @@ function MyStoriesPage({
 
           <div className="mystories-stat-card">
             <div className="mystories-stat-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style={{ fill: '#000' }}>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style={{ fill: 'var(--tm-ink)' }}>
                 <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
               </svg>
             </div>
@@ -92,7 +108,7 @@ function MyStoriesPage({
 
           <div className="mystories-stat-card">
             <div className="mystories-stat-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style={{ fill: '#000' }}>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style={{ fill: 'var(--tm-ink)' }}>
                 <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
               </svg>
             </div>
@@ -109,7 +125,7 @@ function MyStoriesPage({
             className="mystories-stat-card clickable"
           >
             <div className="mystories-stat-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style={{ fill: 'none', stroke: '#000', strokeWidth: '2' }}>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style={{ fill: 'none', stroke: 'var(--tm-ink)', strokeWidth: '2' }}>
                 <line x1="12" y1="5" x2="12" y2="19"/>
                 <line x1="5" y1="12" x2="19" y2="12"/>
               </svg>

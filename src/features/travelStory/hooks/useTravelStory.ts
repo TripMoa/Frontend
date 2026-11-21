@@ -4,7 +4,6 @@ import { useNavigate, useLocation } from "react-router-dom";
 import * as draftAPI from "../../../api/drafts.api";
 import { getMyInfo } from "../../../api/auth.api";
 import { useAuth } from "../../user/pages/AuthContext";
-import { createDraft } from "../../../api/drafts.api";
 import { getStories } from "../../../api/stories.api";
 import { getTravelStyles } from "../../../api/auth.api";
 import type { TravelStyleOption } from "../../../types/auth.types";
@@ -27,7 +26,7 @@ function useTravelStory() {
 
   const { isAuthenticated } = useAuth();
 
-  // 현재 페이지 상태 - URL 경로에서 복원
+  // 현재 페이지 상태
   const [currentPage, setCurrentPageState] = useState(() => {
     const path = window.location.pathname;
     if (path.includes("/write") || path.includes("/edit")) return "write";
@@ -38,7 +37,7 @@ function useTravelStory() {
 
   const [previousPage, setPreviousPage] = useState("main");
 
-  // 선택된 스토리 ID - localStorage에서 복원 (새로고침 대응)
+  // 선택된 스토리 ID
   const [selectedStoryId, setSelectedStoryId] = useState<number | null>(() => {
     const saved = localStorage.getItem("selectedStoryId");
     return saved ? parseInt(saved) : null;
@@ -79,7 +78,7 @@ function useTravelStory() {
   const [alertCallback, setAlertCallback] = useState<(() => void) | null>(null);
 
 
-  // 앱 최초 진입 시 전체 스토리 로드 (비로그인도 가능)
+  // 앱 최초 진입 시 전체 스토리 로드
   useEffect(() => {
     loadAllStories();
   }, []);
@@ -158,7 +157,7 @@ useEffect(() => {
     }
   };
 
-  // 임시저장 목록 로드 (description을 content 필드로 변환하여 저장)
+  // 임시저장 목록 로드 
   const loadDrafts = async () => {
     try {
       const response = await draftAPI.getDrafts();
@@ -190,14 +189,14 @@ useEffect(() => {
     } catch (err) {}
   };
 
-  // 선택된 스토리 객체 - allStories 또는 myStories에서 탐색
+  // 선택된 스토리 객체
   const selectedStory = selectedStoryId
     ? allStories.find((s) => s.id === selectedStoryId) ||
       myStories.find((s) => s.id === selectedStoryId) ||
       null
     : null;
 
-  // 선택된 스토리를 상태 및 localStorage에 동기화
+  // 선택된 스토리를 상태 
   const setSelectedStory = (story: any) => {
     if (story) {
       setSelectedStoryId(story.id);
@@ -214,7 +213,6 @@ useEffect(() => {
   setAlertMessage(message);
   setShowAlert(true);
   if (onConfirm) {
-    // 알럿 닫힐 때 콜백 실행
     setAlertCallback(() => onConfirm);
   }
 };
@@ -229,7 +227,7 @@ useEffect(() => {
   }
 };
 
-  // 페이지 이동 및 URL 해시, localStorage 동기화
+  // 페이지 이동 및 URL 해시
   const setCurrentPage = (page: string) => {
   setCurrentPageState(page);
   const pathMap: Record<string, string> = {
@@ -241,7 +239,6 @@ useEffect(() => {
   navigate(pathMap[page] || "/travelstory");
 };
 
-  // 페이지 이동 시 write 페이지를 벗어나면 편집 상태 초기화
   const navigateToPage = (newPage: string, state?: any) => {
     if (currentPage === "write" && newPage !== "write") {
       setCurrentDraftId(null);
@@ -260,13 +257,11 @@ useEffect(() => {
       myStories: "/travelstory/mystories",
     };
     
-    // detail은 URL 변경 없이 상태로만 관리
     if (newPage !== "detail") {
       navigate(pathMap[newPage] || "/travelstory");
     }
   };
 
-  // 브라우저 뒤로가기/앞으로가기 시 화면 맞추기 (글쓰기 화면 제외)
   useEffect(() => {
     const path = location.pathname;
 
@@ -295,7 +290,6 @@ useEffect(() => {
     }
   }, [location.pathname]);
 
-  // 이전 페이지로 이동 및 편집/선택 상태 초기화
   const goBack = () => {
   const reviewFrom = localStorage.getItem("reviewFrom");
   if (reviewFrom === "mytrips") {
@@ -360,7 +354,7 @@ useEffect(() => {
         }
       })();
 
-      // 태그 필터 - 문자열/배열 모두 대응
+      // 태그 필터
       const matchesTags =
         filters.tags.length === 0 ||
         filters.tags.some((tagId) => {
@@ -392,9 +386,7 @@ useEffect(() => {
     });
   };
 
-  // 스토리 클릭 시 상세 페이지로 이동
   const handleStoryClick = (story: any) => {
-    // 돌아갈 화면 기억
     if (currentPage !== "detail") {
       setPreviousPage(currentPage);
     }
@@ -403,7 +395,7 @@ useEffect(() => {
     navigate(`/travelstory/detail/${story.id}`);
   };
 
-  // 스토리 수정 - 최신 데이터를 API에서 직접 조회 후 편집 페이지로 이동
+  // 스토리 수정
   const handleEdit = async (story: any) => {
     try {
       setLoading(true);
@@ -444,7 +436,7 @@ useEffect(() => {
     }
   };
 
-  // 스토리 발행 - DOM에서 에디터 데이터를 수집하여 생성/수정 API 호출
+  // 스토리 발행
   const handlePublish = async () => {
     const titleInput = document.querySelector(
       ".title-input",
@@ -512,7 +504,6 @@ useEffect(() => {
       if (editingStory) {
         // 수정 모드
         const response = await storyAPI.updateStory(editingStory.id, storyData);
-        // 수정본을 모든 목록에 반영
         const replaceEdited = (list: Story[]) =>
           list.map((story) => (story.id === editingStory.id ? response.data : story));
         setMyStories(replaceEdited);
@@ -544,7 +535,7 @@ useEffect(() => {
     }
   };
 
-  // 임시저장 - DOM에서 에디터 데이터를 수집하여 생성/수정 API 호출
+  // 임시저장
   const handleSaveDraft = async () => {
     const titleInput = document.querySelector(
       ".title-input",
@@ -600,7 +591,6 @@ useEffect(() => {
     try {
       setLoading(true);
       if (currentDraftId) {
-        // 기존 임시저장 수정
         const response = await draftAPI.updateDraft(currentDraftId, draftData);
         setDraftsState(
           drafts.map((d) => (d.id === currentDraftId ? response.data : d)),
@@ -632,7 +622,6 @@ useEffect(() => {
     }
   };
 
-  // 함수형 업데이트를 지원하는 drafts setter 래퍼
   const setDrafts = (newDrafts: Draft[] | ((prev: Draft[]) => Draft[])) => {
     if (typeof newDrafts === "function") {
       setDraftsState((prev) => newDrafts(prev));
@@ -641,7 +630,6 @@ useEffect(() => {
     }
   };
 
-  // 일정 저장/취소 토글 및 follows 카운트 로컬 반영
   const toggleFollow = async (storyId: number) => {
     const isFollowed = followedStories.includes(storyId);
     try {
@@ -667,7 +655,7 @@ useEffect(() => {
     }
   };
 
-  // 좋아요 토글 및 likes 카운트 로컬 반영
+  // 좋아요 토글
   const toggleLike = async (storyId: number) => {
     try {
       const response = await storyAPI.toggleLike(storyId);

@@ -1,665 +1,607 @@
-/* 상세/작성 페이지 컨테이너 - 최대 너비 및 중앙 정렬 */
 .detail-page-container {
-  max-width: 1100px;
+  max-width: 1000px;
   margin: 0 auto;
-  padding: 0 80px;
+  padding: 0 20px;
 }
 
-/* 상세 페이지 전체 박스 */
 .detail-page-content {
   width: 100%;
-  background: var(--secondary-color);
-  border: 3px solid var(--border-color);
-  box-shadow: 8px 8px 0px rgba(0, 0, 0, 1);
+  background: var(--tm-paper);
+  border: 0;
+  border-top: var(--tm-bd-thin);
+  border-bottom: var(--tm-bd-thin);
+  box-shadow: none;
 }
 
-/* 작성 페이지 전체 박스 - 헤더와 폼 세로 배치 */
+/* 작성 화면 전체 */
 .write-page-content {
-  width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 28px;
+  gap: 0;
+  width: 100%;
   background: transparent;
   border: none;
   box-shadow: none;
 }
 
-/* 작성 페이지 헤더 - 제목 + 임시저장/발행/닫기 버튼 */
+/* 제목줄 */
 .write-header {
   position: relative;
-  margin-bottom: 0;
-  padding: 20px;
-  background: var(--secondary-color);
-  border: 3px solid var(--border-color);
-  box-shadow: 8px 8px 0px rgba(0, 0, 0, 1);
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 20px;
+  gap: var(--tm-gap-4);
+  margin: 6px 0 18px;
+  padding: 0 48px 0 0; 
+  background: none;
+  border: 0;
+  box-shadow: none;
 }
 
-/* 작성 페이지 헤더 타이틀 */
 .write-header-title {
-  font-family: var(--font-mono);
-  font-size: 20px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 1.5px;
-  margin: 0;
   flex: 1;
+  min-width: 0;
+  margin: 0;
+  font: 900 clamp(26px, 2.8vw, 34px)/1.1 var(--tm-font);
+  letter-spacing: -.05em;
+  text-transform: none;
 }
 
-/* 헤더 우측 버튼 그룹 */
 .write-header-actions {
   display: flex;
-  gap: 12px;
   align-items: center;
-  margin-right: 20px;
+  gap: var(--tm-gap-2);
+  margin-right: 0;
 }
 
-/* 임시저장 버튼 + 뱃지 래퍼 */
 .write-draft-btn-wrapper {
   position: relative;
   display: flex;
   align-items: center;
 }
 
-/* 임시저장 버튼 */
+/* SAVE DRAFT */
 .write-draft-btn {
-  padding: 10px 20px;
-  border: 3px solid var(--border-color);
-  background: var(--secondary-color);
-  color: var(--primary-color);
-  font-weight: 700;
-  font-size: 12px;
-  font-family: var(--font-mono);
-  text-transform: uppercase;
+  display: inline-flex;
+  align-items: center;
+  height: var(--tm-h-btn);
+  padding: 0 16px;
+  border: var(--tm-bd-thin);
+  background: var(--tm-paper);
+  color: var(--tm-ink);
+  box-shadow: none;
+  font: 800 var(--tm-fs-md)/1 var(--tm-font);
+  text-transform: none;
+  white-space: nowrap;
   cursor: pointer;
-  box-shadow: var(--shadow-default);
-  transition: all 0.2s;
+  transition: background var(--tm-ease), color var(--tm-ease);
 }
 
 .write-draft-btn:hover {
-  background: var(--bg-light);
-  transform: translate(-1px, -1px);
+  background: var(--tm-ink);
+  color: var(--tm-paper);
+  transform: none;
 }
 
-/* 임시저장 개수 뱃지 */
+/* 임시저장 개수 */
 .write-draft-badge {
   position: absolute;
-  top: -12px;
+  top: -10px;
   right: -10px;
-  background: var(--primary-color);
-  color: var(--secondary-color);
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 11px;
-  font-weight: 700;
-  font-family: var(--font-mono);
+  display: inline-grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 5px;
+  border: 1.5px solid var(--tm-paper);
+  border-radius: 99px;
+  background: var(--tm-red);
+  color: var(--tm-paper);
+  font: 900 12px/1 var(--tm-font);
+  font-variant-numeric: tabular-nums;
   cursor: pointer;
-  border: 2px solid var(--secondary-color);
 }
 
-/* 발행 버튼 */
+/* PUBLISH */
 .write-publish-btn {
-  padding: 10px 20px;
-  border: 3px solid var(--border-color);
-  background: var(--primary-color);
-  color: var(--secondary-color);
-  font-weight: 700;
-  font-size: 12px;
-  font-family: var(--font-mono);
-  text-transform: uppercase;
+  display: inline-flex;
+  align-items: center;
+  height: var(--tm-h-btn);
+  padding: 0 18px;
+  border: var(--tm-bd-thin);
+  border-color: var(--tm-red);
+  background: var(--tm-red);
+  color: var(--tm-paper);
+  box-shadow: none;
+  font: 800 var(--tm-fs-md)/1 var(--tm-font);
+  text-transform: none;
+  white-space: nowrap;
   cursor: pointer;
-  box-shadow: var(--shadow-default);
-  transition: all 0.2s;
+  transition: background var(--tm-ease), border-color var(--tm-ease);
 }
 
 .write-publish-btn:hover {
-  background: #333;
+  background: var(--tm-ink);
+  border-color: var(--tm-ink);
 }
 
-/* 닫기 버튼 */
 .write-close-btn {
   position: absolute;
-  top: -15px;
-  right: -15px;
-  width: 40px;
-  height: 40px;
-  border: 2px solid var(--border-color);
-  background: var(--secondary-color);
+  top: 50%;
+  right: 0;
+  z-index: 10;
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 36px;
+  height: 36px;
+  margin-top: -18px;
+  border: var(--tm-bd-thin);
+  border-radius: 0;
+  background: var(--tm-paper);
+  box-shadow: none;
   cursor: pointer;
-  border-radius: 50%;
-  box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
-  z-index: 10;
-  transition: all 0.2s;
+  transition: background var(--tm-ease);
 }
 
-/* 호버 시 검은 배경 */
 .write-close-btn:hover {
-  background: var(--primary-color);
+  background: var(--tm-ink);
 }
 
 .write-close-btn svg {
-  transition: fill 0.2s;
+  width: 20px !important;
+  height: 20px !important;
+  transition: fill var(--tm-ease);
 }
 
 .write-close-btn:hover svg {
-  fill: var(--secondary-color);
+  fill: var(--tm-paper) !important;
 }
 
-/* 작성 폼 전체 컨테이너 */
+.write-draft-btn:focus-visible,
+.write-publish-btn:focus-visible,
+.write-close-btn:focus-visible,
+.style-tag:focus-visible,
+.toolbar-btn:focus-visible {
+  outline: 3px solid var(--tm-yellow);
+  outline-offset: 2px;
+}
+
 .write-form-container {
-  background: var(--secondary-color);
-  border: 3px solid var(--border-color);
-  box-shadow: 8px 8px 0px rgba(0, 0, 0, 1);
-  padding: 32px;
+  padding: 18px 4px 22px;
+  background: var(--tm-paper);
+  border: 0;
+  border-top: var(--tm-bd-thin);
+  border-bottom: var(--tm-bd-thin);
+  box-shadow: none;
 }
 
-/* 제목 입력 섹션 */
 .write-title-section {
-  margin-bottom: 24px;
+  margin-bottom: 18px;
 }
 
-/* 폼 필드 라벨 공통 */
 .write-label {
   display: block;
-  font-size: 11px;
-  font-weight: 700;
-  margin-bottom: 8px;
-  color: rgba(0, 0, 0, 0.6);
-  text-transform: uppercase;
-  font-family: var(--font-mono);
-  letter-spacing: 0.5px;
+  margin: 0 0 6px;
+  font: 800 var(--tm-fs-xs)/1.4 var(--tm-font);
+  letter-spacing: .1em;
+  color: #555;
+  text-transform: none;
 }
 
-/* 제목 입력창 */
+/* 제목 */
 .title-input {
   width: 100%;
-  padding: 12px 16px;
-  border: 2px solid var(--border-color);
-  background: var(--secondary-color);
-  font-size: 16px;
-  font-family: var(--font-mono);
-  font-weight: 700;
+  height: 48px;
+  padding: 0 2px;
+  border: 0;
+  border-bottom: 2px solid var(--tm-ink);
+  border-radius: 0;
+  background: transparent;
+  color: var(--tm-ink);
+  font: 800 20px/1 var(--tm-font);
+  letter-spacing: -.02em;
   outline: none;
   box-sizing: border-box;
+}
+
+.title-input::placeholder {
+  color: #888;
+  font-weight: 600;
 }
 
 .title-input:focus {
-  border-color: var(--primary-color);
+  border-bottom-color: var(--tm-red);
 }
 
-/* 목적지/기간/예산 3열 그리드 */
+/* 목적지 / 기간 / 출발일 */
 .write-form-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 16px;
-  margin-bottom: 24px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0 20px;
+  margin-bottom: 18px;
 }
 
-/* 일반 텍스트 입력 필드 */
 .form-input {
   width: 100%;
-  padding: 10px 12px;
-  border: 2px solid var(--border-color);
-  background: var(--secondary-color);
-  font-size: 13px;
-  font-family: var(--font-mono);
+  height: var(--tm-h-input);
+  padding: 0 2px;
+  border: 0;
+  border-bottom: 2px solid var(--tm-ink);
+  border-radius: 0;
+  background: transparent;
+  color: var(--tm-ink);
+  font: 700 15px/1 var(--tm-font);
   outline: none;
   box-sizing: border-box;
 }
 
-.form-input:focus {
-  border-color: var(--primary-color);
+.form-input::placeholder {
+  color: #888;
+  font-weight: 600;
 }
 
-/* 드롭다운 select 필드 */
+.form-input:focus {
+  border-bottom-color: var(--tm-red);
+}
+
 .form-select {
   width: 100%;
-  padding: 10px 12px;
-  border: 2px solid var(--border-color);
-  background: var(--secondary-color);
-  font-size: 13px;
-  font-family: var(--font-mono);
+  height: var(--tm-h-input);
+  padding: 0 22px 0 2px;
+  border: 0;
+  border-bottom: 2px solid var(--tm-ink);
+  border-radius: 0;
+  background: transparent;
+  color: var(--tm-ink);
+  font: 700 15px/1 var(--tm-font);
   outline: none;
   box-sizing: border-box;
   cursor: pointer;
 }
 
 .form-select:focus {
-  border-color: var(--primary-color);
+  border-bottom-color: var(--tm-red);
 }
 
-/* 경비 입력 섹션 */
+/* 기간·출발일은 여행 일정에서만 바꿀 수 있음 */
+.write-form-grid .custom-select-trigger,
+.write-form-grid .custom-date-trigger {
+  padding-left: 8px;
+  background: var(--tm-soft);
+  border-bottom-color: var(--tm-line);
+  color: var(--tm-mute);
+}
+
+/* 여행 경비 */
 .write-expenses-section {
-  margin-bottom: 24px;
+  margin-bottom: 18px;
 }
 
-/* 경비 입력 컨테이너 */
-.write-expenses-container {
-  border: 2px solid var(--border-color);
-  padding: 20px;
-  background: var(--bg-light);
-}
-
-/* 경비 항목 목록 */
-.write-expenses-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-/* 경비 항목 행 */
-.write-expense-row {
-  display: grid;
-  grid-template-columns: 120px 1fr 40px;
-  gap: 12px;
-  align-items: center;
-}
-
-/* 경비 항목 라벨 */
-.write-expense-label {
-  font-size: 12px;
-  font-weight: 700;
-  font-family: var(--font-mono);
-  color: rgba(0, 0, 0, 0.7);
-}
-
-/* 경비 금액 입력창 */
-.write-expense-input {
-  padding: 8px 12px;
-  border: 2px solid var(--border-color);
-  background: var(--secondary-color);
-  font-size: 13px;
-  font-family: var(--font-mono);
-  outline: none;
-  text-align: right;
-}
-
-.write-expense-input:focus {
-  border-color: var(--primary-color);
-}
-
-/* 경비 단위 텍스트 */
-.write-expense-unit {
-  font-size: 12px;
-  font-family: var(--font-mono);
-  font-weight: 700;
-}
-
-/* 경비 합계 행 */
-.write-expenses-total {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-top: 16px;
-  border-top: 2px solid var(--border-color);
-  font-size: 14px;
-  font-weight: 700;
-  font-family: var(--font-mono);
-}
-
-/* 여행 스타일 태그 선택 섹션 */
+/* 태그 · 공개 설정 */
 .write-tags-section {
-  margin-bottom: 24px;
+  margin-bottom: 18px;
 }
 
-/* 태그 목록 */
 .write-tags-container {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
 
-/* 태그 칩 */
 .style-tag {
-  padding: 6px 14px;
-  border: 2px solid var(--border-color);
-  background: var(--secondary-color);
-  color: var(--primary-color);
-  font-size: 11px;
-  font-weight: 700;
-  font-family: var(--font-mono);
+  height: 32px;
+  padding: 0 14px;
+  border: 1px solid var(--tm-line);
+  background: var(--tm-paper);
+  color: var(--tm-ink);
+  font: 700 var(--tm-fs-sm)/1 var(--tm-font);
+  white-space: nowrap;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: border-color var(--tm-ease), background var(--tm-ease);
 }
 
-.style-tag:hover {
-  background: var(--bg-light);
+.style-tag:hover:not(.selected) {
+  border-color: var(--tm-ink);
+  background: var(--tm-paper);
 }
 
-/* 선택된 태그 */
 .style-tag.selected {
-  background: var(--primary-color);
-  color: var(--secondary-color);
-  box-shadow: var(--shadow-small);
-  transform: translate(-1px, -1px);
+  background: var(--tm-yellow);
+  border-color: var(--tm-ink);
+  color: var(--tm-ink);
+  box-shadow: none;
+  transform: none;
 }
 
-/* 본문 에디터 섹션 */
+/* 편집기 */
 .write-editor-section {
-  margin-bottom: 24px;
+  margin-bottom: 0;
 }
 
-/* 에디터 툴바 */
 .write-toolbar {
   display: flex;
   align-items: center;
-  gap: 2px;
-  padding: 6px 10px;
-  background: #f4f4f4;
-  border: 2px solid var(--border-color);
-  border-bottom: none;
   flex-wrap: wrap;
+  gap: 4px;
+  padding: 6px 8px;
+  background: var(--tm-soft);
+  border: var(--tm-bd-thin);
+  border-bottom: 0;
 }
 
-/* 툴바 버튼 공통 */
 .toolbar-btn {
-  width: 36px;
-  height: 36px;
-  border: 2px solid transparent;
-  background: transparent;
-  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: var(--font-mono);
-  font-weight: 700;
-  font-size: 14px;
-  color: #000;
-  transition: all 0.15s;
-  border-radius: 2px;
+  min-width: 32px;
+  height: 32px;
+  padding: 0 8px;
+  border: 1.5px solid transparent;
+  border-radius: 0;
+  background: none;
+  color: var(--tm-ink);
+  font: 800 var(--tm-fs-sm)/1 var(--tm-font);
+  cursor: pointer;
+  transition: background var(--tm-ease), border-color var(--tm-ease);
 }
 
-/* 호버 시 검은 배경 반전 */
 .toolbar-btn:hover {
-  background: var(--primary-color);
-  color: var(--secondary-color);
-  border-color: var(--border-color);
+  background: var(--tm-yellow);
+  border-color: var(--tm-ink);
+  color: var(--tm-ink);
 }
 
-/* 호버 시 SVG 아이콘 흰색으로 */
 .toolbar-btn:hover svg,
 .toolbar-btn:hover svg path,
 .toolbar-btn:hover svg circle,
 .toolbar-btn:hover svg line,
 .toolbar-btn:hover svg text {
-  stroke: #fff;
-  fill: #fff;
-  color: #fff;
+  color: var(--tm-ink);
 }
 
-/* stroke none인 채운 도형은 fill만 변경 */
-.toolbar-btn:hover svg circle[stroke="none"],
-.toolbar-btn:hover svg text[stroke="none"] {
-  fill: #fff;
-  stroke: none;
+.toolbar-btn.active {
+  background: var(--tm-ink);
+  color: var(--tm-paper);
+  border-radius: 0;
 }
 
-/* 툴바 버튼 그룹 구분선 */
 .toolbar-divider {
   width: 1px;
-  height: 24px;
-  background: rgba(0, 0, 0, 0.15);
+  height: 20px;
   margin: 0 4px;
+  background: var(--tm-line);
 }
 
-/* WYSIWYG 에디터 본문 영역 */
 .blog-editor-wysiwyg {
   position: relative;
   min-height: 400px;
-  padding: 20px;
-  border: 2px solid var(--border-color);
-  background: var(--secondary-color);
-  font-size: 14px;
-  line-height: 1.8;
+  padding: 16px 18px;
+  border: var(--tm-bd-thin);
+  background: var(--tm-paper);
+  color: var(--tm-ink);
+  font: 500 16px/1.8 var(--tm-font);
   outline: none;
-  font-family: var(--font-mono);
   overflow-y: auto;
 }
 
 .blog-editor-wysiwyg:focus {
-  border-color: var(--primary-color);
+  border-color: var(--tm-ink);
+  box-shadow: inset 0 -2px 0 var(--tm-red);
 }
 
-/* 에디터가 비었을 때 안내문 (data-empty) */
-.blog-editor-wysiwyg[data-empty="true"]::before { 
-  content: attr(data-placeholder); 
-  color: #999; 
-  pointer-events: none; 
+/* 비어 있을 때 안내 문구 */
+.blog-editor-wysiwyg[data-empty="true"]::before {
+  content: '· 이미지는 최대 10장까지 업로드할 수 있으며, 본문 맨 위에 모아서 표시됩니다.\A· 이미지를 드래그하면 보일 위치를 조정할 수 있습니다.\A· 이미지 위에 마우스를 올리면 COVER 버튼이 나타납니다. 커버로 지정할 이미지를 선택하세요.\A· 이미지 우측 상단 버튼으로 삭제할 수 있습니다.';
+  position: absolute;
+  top: 16px;
+  left: 18px;
+  right: 18px;
+  color: var(--tm-mute);
+  font: 600 var(--tm-fs-md)/2 var(--tm-font);
+  white-space: pre-wrap;
+  text-align: left;
+  pointer-events: none;
+  transform: none;
 }
 
-/* 에디터 내 이미지 슬라이더 래퍼 */
+/* 편집기 안 이미지 슬라이더 */
 .image-slider-wrapper {
   position: relative;
   width: 100%;
   max-width: 693px;
   margin: 20px auto;
-  background: #f5f5f5;
-  border: 3px solid var(--border-color);
-  box-shadow: var(--shadow-default);
+  background: var(--tm-soft);
+  border: var(--tm-bd-thin);
+  box-shadow: none;
 }
 
-/* 슬라이더 이미지 컨테이너 */
 .slider-images-container {
   position: relative;
   width: 100%;
-  height: 500px;
+  height: 460px;
   overflow: hidden;
 }
 
 .slider-images-container img {
   object-fit: cover;
-  object-position: center top;  
+  object-position: center top;
 }
 
-/* 슬라이더 이전/다음 버튼 공통 */
 .slider-prev-btn,
 .slider-next-btn {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  width: 40px;
-  height: 40px;
-  background: rgba(0, 0, 0, 0.5);
-  color: #fff;
-  border: 2px solid #fff;
-  font-size: 28px;
-  font-weight: 700;
-  cursor: pointer;
   z-index: 10;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 0;
+  background: rgba(17, 17, 17, .55);   
+  color: var(--tm-paper);
+  font: 900 18px/1 var(--tm-font);
+  cursor: pointer;
+  transition: background var(--tm-ease), opacity .2s;
 }
 
-.slider-prev-btn {
-  left: 12px;
+.slider-prev-btn { left: 10px; }
+.slider-next-btn { right: 10px; }
+
+.slider-prev-btn:hover,
+.slider-next-btn:hover {
+  background: var(--tm-ink);
 }
 
-.slider-next-btn {
-  right: 12px;
-}
-
-/* 슬라이더 이미지 인덱스 표시 */
 .slider-indicator {
   position: absolute;
-  bottom: 12px;
+  bottom: 10px;
   left: 50%;
   transform: translateX(-50%);
-  background: rgba(0, 0, 0, 0.7);
-  color: #fff;
-  padding: 4px 12px;
-  border-radius: 12px;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-weight: 700;
   z-index: 10;
+  padding: 1px 8px;
+  border-radius: 0;
+  background: var(--tm-ink);
+  color: var(--tm-paper);
+  font: 800 12px/1.6 var(--tm-font);
+  font-variant-numeric: tabular-nums;
 }
 
-/* 커버 이미지 지정 버튼 - 슬라이더 좌측 상단 */
+/* COVER 버튼 */
 .slider-cover-btn {
-  padding: 6px 12px;
-  border: 2px solid var(--border-color);
-  background: var(--primary-color);
-  color: var(--secondary-color);
-  font-size: 10px;
-  font-weight: 700;
-  font-family: var(--font-mono);
+  height: 28px;
+  padding: 0 10px;
+  border: var(--tm-bd-thin);
+  border-radius: 0;
+  background: var(--tm-ink);
+  color: var(--tm-paper);
+  font: 800 12px/1 var(--tm-font);
+  letter-spacing: .06em;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background var(--tm-ease), color var(--tm-ease);
 }
 
-/* 커버 버튼 래퍼 - 슬라이더 좌측 상단 고정 */
 .slider-button-container {
   position: absolute;
-  top: 12px;
-  left: 12px;
+  top: 10px;
+  left: 10px;
   z-index: 10;
 }
 
-/* 삭제 버튼 래퍼 - 슬라이더 우측 상단 고정 */
 .slider-delete-container {
   position: absolute;
-  top: 12px;
-  right: 12px;
+  top: 10px;
+  right: 10px;
   z-index: 10;
 }
 
-/* 이미지 업로드 드롭존 */
-.write-image-upload-area {
-  border: 2px dashed var(--border-color);
-  background: var(--bg-light);
-  margin-bottom: 12px;
-  min-height: 60px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  padding: 16px;
+
+.slider-delete-btn {
+  border: var(--tm-bd-thin) !important;
+  border-color: var(--tm-paper) !important;
+  border-radius: 0 !important;
 }
 
+/* 출발일 달력 */
 .custom-date-trigger {
-  cursor: pointer;
   display: flex;
   align-items: center;
   gap: 8px;
   text-align: left;
+  cursor: pointer;
 }
 
 .custom-calendar {
   position: absolute;
   top: calc(100% + 4px);
   left: 0;
-  background: #fff;
-  color: #000; 
-  z-index: 100;
-  border: 2px solid #000;
+  z-index: var(--tm-z-dropdown);
   min-width: 280px;
-  box-shadow: 4px 4px 0 #000;
+  background: var(--tm-paper);
+  color: var(--tm-ink);
+  border: var(--tm-bd);
+  box-shadow: var(--tm-shadow-float);
 }
 
 .custom-calendar-header {
-  background: #000;
-  color: #fff;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 16px;
-  font-size: 14px;
-  font-weight: 700;
-  letter-spacing: 1px;
+  padding: 10px 12px;
+  border-bottom: var(--tm-bd);
+  background: var(--tm-yellow);
+  color: var(--tm-ink);
+  font: 900 var(--tm-fs-md)/1 var(--tm-font);
+  letter-spacing: .02em;
 }
 
 .custom-calendar-header button {
-  background: none;
-  border: none;
-  color: #fff;
-  font-size: 20px;
-  cursor: pointer;
   padding: 0 8px;
-  line-height: 1;
+  border: none;
+  background: none;
+  color: var(--tm-ink);
+  font: 900 20px/1 var(--tm-font);
+  cursor: pointer;
 }
 
 .custom-calendar-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  grid-auto-rows: 36px;
-  padding: 0 12px 12px;
-  gap: 4px;
+  grid-auto-rows: 34px;
+  gap: 2px;
+  padding: 8px 10px 10px;
 }
 
 .custom-calendar-weekday {
-  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
   border: none;
-  color: #000;   
-  font-size: 13px;
-  cursor: pointer;
-  padding: 8px;
-  text-align: center;
   border-radius: 0;
+  background: transparent;
+  color: var(--tm-ink);
+  font: 800 var(--tm-fs-xs)/1 var(--tm-font);
+  cursor: default;
 }
 
 .custom-calendar-day {
   display: flex;
-  align-items: center;       
+  align-items: center;
   justify-content: center;
-  background: transparent;
   border: none;
-  color: #000;
-  font-size: 13px;
+  border-radius: 0;
+  background: transparent;
+  color: var(--tm-ink);
+  font: 700 var(--tm-fs-sm)/1 var(--tm-font);
+  font-variant-numeric: tabular-nums;
   cursor: pointer;
 }
 
 .custom-calendar-day:hover {
-  background: #f2f2f2;
+  background: var(--tm-yellow);
 }
 
 .custom-calendar-day.today {
-  border: 1px solid #fff;
+  border: 0;
+  box-shadow: inset 0 0 0 2px var(--tm-red);
 }
 
 .custom-calendar-day.selected {
-  background: #e5e5e5;
-  border: 2px solid #000;
-  font-weight: 700;
+  border: 0;
+  background: var(--tm-ink);
+  color: var(--tm-paper);
+  font-weight: 800;
 }
 
-.toolbar-btn.active {
-  background-color: #e8e8e8;
-  color: #000;
-  border-radius: 4px;
-}
-
-.tip-box {
-  margin-top: 24px; 
-}
-
-/* 에디터가 비었을 때 사진 업로드 안내 */
-.blog-editor-wysiwyg[data-empty="true"]::before {
-  content: '· 이미지는 최대 10장까지 업로드할 수 있으며, 본문 맨 위에 모아서 표시됩니다.\A· 이미지를 드래그하면 보일 위치를 조정할 수 있습니다.\A· 이미지 위에 마우스를 올리면 COVER 버튼이 나타납니다. 커버로 지정할 이미지를 선택하세요.\A· 이미지 우측 상단 버튼으로 삭제할 수 있습니다.';
-  color: #888;
-  font-size: 15px;
-  pointer-events: none;
-  white-space: pre-wrap;
-  position: absolute;
-  top: 30px;
-  left: 16px;
-  transform: none;
-  text-align: left;
-  line-height: 2;
+.write-expenses-section .detail-route,
+.write-expenses-section .detail-expenses {
+  max-width: none;
+  margin: 0;
 }
 
 /* 사진 드래그 위치 조정 */
@@ -674,23 +616,33 @@
   cursor: grabbing;
 }
 
-/* 사진 칸 hover 시 드래그 안내 */
 .blog-editor-wysiwyg .slider-images-container::after {
   content: "드래그해서 보일 위치 조정";
   position: absolute;
   left: 12px;
   bottom: 12px;
   z-index: 5;
-  padding: 4px 10px;
-  background: rgba(0, 0, 0, 0.6);
-  color: #fff;
-  font-size: 12px;
-  font-weight: 700;
+  padding: 2px 10px;
+  background: var(--tm-ink);
+  color: var(--tm-paper);
+  font: 700 12px/1.6 var(--tm-font);
   pointer-events: none;
   opacity: 0;
-  transition: opacity 0.2s;
+  transition: opacity var(--tm-ease);
 }
 
 .blog-editor-wysiwyg .image-slider-wrapper:hover .slider-images-container::after {
   opacity: 1;
+}
+
+@media (max-width: 860px) {
+  .write-form-grid { grid-template-columns: 1fr; }
+  .write-header { padding-right: 44px; }
+}
+
+@media (max-width: 700px) {
+  .detail-page-container { padding: 0 14px; }
+  .slider-images-container { height: 300px; }
+  .write-header-actions { width: 100%; }
+  .write-publish-btn { margin-left: auto; }
 }

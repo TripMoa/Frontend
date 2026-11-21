@@ -10,7 +10,7 @@ function TravelStoryEdit() {
   const navigate = useNavigate();
   const hook = useTravelStory();
 
-  // 임시저장 모달 hover 상태
+  // 임시저장 모달 상태
   const [hoveredDraftId, setHoveredDraftId] = useState<number | null>(null);
   const [deleteHoverId, setDeleteHoverId] = useState<number | null>(null);
 
@@ -54,7 +54,7 @@ function TravelStoryEdit() {
         setDeleteHoverId={setDeleteHoverId}
       />
 
-      {/* 수정 완료/실패 알림 - 확인 누르면 내 여행기로 이동 */}
+      {/* 수정 완료/실패 알림 */}
       <CustomAlert
         show={hook.showAlert}
         message={hook.alertMessage}

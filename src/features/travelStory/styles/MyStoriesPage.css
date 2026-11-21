@@ -1,155 +1,113 @@
-/* 내 스토리 페이지 헤더 - 통계 카드 포함 */
+/* 통계 묶음 */
 .mystories-header {
   position: relative;
-  margin-bottom: 30px;
-  padding: 20px;
-  background: var(--secondary-color);
-  border: 3px solid var(--border-color);
-  box-shadow: 8px 8px 0px rgba(0, 0, 0, 1);
   z-index: 1;
+  margin: 6px 0 24px;
+  padding: 16px 4px;
+  background: var(--tm-paper);
+  border: 0;
+  border-top: var(--tm-bd-thin);
+  border-bottom: var(--tm-bd-thin);
+  box-shadow: none;
 }
 
-/* 닫기 버튼 */
 .mystories-close-btn {
   position: absolute;
-  top: -15px;
-  right: -15px;
-  width: 40px;
-  height: 40px;
-  border: 2px solid var(--border-color);
-  background: var(--secondary-color);
+  top: -18px;
+  right: 0;
+  z-index: 2;
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: var(--tm-bd-thin);
+  border-radius: 0;
+  background: var(--tm-paper);
+  box-shadow: none;
   cursor: pointer;
-  border-radius: 50%;
-  box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
-  z-index: 99999;
-  transition: all 0.2s;
+  transition: background var(--tm-ease);
 }
 
-/* 호버 시 검은 배경 */
 .mystories-close-btn:hover {
-  background: var(--primary-color);
+  background: var(--tm-ink);
 }
 
 .mystories-close-btn svg {
-  transition: fill 0.2s;
+  width: 20px !important;
+  height: 20px !important;
+  transition: fill var(--tm-ease);
 }
 
 .mystories-close-btn:hover svg {
-  fill: var(--secondary-color);
+  fill: var(--tm-paper) !important;
 }
 
-/* 통계 카드 그리드 */
+.mystories-close-btn:focus-visible {
+  outline: 3px solid var(--tm-yellow);
+  outline-offset: 2px;
+}
+
+/* 통계 4칸 */
 .mystories-stats-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
-  padding: 0 20px;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--tm-gap-4);
+  padding: 0;
 }
 
-/* 통계 카드 단일 항목 */
+/* 숫자 카드 */
 .mystories-stat-card {
-  padding: 12px 15px;
-  border: 2px solid var(--border-color);
-  background: var(--secondary-color);
-  text-align: center;
-  transition: all 0.2s;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-areas:
+    "icon value"
+    "label label";
+  align-items: center;
+  column-gap: 8px;
+  padding: 12px 16px;
+  background: var(--tm-paper);
+  border: var(--tm-bd-thin);
+  text-align: left;
+  transition: background var(--tm-ease);
 }
 
-/* 클릭 가능한 통계 카드 */
 .mystories-stat-card.clickable {
   cursor: pointer;
 }
 
+/* 누를 수 있는 카드(SAVED ITINERARIES) */
 .mystories-stat-card.clickable:hover {
-  transform: translateY(-3px);
-  box-shadow: var(--shadow-default);
+  background: var(--tm-yellow-soft);
+  transform: none;
+  box-shadow: none;
 }
 
-/* 통계 아이콘 */
 .mystories-stat-icon {
+  grid-area: icon;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 4px;
+  margin: 0;
 }
 
 .mystories-stat-icon svg {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
 }
 
-/* 통계 수치 */
 .mystories-stat-value {
-  font-size: 22px;
-  font-weight: 700;
-  margin-bottom: 4px;
-  font-family: var(--font-mono);
+  grid-area: value;
+  margin: 0;
+  font: 900 var(--tm-fs-2xl)/1.1 var(--tm-font);
+  font-variant-numeric: tabular-nums;
 }
 
-/* 통계 라벨 */
 .mystories-stat-label {
-  font-size: 10px;
-  color: #666;
-  font-family: var(--font-mono);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-/* 내 스토리 카드 목록 */
-.mystories-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 24px;
-}
-
-/* 스토리 없을 때 빈 상태 안내 */
-.mystories-empty {
-  text-align: center;
-  padding: 80px 20px;
-  background: var(--secondary-color);
-  border: 3px dashed var(--border-color);
-}
-
-.mystories-empty-text {
-  font-size: 18px;
-  font-weight: 700;
-  font-family: var(--font-mono);
-  margin-bottom: 8px;
-}
-
-.mystories-empty-subtext {
-  font-size: 14px;
-  color: var(--text-gray);
-  font-family: var(--font-mono);
-}
-
-/* 내 스토리 빈 상태 */
-.my-stories-empty {
-  text-align: center;
-  padding: 60px 40px;
-  font-family: var(--font-mono);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  background: #fff;
-  border: 2px solid rgba(0,0,0,0.1);
-  margin-top: 16px;
-}
-
-.my-stories-empty-text {
-  font-family: var(--font-mono);
-  font-size: 18px;
-  font-weight: 700;
-  color: #000;
-  margin: 12px 0 6px;
-}
-
-.my-stories-empty-sub {
-  font-family: var(--font-mono);
-  font-size: 15px;
-  color: rgba(0, 0, 0, 0.4);
-  margin-top: 6px;
+  grid-area: label;
+  margin-top: 2px;
+  font: 800 var(--tm-fs-sm)/1.4 var(--tm-font);
+  color: var(--tm-mute);
+  text-transform: none;
+  letter-spacing: 0;
 }

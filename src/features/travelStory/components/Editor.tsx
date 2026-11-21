@@ -13,10 +13,9 @@ interface EditorProps {
   currentDraft?: any;
 }
 
-// 이벤트를 붙인 슬라이더 목록 (HTML에 저장되지 않음)
+// 이벤트를 붙인 슬라이더 목록
 const boundSliders = new WeakSet<Element>();
 
-// 사진 칸을 본문 맨 위에 고정 (여러 개면 하나로 합침)
 const keepSliderOnTop = (editor: HTMLDivElement) => {
   const sliders = Array.from(editor.querySelectorAll(".image-slider-wrapper")) as HTMLElement[];
   if (sliders.length === 0) return;
@@ -33,7 +32,6 @@ const keepSliderOnTop = (editor: HTMLDivElement) => {
     });
   }
 
-  // 2장 이상인데 이전/다음 버튼이 없으면 생성
   const imageCount = main.querySelectorAll(".slider-images-container img").length;
   if (imageCount > 1 && !main.querySelector(".slider-prev-btn")) {
     ["slider-prev-btn", "slider-next-btn"].forEach((cls, i) => {
@@ -45,20 +43,17 @@ const keepSliderOnTop = (editor: HTMLDivElement) => {
     });
   }
 
-  // 사진 칸은 편집 불가 영역으로
   main.setAttribute("contenteditable", "false");
 
   if (editor.firstChild !== main) editor.insertBefore(main, editor.firstChild);
   if (!main.nextSibling) editor.appendChild(document.createElement("br"));
 };
 
-// 키보드로 지워진 사진 칸 복구 (사진 삭제는 삭제 버튼으로만)
 const restoreSliderIfRemoved = (editor: HTMLDivElement, slider: HTMLElement | null) => {
   if (!slider || editor.contains(slider)) return;
   editor.insertBefore(slider, editor.firstChild);
   if (!slider.nextSibling) editor.appendChild(document.createElement("br"));
 
-  // 커서는 사진 칸 아래 줄로
   const next = slider.nextSibling;
   const sel = window.getSelection();
   if (next && sel) {
@@ -74,11 +69,10 @@ const restoreSliderIfRemoved = (editor: HTMLDivElement, slider: HTMLElement | nu
   }
 };
 
-// 사진 드래그로 보일 위치 조정 (object-position에 저장)
+// 사진 드래그로 보일 위치 조정
 const clampPercent = (v: number) => Math.min(100, Math.max(0, v));
 
 const readObjectPosition = (img: HTMLImageElement): [number, number] => {
-  // 옮긴 적 없으면 기본값 (50% 0%)
   const value = img.style.objectPosition || getComputedStyle(img).objectPosition || "50% 0%";
   const nums = value.match(/-?\d+(\.\d+)?(?=%)/g);
   if (nums && nums.length >= 2) return [parseFloat(nums[0]), parseFloat(nums[1])];
@@ -89,13 +83,12 @@ const startImagePositionDrag = (img: HTMLImageElement, startClientX: number, sta
   const box = img.parentElement as HTMLElement | null;
   if (!box || !img.naturalWidth || !img.naturalHeight) return false;
 
-  // 칸 밖으로 넘치는 크기 (이만큼만 이동 가능)
   const boxW = box.clientWidth;
   const boxH = box.clientHeight;
   const scale = Math.max(boxW / img.naturalWidth, boxH / img.naturalHeight);
   const overflowX = img.naturalWidth * scale - boxW;
   const overflowY = img.naturalHeight * scale - boxH;
-  if (overflowX < 1 && overflowY < 1) return false; // 칸과 비율이 같아 옮길 게 없음
+  if (overflowX < 1 && overflowY < 1) return false;
 
   const [startX, startY] = readObjectPosition(img);
   img.classList.add("is-dragging");
@@ -103,7 +96,6 @@ const startImagePositionDrag = (img: HTMLImageElement, startClientX: number, sta
   const onMove = (ev: PointerEvent) => {
     const dx = ev.clientX - startClientX;
     const dy = ev.clientY - startClientY;
-    // 끄는 방향으로 사진 이동
     const nextX = overflowX >= 1 ? clampPercent(startX - (dx / overflowX) * 100) : startX;
     const nextY = overflowY >= 1 ? clampPercent(startY - (dy / overflowY) * 100) : startY;
     img.style.objectPosition = `${nextX.toFixed(1)}% ${nextY.toFixed(1)}%`;
@@ -126,17 +118,14 @@ const Editor = forwardRef<EditorHandle, EditorProps>(({
     editingStory?.imageUrl || null,
   );
   const editorRef = useRef<HTMLDivElement>(null);
-  // 지우기 직전의 사진 칸 (복구용)
   const sliderBeforeEditRef = useRef<HTMLElement | null>(null);
   const { upload } = useImageUpload();
 
-  // 슬라이더 이벤트에서 최신 커버 값을 읽기 위한 ref
   const selectedCoverRef = useRef<string | null>(selectedCoverImage);
   useEffect(() => {
     selectedCoverRef.current = selectedCoverImage;
   }, [selectedCoverImage]);
 
-  // 글자·사진이 없으면 안내문 표시 (data-empty)
   useEffect(() => {
     const editor = editorRef.current;
     if (!editor) return;
@@ -150,7 +139,6 @@ const Editor = forwardRef<EditorHandle, EditorProps>(({
     return () => observer.disconnect();
   }, []);
 
-  // 부모에서 getContent(), getCoverImage() 호출 가능하도록 노출
   useImperativeHandle(ref, () => ({
     getContent: () => editorRef.current?.innerHTML || "",
     getCoverImage: () => selectedCoverImage,
@@ -166,19 +154,18 @@ const Editor = forwardRef<EditorHandle, EditorProps>(({
   // 수정/임시저장 모드 진입 시 에디터 내용 초기화
   useEffect(() => {
     if (editorRef.current && (editingStory || currentDraft)) {
-      // 임시저장 내용 우선
       editorRef.current.innerHTML =
         currentDraft?.description || editingStory?.description || "";
-      // 이전 버전에서 저장된 data-bound 속성 제거
       editorRef.current.querySelectorAll("[data-bound]").forEach((el) => el.removeAttribute("data-bound"));
-      // 1번째 사진부터 보이게
+      editorRef.current.querySelectorAll<HTMLElement>(".slider-prev-btn, .slider-next-btn").forEach((btn) => {
+        ["background", "color", "border", "border-radius"].forEach((p) => btn.style.removeProperty(p));
+      });
       editorRef.current.querySelectorAll(".slider-images-container").forEach((container) => {
         container.querySelectorAll("img").forEach((img, idx) => {
           (img as HTMLElement).style.display = idx === 0 ? "block" : "none";
         });
       });
 
-      // 임시저장 불러올 때 커버 복원 (없으면 첫 사진)
       if (currentDraft) {
         const firstImg = editorRef.current.querySelector(".slider-images-container img") as HTMLImageElement | null;
         const firstSrc = firstImg ? firstImg.getAttribute("data-image-src") || firstImg.getAttribute("src") : null;
@@ -187,14 +174,12 @@ const Editor = forwardRef<EditorHandle, EditorProps>(({
     }
   }, [editingStory?.id, currentDraft?.id]);
 
-  // 임시저장 시 커버도 함께 저장되도록 전달
   useEffect(() => {
     (window as any).selectedCoverImageForPublish = selectedCoverImage;
   }, [selectedCoverImage]);
 
-  // 수정/임시저장 모드 슬라이더 초기화 (이벤트는 슬라이더당 한 번만)
+  // 수정/임시저장 모드 슬라이더 초기화
   useEffect(() => {
-    // 수정 화면 또는 임시저장 불러오기일 때만
     if (!((editingStory && editingStory.description != null) || currentDraft)) return;
 
     const timer = setTimeout(() => {
@@ -243,7 +228,7 @@ const Editor = forwardRef<EditorHandle, EditorProps>(({
           if (!coverBtn) return;
           const current = getImages()[getCurrentIndex()];
           if (current && getSrc(current) === selectedCoverRef.current) {
-            coverBtn.style.background = "#FFD93D";
+            coverBtn.style.background = "#ffe94a";
             coverBtn.style.color = "#000";
             if (buttonContainer) buttonContainer.style.opacity = "1";
           } else {
@@ -282,7 +267,7 @@ const Editor = forwardRef<EditorHandle, EditorProps>(({
           const current = getImages()[getCurrentIndex()];
           if (!current) return;
           setSelectedCoverImage(getSrc(current));
-          coverBtn.style.background = "#FFD93D";
+          coverBtn.style.background = "#ffe94a";
           coverBtn.style.color = "#000";
           if (buttonContainer) buttonContainer.style.opacity = "1";
         });
@@ -311,13 +296,13 @@ const Editor = forwardRef<EditorHandle, EditorProps>(({
         });
 
         slider.addEventListener("mouseenter", () => {
-          if (coverBtn && coverBtn.style.background !== "rgb(255, 217, 61)") {
+          if (coverBtn && coverBtn.style.background !== "rgb(255, 233, 74)") {
             if (buttonContainer) buttonContainer.style.opacity = "1";
           }
           if (deleteButtonContainer) deleteButtonContainer.style.opacity = "1";
         });
         slider.addEventListener("mouseleave", () => {
-          if (coverBtn && coverBtn.style.background !== "rgb(255, 217, 61)") {
+          if (coverBtn && coverBtn.style.background !== "rgb(255, 233, 74)") {
             if (buttonContainer) buttonContainer.style.opacity = "0";
           }
           if (deleteButtonContainer) deleteButtonContainer.style.opacity = "0";
@@ -330,7 +315,7 @@ const Editor = forwardRef<EditorHandle, EditorProps>(({
     return () => clearTimeout(timer);
   }, [editingStory, currentDraft]);
 
-  // 이미지 업로드 및 슬라이더 삽입 - 최대 10장 제한
+  // 이미지 업로드 및 슬라이더 삽입 (최대 10장 제한)
   const handleImageInsert = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -360,7 +345,6 @@ const Editor = forwardRef<EditorHandle, EditorProps>(({
         (window as any).uploadedImagesForPublish || []
       ).concat(normalizedUrls);
 
-      // 기존 슬라이더에 이어 붙이기
       const existingSlider = editor.querySelector(".image-slider-wrapper");
 
       if (existingSlider) {
@@ -388,7 +372,6 @@ const Editor = forwardRef<EditorHandle, EditorProps>(({
           indicator.textContent = `${currentVisibleIndex + 1}/${allImages.length}`;
         }
 
-        // 숨겨진 이전/다음 버튼 다시 표시
         const savedPrev = existingSlider.querySelector(".slider-prev-btn") as HTMLElement | null;
         const savedNext = existingSlider.querySelector(".slider-next-btn") as HTMLElement | null;
         if (allImages.length > 1 && savedPrev && savedNext) {
@@ -406,8 +389,6 @@ const Editor = forwardRef<EditorHandle, EditorProps>(({
           prevBtn.className = "slider-prev-btn";
           prevBtn.innerHTML = "‹";
           prevBtn.setAttribute("contenteditable", "false");
-          prevBtn.addEventListener("mouseenter", () => { prevBtn.style.background = "rgba(255,255,255,0.5)"; });
-          prevBtn.addEventListener("mouseleave", () => { prevBtn.style.background = "rgba(255,255,255,0.25)"; });
           prevBtn.addEventListener("click", (evt) => {
             evt.preventDefault(); evt.stopPropagation();
             const images = imagesContainer.querySelectorAll("img");
@@ -422,7 +403,7 @@ const Editor = forwardRef<EditorHandle, EditorProps>(({
             const currentImg = images[currentIdx] as HTMLImageElement;
             const currentSrc = currentImg.getAttribute("data-image-src");
             if (coverBtn && currentSrc === selectedCoverRef.current) {
-              coverBtn.style.background = "#FFD93D"; coverBtn.style.color = "#000";
+              coverBtn.style.background = "#ffe94a"; coverBtn.style.color = "#000";
               if (buttonContainer) buttonContainer.style.opacity = "1";
             } else if (coverBtn) {
               coverBtn.style.background = "#000"; coverBtn.style.color = "#fff";
@@ -434,8 +415,6 @@ const Editor = forwardRef<EditorHandle, EditorProps>(({
           nextBtn.className = "slider-next-btn";
           nextBtn.innerHTML = "›";
           nextBtn.setAttribute("contenteditable", "false");
-          nextBtn.addEventListener("mouseenter", () => { nextBtn.style.background = "rgba(255,255,255,0.5)"; });
-          nextBtn.addEventListener("mouseleave", () => { nextBtn.style.background = "rgba(255,255,255,0.25)"; });
           nextBtn.addEventListener("click", (evt) => {
             evt.preventDefault(); evt.stopPropagation();
             const images = imagesContainer.querySelectorAll("img");
@@ -450,7 +429,7 @@ const Editor = forwardRef<EditorHandle, EditorProps>(({
             const currentImg = images[currentIdx] as HTMLImageElement;
             const currentSrc = currentImg.getAttribute("data-image-src");
             if (coverBtn && currentSrc === selectedCoverRef.current) {
-              coverBtn.style.background = "#FFD93D"; coverBtn.style.color = "#000";
+              coverBtn.style.background = "#ffe94a"; coverBtn.style.color = "#000";
               if (buttonContainer) buttonContainer.style.opacity = "1";
             } else if (coverBtn) {
               coverBtn.style.background = "#000"; coverBtn.style.color = "#fff";
@@ -480,7 +459,7 @@ const Editor = forwardRef<EditorHandle, EditorProps>(({
             const currentImg = images[currentIdx] as HTMLImageElement;
             const currentSrc = currentImg.getAttribute("data-image-src");
             setSelectedCoverImage(currentSrc);
-            newCoverBtn.style.background = "#FFD93D"; newCoverBtn.style.color = "#000";
+            newCoverBtn.style.background = "#ffe94a"; newCoverBtn.style.color = "#000";
             if (existingButtonContainer) (existingButtonContainer as HTMLElement).style.opacity = "1";
           });
         }
@@ -528,7 +507,7 @@ const Editor = forwardRef<EditorHandle, EditorProps>(({
           const currentImg = images[currentIndex] as HTMLImageElement;
           const currentSrc = currentImg.getAttribute("data-image-src");
           setSelectedCoverImage(currentSrc);
-          coverBtn.style.background = "#FFD93D"; coverBtn.style.color = "#000";
+          coverBtn.style.background = "#ffe94a"; coverBtn.style.color = "#000";
           buttonContainer.style.opacity = "1";
         });
         buttonContainer.appendChild(coverBtn);
@@ -539,8 +518,6 @@ const Editor = forwardRef<EditorHandle, EditorProps>(({
           prevBtn.className = "slider-prev-btn";
           prevBtn.innerHTML = "‹";
           prevBtn.setAttribute("contenteditable", "false");
-          prevBtn.addEventListener("mouseenter", () => { prevBtn.style.background = "rgba(0,0,0,0.8)"; });
-          prevBtn.addEventListener("mouseleave", () => { prevBtn.style.background = "rgba(0,0,0,0.5)"; });
           prevBtn.addEventListener("click", (evt) => {
             evt.preventDefault(); evt.stopPropagation();
             const images = imagesContainer.querySelectorAll("img");
@@ -552,7 +529,7 @@ const Editor = forwardRef<EditorHandle, EditorProps>(({
             const currentImg = images[currentIndex] as HTMLImageElement;
             const currentSrc = currentImg.getAttribute("data-image-src");
             if (currentSrc === selectedCoverRef.current) {
-              coverBtn.style.background = "#FFD93D"; coverBtn.style.color = "#000"; buttonContainer.style.opacity = "1";
+              coverBtn.style.background = "#ffe94a"; coverBtn.style.color = "#000"; buttonContainer.style.opacity = "1";
             } else {
               coverBtn.style.background = "#000"; coverBtn.style.color = "#fff"; buttonContainer.style.opacity = "0";
             }
@@ -563,8 +540,6 @@ const Editor = forwardRef<EditorHandle, EditorProps>(({
           nextBtn.className = "slider-next-btn";
           nextBtn.innerHTML = "›";
           nextBtn.setAttribute("contenteditable", "false");
-          nextBtn.addEventListener("mouseenter", () => { nextBtn.style.background = "rgba(0,0,0,0.8)"; });
-          nextBtn.addEventListener("mouseleave", () => { nextBtn.style.background = "rgba(0,0,0,0.5)"; });
           nextBtn.addEventListener("click", (evt) => {
             evt.preventDefault(); evt.stopPropagation();
             const images = imagesContainer.querySelectorAll("img");
@@ -576,7 +551,7 @@ const Editor = forwardRef<EditorHandle, EditorProps>(({
             const currentImg = images[currentIndex] as HTMLImageElement;
             const currentSrc = currentImg.getAttribute("data-image-src");
             if (currentSrc === selectedCoverRef.current) {
-              coverBtn.style.background = "#FFD93D"; coverBtn.style.color = "#000"; buttonContainer.style.opacity = "1";
+              coverBtn.style.background = "#ffe94a"; coverBtn.style.color = "#000"; buttonContainer.style.opacity = "1";
             } else {
               coverBtn.style.background = "#000"; coverBtn.style.color = "#fff"; buttonContainer.style.opacity = "0";
             }
@@ -599,7 +574,7 @@ const Editor = forwardRef<EditorHandle, EditorProps>(({
         deleteBtn.setAttribute("contenteditable", "false");
         deleteBtn.style.cssText = `width:40px;height:40px;border:none;background:rgba(0,0,0,0.6);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.2s;border-radius:4px;`;
         deleteBtn.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M3 6h18M8 6V4c0-1.1.9-2 2-2h4c1.1 0 2 .9 2 2v2m3 0v14c0 1.1-.9 2-2 2H7c-1.1 0-2-.9-2-2V6h14z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 11v6M14 11v6" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-        deleteBtn.addEventListener("mouseenter", () => { deleteBtn.style.background = "rgba(220,38,38,0.9)"; });
+        deleteBtn.addEventListener("mouseenter", () => { deleteBtn.style.background = "#ff4b2b"; });
         deleteBtn.addEventListener("mouseleave", () => { deleteBtn.style.background = "rgba(0,0,0,0.6)"; });
         deleteBtn.addEventListener("click", (evt) => {
           evt.preventDefault(); evt.stopPropagation();
@@ -631,11 +606,11 @@ const Editor = forwardRef<EditorHandle, EditorProps>(({
         deleteButtonContainer.appendChild(deleteBtn);
 
         sliderWrapper.addEventListener("mouseenter", () => {
-          if (coverBtn.style.background !== "rgb(255, 217, 61)") buttonContainer.style.opacity = "1";
+          if (coverBtn.style.background !== "rgb(255, 233, 74)") buttonContainer.style.opacity = "1";
           deleteButtonContainer.style.opacity = "1";
         });
         sliderWrapper.addEventListener("mouseleave", () => {
-          if (coverBtn.style.background !== "rgb(255, 217, 61)") buttonContainer.style.opacity = "0";
+          if (coverBtn.style.background !== "rgb(255, 233, 74)") buttonContainer.style.opacity = "0";
           deleteButtonContainer.style.opacity = "0";
         });
 
@@ -646,7 +621,7 @@ const Editor = forwardRef<EditorHandle, EditorProps>(({
 
         if (!selectedCoverRef.current && normalizedUrls.length > 0) {
           setSelectedCoverImage(normalizedUrls[0]);
-          coverBtn.style.background = "#FFD93D"; coverBtn.style.color = "#000";
+          coverBtn.style.background = "#ffe94a"; coverBtn.style.color = "#000";
           buttonContainer.style.opacity = "1";
         }
       }
@@ -657,7 +632,6 @@ const Editor = forwardRef<EditorHandle, EditorProps>(({
     e.target.value = "";
   };
 
-  // execCommand 래퍼
   const execCmd = (command: string, value?: string) => {
     const editor = editorRef.current;
     if (!editor) return;
@@ -722,14 +696,12 @@ const Editor = forwardRef<EditorHandle, EditorProps>(({
       contentEditable="true"
       suppressContentEditableWarning={true}
       onKeyDown={(e) => {
-        // 지우기·잘라내기 직전 사진 칸 기억
         const isDelete = e.key === "Backspace" || e.key === "Delete";
         const isCut = (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "x";
         const slider = e.currentTarget.querySelector(".image-slider-wrapper") as HTMLElement | null;
         sliderBeforeEditRef.current = isDelete || isCut ? slider : null;
         if (!(isDelete || isCut) || !slider) return;
 
-        // 사진 칸까지 선택된 채로 지우면 글만 지움
         const sel = window.getSelection();
         if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return;
         const range = sel.getRangeAt(0);
@@ -737,7 +709,7 @@ const Editor = forwardRef<EditorHandle, EditorProps>(({
         const textOnly = range.cloneRange();
         textOnly.setStartAfter(slider);
         if (textOnly.collapsed) {
-          e.preventDefault(); // 사진 칸만 선택된 경우 무시
+          e.preventDefault(); 
           return;
         }
         sel.removeAllRanges();
@@ -749,7 +721,6 @@ const Editor = forwardRef<EditorHandle, EditorProps>(({
         keepSliderOnTop(e.currentTarget);
       }}
       onPointerDown={(e) => {
-        // 사진 위치 조정 시작
         const target = e.target as HTMLElement;
         if (target.tagName !== "IMG" || !target.closest(".slider-images-container")) return;
         if (startImagePositionDrag(target as HTMLImageElement, e.clientX, e.clientY)) {
@@ -757,7 +728,6 @@ const Editor = forwardRef<EditorHandle, EditorProps>(({
         }
       }}
       onDragStart={(e) => {
-        // 브라우저 기본 이미지 드래그 막기
         if ((e.target as HTMLElement).tagName === "IMG") e.preventDefault();
       }}
     />
